@@ -20,4 +20,7 @@ interface WatchedDao {
 
     @Query("SELECT * FROM watched_movies ORDER BY watchedAt DESC")
     fun getAllWatched(): Flow<List<WatchedMovieEntity>>
+
+    @Query("DELETE FROM watched_movies")
+    suspend fun clearAll()
 }
