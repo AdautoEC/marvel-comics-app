@@ -1,6 +1,7 @@
 package com.adauto.marvel.core.network.security
 
 import com.adauto.marvel.core.model.MarvelKeys
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withTimeoutOrNull
@@ -20,24 +21,27 @@ class MarvelKeyProviderImpl @Inject constructor(
     private val mutex = Mutex()
     private var inMemoryKeys: MarvelKeys? = null
 
-    override suspend fun current(): MarvelKeys? = mutex.withLock {
+    private suspend fun loadCachedKeysOrNull(): MarvelKeys? {
         inMemoryKeys?.let { return it }
-
-        val storedBlob = storage.loadEncryptedBlob()
-        if (storedBlob != null) {
-            try {
-                val decryptedJson = cipher.decrypt(storedBlob).decodeToString()
-                val keys = json.decodeFromString<MarvelKeys>(decryptedJson)
-                inMemoryKeys = keys
-                return keys
-            } catch (_: GeneralSecurityException) {
-                storage.clear()
-                cipher.deleteKey()
-            } catch (_: Exception) {
-                storage.clear()
-                cipher.deleteKey()
-            }
+        val storedBlob = storage.loadEncryptedBlob() ?: return null
+        return try {
+            val decryptedJson = cipher.decrypt(storedBlob).decodeToString()
+            val keys = json.decodeFromString<MarvelKeys>(decryptedJson)
+            inMemoryKeys = keys
+            keys
+        } catch (_: GeneralSecurityException) {
+            storage.clear()
+            cipher.deleteKey()
+            null
+        } catch (_: Exception) {
+            storage.clear()
+            cipher.deleteKey()
+            null
         }
+    }
+
+    override suspend fun current(): MarvelKeys? = mutex.withLock {
+        loadCachedKeysOrNull()?.let { return it }
 
         val remoteKeys = withTimeoutOrNull(10_000L) {
             remoteConfigSource.fetchKeys()
@@ -50,7 +54,7 @@ class MarvelKeyProviderImpl @Inject constructor(
 
     override suspend fun forceRefresh(): Boolean = mutex.withLock {
         val newKeys = remoteConfigSource.fetchKeys() ?: return false
-        val currentVer = inMemoryKeys?.keyVersion ?: 0
+        val currentVer = inMemoryKeys?.keyVersion ?: loadCachedKeysOrNull()?.keyVersion ?: 0
         saveKeysInternal(newKeys)
         inMemoryKeys = newKeys
         return newKeys.keyVersion != currentVer
@@ -60,12 +64,14 @@ class MarvelKeyProviderImpl @Inject constructor(
         try {
             val remoteKeys = remoteConfigSource.fetchKeys() ?: return
             mutex.withLock {
-                val currentVer = inMemoryKeys?.keyVersion ?: 0
+                val currentVer = inMemoryKeys?.keyVersion ?: loadCachedKeysOrNull()?.keyVersion ?: 0
                 if (remoteKeys.keyVersion > currentVer) {
                     saveKeysInternal(remoteKeys)
                     inMemoryKeys = remoteKeys
                 }
             }
+        } catch (cancellation: CancellationException) {
+            throw cancellation
         } catch (_: Exception) {
             // Background check failure is non-fatal
         }
