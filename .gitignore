@@ -1,0 +1,32 @@
+*.iml
+.gradle
+/local.properties
+/.idea
+.DS_Store
+build/
+/build
+app/build
+captures
+.externalNativeBuild
+.cxx
+
+# Keystores & Keys
+*.jks
+*.keystore
+*.key
+*.pem
+*.p12
+
+# Environment & Secrets
+.env
+.env.*
+!.env.example
+
+# Google Services (real secrets)
+**/google-services.json
+!ci/google-services.fake.json
+
+# Local / temporary archives
+ShortenLinks/
+ShortenLinks.zip
+

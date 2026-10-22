@@ -1,0 +1,78 @@
+name: Release Pipeline
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version_name:
+        description: 'Version Name (e.g. 1.0.0)'
+        required: false
+        default: '1.0.0'
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  id-token: write
+
+jobs:
+  release:
+    name: Build & Sign Release Bundle
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Setup google-services.json
+        env:
+          GOOGLE_SERVICES_JSON_B64: ${{ secrets.GOOGLE_SERVICES_JSON_B64 }}
+        run: |
+          mkdir -p app
+          if [ -n "$GOOGLE_SERVICES_JSON_B64" ]; then
+            echo "$GOOGLE_SERVICES_JSON_B64" | base64 -d > app/google-services.json
+          else
+            echo "Secrets not found; using ci/google-services.fake.json as fallback"
+            cp ci/google-services.fake.json app/google-services.json
+          fi
+
+      - name: Run verification
+        run: ./gradlew lintDebug testDebugUnitTest --stacktrace
+
+      - name: Build Release APK and App Bundle
+        run: ./gradlew assembleRelease bundleRelease --stacktrace
+
+      - name: Archive Release APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release-apk
+          path: app/build/outputs/apk/release/*.apk
+          if-no-files-found: warn
+
+      - name: Archive Release Bundle (AAB)
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release-bundle
+          path: app/build/outputs/bundle/release/*.aab
+          if-no-files-found: warn
+
+      - name: Archive ProGuard / R8 Mapping File
+        uses: actions/upload-artifact@v4
+        with:
+          name: mapping-release
+          path: app/build/outputs/mapping/release/mapping.txt
+          if-no-files-found: warn
