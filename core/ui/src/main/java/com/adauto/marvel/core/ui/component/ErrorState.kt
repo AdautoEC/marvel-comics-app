@@ -18,10 +18,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.adauto.marvel.core.designsystem.preview.ThemePreviews
 import com.adauto.marvel.core.designsystem.theme.MarvelColors
+import com.adauto.marvel.core.designsystem.theme.MarvelTheme
 import com.adauto.marvel.core.model.UiText
+import com.adauto.marvel.core.ui.preview.ErrorStatePreviewParameterProvider
 import com.adauto.marvel.core.ui.util.asString
 
 /**
@@ -100,4 +104,17 @@ fun ErrorState(
         title = title?.asString(),
         retryLabel = retryLabel
     )
+}
+
+@ThemePreviews
+@Composable
+private fun ErrorStatePreview(
+    @PreviewParameter(ErrorStatePreviewParameterProvider::class) message: UiText
+) {
+    MarvelTheme {
+        ErrorState(
+            message = message,
+            onRetry = {}
+        )
+    }
 }

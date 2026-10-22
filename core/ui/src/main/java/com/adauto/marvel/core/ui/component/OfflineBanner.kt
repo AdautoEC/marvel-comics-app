@@ -21,7 +21,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.adauto.marvel.core.designsystem.preview.ThemePreviews
 import com.adauto.marvel.core.designsystem.theme.MarvelColors
+import com.adauto.marvel.core.designsystem.theme.MarvelTheme
 
 /**
  * Reusable banner indicating offline status and cached data state.
@@ -61,5 +63,13 @@ fun OfflineBanner(
                 fontWeight = FontWeight.Medium
             )
         }
+    }
+}
+
+@ThemePreviews
+@Composable
+private fun OfflineBannerPreview() {
+    MarvelTheme {
+        OfflineBanner(visible = true)
     }
 }
