@@ -13,6 +13,7 @@ import javax.crypto.spec.GCMParameterSpec
 
 open class KeystoreCipher(private val alias: String = "marvel_keys_v1") {
 
+    @Synchronized
     private fun getOrCreateSecretKey(): SecretKey {
         val ks = KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
         (ks.getKey(alias, null) as? SecretKey)?.let { return it }
@@ -61,8 +62,9 @@ open class KeystoreCipher(private val alias: String = "marvel_keys_v1") {
 
     @Throws(GeneralSecurityException::class)
     open fun decrypt(encryptedBlob: ByteArray): ByteArray {
-        if (encryptedBlob.size < 12) {
-            throw GeneralSecurityException("Invalid encrypted payload size")
+        // Minimum GCM payload: 12-byte IV + 16-byte (128-bit) authentication tag
+        if (encryptedBlob.size < 28) {
+            throw GeneralSecurityException("Invalid encrypted payload size: minimum size is 28 bytes")
         }
         val secretKey = getOrCreateSecretKey()
         val iv = encryptedBlob.copyOfRange(0, 12)
