@@ -2,8 +2,8 @@
 
 ## 1. Intent & Context
 
-The application was recently migrated to The Movie Database (TMDB) API to support general movies, ratings, and categories ("Populares", "Mais Votados", "Favoritos", "Assistidos").
-Currently, "Favoritar" (❤️) and "Já assisti" (👁️) are persisted offline in a local Room 2.6 database.
+The application was recently migrated to The Movie Database (TMDB) API to support general movies, ratings, and categories ("Populares", "Mais Votados", "Favoritos", "Quero Assistir").
+Currently, "Favoritar" (❤️) and "Quero Assistir" (🔖 / Watchlist) are persisted offline in a local Room 2.6 database.
 
 This design introduces **TMDB User Authentication** and **Bidirectional Cloud Sync** while strictly honoring modern security practices and preserving a first-class **Guest Mode (Modo Convidado)**.
 
@@ -14,20 +14,26 @@ This design introduces **TMDB User Authentication** and **Bidirectional Cloud Sy
 ### Goals
 1. **First-Class Guest Mode (Modo Convidado):**
    * Default state on fresh install. Zero login barriers, splash walls, or blocking dialogs.
-   * Guests can browse, search, and toggle "Favorito" and "Assistido" locally via Room 2.6 with instantaneous (0ms) reactive UI updates.
-2. **Seamless Partial Custom Tab Authentication:**
+   * Guests can browse, search, and toggle "Favorito" (❤️) and "Quero Assistir" (🔖) locally via Room 2.6 with instantaneous (0ms) reactive UI updates.
+2. **Semantic Alignment with TMDB:**
+   * Category tabs and action buttons aligned with TMDB standards:
+     * **"Favoritos"** (`/account/{account_id}/favorite`)
+     * **"Quero Assistir"** (`/account/{account_id}/watchlist`)
+3. **Seamless Partial Custom Tab Authentication:**
    * Uses Android `androidx.browser:browser` Custom Tabs configured as a **Partial Custom Tab (BottomSheet)** covering ~65% of the screen.
    * Theme-styled toolbar (`DarkBackground #0F0F14`), hidden browser navigation menus, and automatic closure upon redirect.
    * Safe OAuth handshake with zero exposure of user passwords to the app code.
-3. **Deep Link Callback Handling:**
+4. **Deep Link Callback Handling:**
    * Intercepts `marvelapp://tmdb-callback?request_token={token}&approved=true`.
    * Automatically closes the Custom Tab, exchanges the request token for a `session_id`, fetches account info (`account_id`, username), and persists credentials encrypted in Keystore.
-4. **Bidirectional Sync Engine:**
+5. **Bidirectional Sync Engine:**
    * When logged in:
-     * Toggling favorite/watched executes an optimistic update in Room and asynchronously pushes to `POST /3/account/{account_id}/favorite` or `/watchlist`.
+     * Toggling favorite/watchlist executes an optimistic update in Room and asynchronously pushes to `POST /3/account/{account_id}/favorite` or `/watchlist`.
      * On initial login, merges guest's existing Room items into TMDB cloud and pulls the user's remote favorites/watchlist into Room.
-5. **Session Management & Logout:**
-   * User can log out at any time from the UI, seamlessly returning to Guest Mode without losing local data.
+     * Ongoing sync triggers on app resume and on pull-to-refresh.
+6. **Session Management, Data Isolation & Logout:**
+   * User can log out at any time from the UI.
+   * **Data Isolation on Logout:** Clearing session immediately purges the account's local cached favorites and watchlist from Room, preventing data leaks across different accounts and cleanly returning to an empty Guest Mode.
 
 ### Non-Goals
 * Supporting third-party federated social logins directly (TMDB web authentication already handles user credentials).
@@ -36,7 +42,8 @@ This design introduces **TMDB User Authentication** and **Bidirectional Cloud Sy
 ### Anti-Goals
 * **No Resource Owner Password Credentials (ROPC):** The app must NEVER collect, inspect, or transmit user plaintext passwords directly.
 * **No Jarring Full-Screen Browser Redirects:** The browser must NOT feel like an external app; it must render as an integrated bottom-sheet modal.
-* **No Blocking Gates:** A user who never logs in must have an uncompromised experience.
+* **No Cross-Account Data Contamination:** Logouts must wipe local account data so subsequent users or guests don't inherit another user's library.
+
 
 ---
 
@@ -141,23 +148,21 @@ This design introduces **TMDB User Authentication** and **Bidirectional Cloud Sy
 
 1. **Initial Sync Policy (Additive Union):**
    * On first login, the sync engine executes an **Additive Union** ($Local \cup Remote$):
-     * Any movie favorited or watched locally while in Guest Mode is pushed to TMDB via `markAsFavorite(id, true)` / `addToWatchlist(id, true)`.
-     * All movies favorited or on watchlist in the user's TMDB cloud account are downloaded and upserted into local Room entities.
-     * Neither side deletes items from the other on first login; no data is lost.
-2. **Account Switching & Data Isolation:**
-   * `SessionStorage` tracks `lastActiveAccountId`.
-   * When logging in:
-     * If logging into the *same* account (or first login from guest): Local guest items are merged into this account.
-     * If logging into a *different* account (`newAccountId != lastActiveAccountId`): The local favorites/watched tables are cleared prior to pulling the new account's cloud data, preventing cross-account data pollution.
-3. **Authenticated Operations:**
-   * Clicking Favorite / Watched:
-     * **Step 1:** Room update (immediate optimistic UI reaction).
-     * **Step 2:** Async API call `api.markAsFavorite(accountId, sessionId, movie.id, isFavorite)`.
-     * If the API call fails (network offline), Room remains the offline source of truth, and synchronization retries on next app launch/refresh.
-4. **Logout:**
-   * Clears `sessionId`, `username`, and `avatarPath` from `SessionStorage`.
+     * Any movie favorited or added to watchlist locally while in Guest Mode is pushed to TMDB via `markAsFavorite(id, true)` / `addToWatchlist(id, true)`.
+     * All movies in the user's remote TMDB Favorites and Watchlist are fetched and upserted into local Room entities.
+     * Neither side loses data on initial handshake.
+2. **Authenticated Operations & Deletions:**
+   * Clicking Favorite (❤️) or Quero Assistir (🔖):
+     * **Step 1:** Room update (immediate optimistic UI reaction: 0ms latency).
+     * **Step 2:** Async API call `api.markAsFavorite(accountId, sessionId, movie.id, isFavorite)` or `api.addToWatchlist(accountId, sessionId, movie.id, inWatchlist)`.
+     * If the API call fails (network offline), Room remains the offline source of truth, and synchronization retries on next app resume/pull-to-refresh.
+3. **Ongoing Sync Triggers:**
+   * App resume / startup (when authenticated).
+   * Pull-to-refresh on "Favoritos" and "Quero Assistir" tabs.
+4. **Logout & Strict Data Privacy:**
+   * Clears `sessionId`, `accountId`, `username`, and `avatarPath` from `SessionStorage`.
    * Sets state to `SessionState.Guest`.
-   * Retains the current local Room database for the guest, but records the previous account ID so that a future login by a *different* user does not contaminate the new user's TMDB account.
+   * **Purges local cached tables:** `FavoriteDao.clearAll()` and `WatchedDao.clearAll()` are executed on logout. This guarantees zero data leakage across different user accounts on the same device and returns the app to a clean, privacy-safe Guest Mode.
 
 ---
 
@@ -167,9 +172,10 @@ This design introduces **TMDB User Authentication** and **Bidirectional Cloud Sy
   * In `ComicListScreen` top app bar:
     * **Guest State:** Displays a sleek pill: `[ 👤 Convidado | Entrar ]`. Clicking opens the Partial Custom Tab.
     * **Authenticated State:** Displays `[ 👤 @username ]`. Clicking shows a small menu with option `[ Sair (Logout) ]`.
-* **Category Tabs ("Favoritos" & "Assistidos"):**
+* **Category Tabs ("Favoritos" & "Quero Assistir"):**
+  * Tabs: **"Populares"**, **"Mais Votados"**, **"Favoritos"**, **"Quero Assistir"**.
   * When in Guest state: shows banner above list:
-    * *"Seus favoritos estão salvos neste dispositivo. [Conectar TMDB] para sincronizar com sua conta."*
+    * *"Seus itens estão salvos neste dispositivo. [Conectar TMDB] para sincronizar com sua conta."*
   * When Authenticated: shows sync indicator with last synced time.
 
 ---
