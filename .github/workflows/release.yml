@@ -86,10 +86,13 @@ jobs:
           if-no-files-found: warn
 
       - name: Deploy to Firebase App Distribution
-        if: ${{ secrets.FIREBASE_APP_ID != '' && secrets.FIREBASE_CLI_TOKEN != '' }}
+        if: env.FIREBASE_APP_ID != '' && env.FIREBASE_CLI_TOKEN != ''
+        env:
+          FIREBASE_APP_ID: ${{ secrets.FIREBASE_APP_ID }}
+          FIREBASE_CLI_TOKEN: ${{ secrets.FIREBASE_CLI_TOKEN }}
         uses: wzieba/Firebase-Distribution-Github-Action@v1
         with:
-          appId: ${{ secrets.FIREBASE_APP_ID }}
-          token: ${{ secrets.FIREBASE_CLI_TOKEN }}
+          appId: ${{ env.FIREBASE_APP_ID }}
+          token: ${{ env.FIREBASE_CLI_TOKEN }}
           groups: testers
           file: app/build/outputs/apk/release/app-release.apk
