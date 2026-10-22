@@ -2,6 +2,8 @@ plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.hilt)
+    alias(libs.plugins.ksp)
 }
 
 android {
@@ -34,10 +36,15 @@ dependencies {
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.okhttp.core)
+    implementation(libs.okhttp.logging)
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.config)
+    implementation(libs.firebase.crashlytics)
+    implementation(libs.firebase.perf)
     implementation(libs.firebase.appcheck.playintegrity)
     implementation(libs.play.integrity)
+    implementation(libs.hilt.android)
+    ksp(libs.hilt.compiler)
     implementation(libs.javax.inject)
 
     testImplementation(libs.junit)
