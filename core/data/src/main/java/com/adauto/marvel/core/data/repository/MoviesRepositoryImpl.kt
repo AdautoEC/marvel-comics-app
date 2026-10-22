@@ -5,6 +5,7 @@ import androidx.paging.Pager
 import androidx.paging.PagingConfig
 import androidx.paging.PagingData
 import androidx.paging.map
+import com.adauto.marvel.core.data.mapper.toDomainError
 import com.adauto.marvel.core.data.mapper.toMovieDetail
 import com.adauto.marvel.core.data.mapper.toMovieSummary
 import com.adauto.marvel.core.data.mediator.MoviesRemoteMediator
@@ -23,6 +24,7 @@ import com.adauto.marvel.core.network.model.TmdbWatchlistRequestDto
 import com.adauto.marvel.core.network.security.session.SessionManager
 import com.skydoves.sandwich.ApiResponse
 import com.skydoves.sandwich.retrofit.statusCode
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -140,12 +142,16 @@ class MoviesRepositoryImpl @Inject constructor(
 
         val state = sessionManager.sessionState.value
         if (state is SessionState.Authenticated) {
-            runCatching {
+            try {
                 api.markAsFavorite(
                     accountId = state.accountId,
                     sessionId = state.sessionId,
                     body = TmdbFavoriteRequestDto(media_id = movie.id, favorite = newFavState)
                 )
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                // Optimistic UI remains source of truth; sync retries on resume/pull-to-refresh
             }
         }
     }
@@ -170,12 +176,16 @@ class MoviesRepositoryImpl @Inject constructor(
 
         val state = sessionManager.sessionState.value
         if (state is SessionState.Authenticated) {
-            runCatching {
+            try {
                 api.addToWatchlist(
                     accountId = state.accountId,
                     sessionId = state.sessionId,
                     body = TmdbWatchlistRequestDto(media_id = movie.id, watchlist = newWatchState)
                 )
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                // Optimistic UI remains source of truth; sync retries on resume/pull-to-refresh
             }
         }
     }
@@ -193,69 +203,104 @@ class MoviesRepositoryImpl @Inject constructor(
         val accountId = state.accountId
         val sessionId = state.sessionId
 
-        // 1. Push local favorites & watchlist to TMDB
-        runCatching {
+        try {
+            // 1. Push local favorites & watchlist to TMDB
             val localFavorites = database.favoriteDao().getAllFavorites().first()
             for (fav in localFavorites) {
-                api.markAsFavorite(
+                val response = api.markAsFavorite(
                     accountId = accountId,
                     sessionId = sessionId,
                     body = TmdbFavoriteRequestDto(media_id = fav.movieId, favorite = true)
                 )
+                if (response is ApiResponse.Failure.Error && response.statusCode.code == 401) {
+                    sessionManager.clearSession()
+                    return Outcome.Failure(DomainError.InvalidKey)
+                }
             }
 
             val localWatched = database.watchedDao().getAllWatched().first()
             for (watch in localWatched) {
-                api.addToWatchlist(
+                val response = api.addToWatchlist(
                     accountId = accountId,
                     sessionId = sessionId,
                     body = TmdbWatchlistRequestDto(media_id = watch.movieId, watchlist = true)
                 )
-            }
-        }
-
-        // 2. Pull remote favorites & watchlist and upsert into Room
-        runCatching {
-            val favResponse = api.getFavoriteMovies(accountId = accountId, sessionId = sessionId, page = 1)
-            if (favResponse is ApiResponse.Success) {
-                for (movieDto in favResponse.data.results) {
-                    database.favoriteDao().upsert(
-                        FavoriteMovieEntity(
-                            movieId = movieDto.id,
-                            title = movieDto.title,
-                            posterPath = movieDto.posterPath,
-                            voteAverage = movieDto.voteAverage,
-                            releaseDate = movieDto.releaseDate,
-                            addedAt = clock.millis()
-                        )
-                    )
+                if (response is ApiResponse.Failure.Error && response.statusCode.code == 401) {
+                    sessionManager.clearSession()
+                    return Outcome.Failure(DomainError.InvalidKey)
                 }
-            } else if (favResponse is ApiResponse.Failure.Error && favResponse.statusCode.code == 401) {
-                sessionManager.clearSession()
-                return Outcome.Failure(DomainError.InvalidKey)
             }
 
-            val watchResponse = api.getWatchlistMovies(accountId = accountId, sessionId = sessionId, page = 1)
-            if (watchResponse is ApiResponse.Success) {
-                for (movieDto in watchResponse.data.results) {
-                    database.watchedDao().upsert(
-                        WatchedMovieEntity(
-                            movieId = movieDto.id,
-                            title = movieDto.title,
-                            posterPath = movieDto.posterPath,
-                            voteAverage = movieDto.voteAverage,
-                            releaseDate = movieDto.releaseDate,
-                            watchedAt = clock.millis()
-                        )
-                    )
+            // 2. Pull remote favorites (multi-page) and upsert into Room
+            var favPage = 1
+            var totalFavPages = 1
+            while (favPage <= totalFavPages) {
+                val favResponse = api.getFavoriteMovies(accountId = accountId, sessionId = sessionId, page = favPage)
+                when (favResponse) {
+                    is ApiResponse.Success -> {
+                        totalFavPages = favResponse.data.totalPages.coerceAtLeast(1)
+                        for (movieDto in favResponse.data.results) {
+                            database.favoriteDao().upsert(
+                                FavoriteMovieEntity(
+                                    movieId = movieDto.id,
+                                    title = movieDto.title,
+                                    posterPath = movieDto.posterPath,
+                                    voteAverage = movieDto.voteAverage,
+                                    releaseDate = movieDto.releaseDate,
+                                    addedAt = clock.millis()
+                                )
+                            )
+                        }
+                        favPage++
+                    }
+                    is ApiResponse.Failure -> {
+                        if (favResponse is ApiResponse.Failure.Error && favResponse.statusCode.code == 401) {
+                            sessionManager.clearSession()
+                            return Outcome.Failure(DomainError.InvalidKey)
+                        }
+                        return Outcome.Failure(favResponse.toDomainError())
+                    }
                 }
-            } else if (watchResponse is ApiResponse.Failure.Error && watchResponse.statusCode.code == 401) {
-                sessionManager.clearSession()
-                return Outcome.Failure(DomainError.InvalidKey)
             }
-        }
 
-        return Outcome.Success(Unit)
+            // 3. Pull remote watchlist (multi-page) and upsert into Room
+            var watchPage = 1
+            var totalWatchPages = 1
+            while (watchPage <= totalWatchPages) {
+                val watchResponse = api.getWatchlistMovies(accountId = accountId, sessionId = sessionId, page = watchPage)
+                when (watchResponse) {
+                    is ApiResponse.Success -> {
+                        totalWatchPages = watchResponse.data.totalPages.coerceAtLeast(1)
+                        for (movieDto in watchResponse.data.results) {
+                            database.watchedDao().upsert(
+                                WatchedMovieEntity(
+                                    movieId = movieDto.id,
+                                    title = movieDto.title,
+                                    posterPath = movieDto.posterPath,
+                                    voteAverage = movieDto.voteAverage,
+                                    releaseDate = movieDto.releaseDate,
+                                    watchedAt = clock.millis()
+                                )
+                            )
+                        }
+                        watchPage++
+                    }
+                    is ApiResponse.Failure -> {
+                        if (watchResponse is ApiResponse.Failure.Error && watchResponse.statusCode.code == 401) {
+                            sessionManager.clearSession()
+                            return Outcome.Failure(DomainError.InvalidKey)
+                        }
+                        return Outcome.Failure(watchResponse.toDomainError())
+                    }
+                }
+            }
+
+            return Outcome.Success(Unit)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            return Outcome.Failure(DomainError.Unknown(e))
+        }
     }
 
     override fun observeFavorites(): Flow<List<MovieSummary>> {
