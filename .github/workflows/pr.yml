@@ -37,5 +37,13 @@ jobs:
           mkdir -p app
           cp ci/google-services.fake.json app/google-services.json
 
+      - name: Setup local.properties with TMDB Secrets
+        env:
+          TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
+          TMDB_READ_ACCESS_TOKEN: ${{ secrets.TMDB_READ_ACCESS_TOKEN }}
+        run: |
+          echo "tmdb.api.key=${TMDB_API_KEY:-a2ed008f1b8419141aaef581625e9c67}" >> local.properties
+          echo "tmdb.read.access.token=${TMDB_READ_ACCESS_TOKEN}" >> local.properties
+
       - name: Run checks and assemble
         run: ./gradlew detekt lintDebug testDebugUnitTest assembleDebug assembleRelease --stacktrace

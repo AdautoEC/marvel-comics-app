@@ -28,7 +28,7 @@
 - [x] **Task 5: Core UI & Design System Updates** — Update `MovieCard`, `MovieCover`, `FavoriteButton`, and `WatchedBadge` with accessible semantics.
 - [x] **Task 6: Feature Movies List (Home Screen)** — Category filter tabs (Popular, Top Rated, Favoritos, Assistidos), 2-column grid, pull-to-refresh, shimmer skeletons.
 - [x] **Task 7: Feature Movie Detail Screen** — Parallax backdrop hero poster, stats row (Rating, Runtime, Release Date), Synopsis, Cast chips, Favorite & Watched toggle actions.
-- [ ] **Task 8: Firebase Integration & Secrets in CI** — Firebase Remote Config (`tmdb_api_key`), Crashlytics, App Check / Play Integrity, Performance, and CI pipeline secrets wiring.
+- [x] **Task 8: Firebase Integration & Secrets in CI** — Firebase Remote Config (`tmdb_api_key`), Crashlytics, App Check / Play Integrity, Performance, and CI pipeline secrets wiring.
 - [ ] **Task 9: End-to-End Verification & Whole-Branch Review** — Full build verification (`detekt`, `lintDebug`, `testDebugUnitTest`, `assembleRelease`) and PR update.
 
 ---
