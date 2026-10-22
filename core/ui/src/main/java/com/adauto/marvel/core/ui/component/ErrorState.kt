@@ -90,7 +90,7 @@ fun ErrorState(
     message: UiText,
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
-    title: UiText? = null,
+    title: UiText? = UiText.Dynamic("Ocorreu um erro"),
     retryLabel: String = "Tentar novamente"
 ) {
     ErrorState(
