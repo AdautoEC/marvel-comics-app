@@ -7,7 +7,7 @@ import android.os.Debug
 import java.io.File
 import javax.inject.Inject
 
-class HostileEnvironmentDetector @Inject constructor(
+class HostileEnvironmentDetector(
     private val debuggerChecker: () -> Boolean = { Debug.isDebuggerConnected() },
     private val rootPathChecker: (String) -> Boolean = { File(it).exists() },
     private val fingerprintSupplier: () -> String = { Build.FINGERPRINT ?: "" },

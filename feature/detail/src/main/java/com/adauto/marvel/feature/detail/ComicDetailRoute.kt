@@ -14,16 +14,18 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
  */
 @Composable
 fun ComicDetailRoute(
-    onBack: () -> Unit,
+    onBack: () -> Unit = {},
     modifier: Modifier = Modifier,
-    viewModel: ComicDetailViewModel = hiltViewModel()
+    viewModel: ComicDetailViewModel = hiltViewModel(),
+    onBackClick: () -> Unit = onBack
 ) {
+    val effectiveOnBack = if (onBackClick !== onBack) onBackClick else onBack
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
     LaunchedEffect(viewModel.effects) {
         viewModel.effects.collect { effect ->
             when (effect) {
-                is ComicDetailEffect.NavigateBack -> onBack()
+                is ComicDetailEffect.NavigateBack -> effectiveOnBack()
             }
         }
     }
