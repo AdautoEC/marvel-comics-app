@@ -1,3 +1,5 @@
+@file:Suppress("ForbiddenImport")
+
 package com.adauto.marvel.core.ui.component
 
 import androidx.compose.foundation.background

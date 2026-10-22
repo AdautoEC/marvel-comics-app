@@ -26,8 +26,7 @@ fun MarvelNavHost(
                 }
             )
         }
-        composable<ComicDetailRoute> { backStackEntry ->
-            val route: ComicDetailRoute = backStackEntry.toRoute()
+        composable<ComicDetailRoute> {
             ComicDetailScreen(
                 onBackClick = { navController.popBackStack() }
             )

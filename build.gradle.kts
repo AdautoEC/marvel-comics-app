@@ -9,4 +9,14 @@ plugins {
     alias(libs.plugins.google.services) apply false
     alias(libs.plugins.firebase.crashlytics) apply false
     alias(libs.plugins.firebase.perf) apply false
+    alias(libs.plugins.detekt)
+}
+
+subprojects {
+    apply(plugin = "io.gitlab.arturbosch.detekt")
+
+    tasks.withType<io.gitlab.arturbosch.detekt.Detekt>().configureEach {
+        config.setFrom(files("$rootDir/config/detekt/detekt.yml"))
+        parallel = true
+    }
 }

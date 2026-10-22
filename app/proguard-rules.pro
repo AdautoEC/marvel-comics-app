@@ -9,7 +9,7 @@
 
 # Kotlinx Serialization companion objects
 -keepclassmembers class * {
-    companion object;
+    public static final ** Companion;
 }
 
 # Keep Room entities and DAOs
