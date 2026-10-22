@@ -28,4 +28,5 @@ include(":core:data")
 include(":core:designsystem")
 include(":core:ui")
 include(":feature:comics")
+include(":feature:detail")
 
