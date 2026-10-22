@@ -2,6 +2,7 @@ package com.adauto.marvel.core.network.security.session
 
 import com.adauto.marvel.core.model.SessionState
 import com.adauto.marvel.core.network.security.KeystoreCipher
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -12,7 +13,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.json.Json
-import java.security.GeneralSecurityException
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -47,17 +47,16 @@ class SessionManagerImpl(
     }
 
     private suspend fun loadStoredSession() {
-        val blob = storage.loadEncryptedSession() ?: return
         try {
+            val blob = storage.loadEncryptedSession() ?: return
             val decryptedJson = cipher.decrypt(blob).decodeToString()
             val auth = json.decodeFromString<SessionState.Authenticated>(decryptedJson)
             _sessionState.value = auth
-        } catch (_: GeneralSecurityException) {
-            storage.clear()
-            _sessionState.value = SessionState.Guest
+        } catch (cancellation: CancellationException) {
+            throw cancellation
         } catch (_: Exception) {
-            storage.clear()
             _sessionState.value = SessionState.Guest
+            runCatching { storage.clear() }
         }
     }
 

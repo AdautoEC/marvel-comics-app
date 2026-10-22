@@ -141,4 +141,28 @@ class SessionManagerTest {
         assertThat(sessionManager.sessionState.value).isEqualTo(SessionState.Guest)
         coVerify(exactly = 0) { storage.clear() }
     }
+
+    @Test
+    fun storage_read_failure_cleanly_defaults_to_Guest_and_clears_storage() = runTest {
+        coEvery { storage.loadEncryptedSession() } throws java.io.IOException("Disk read error")
+
+        val sessionManager = SessionManagerImpl(cipher, storage, testScope)
+        testScope.advanceUntilIdle()
+
+        assertThat(sessionManager.sessionState.value).isEqualTo(SessionState.Guest)
+        coVerify(exactly = 1) { storage.clear() }
+    }
+
+    @Test
+    fun storage_clear_failure_does_not_prevent_state_from_resetting_to_Guest() = runTest {
+        val corruptedBytes = byteArrayOf(99, 99)
+        coEvery { storage.loadEncryptedSession() } returns corruptedBytes
+        coEvery { cipher.decrypt(corruptedBytes) } throws GeneralSecurityException("Corrupted")
+        coEvery { storage.clear() } throws java.io.IOException("Failed to clear disk")
+
+        val sessionManager = SessionManagerImpl(cipher, storage, testScope)
+        testScope.advanceUntilIdle()
+
+        assertThat(sessionManager.sessionState.value).isEqualTo(SessionState.Guest)
+    }
 }
