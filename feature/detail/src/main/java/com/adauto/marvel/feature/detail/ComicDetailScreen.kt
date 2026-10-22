@@ -37,14 +37,19 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.adauto.marvel.core.designsystem.preview.DevicePreviews
+import com.adauto.marvel.core.designsystem.preview.ThemePreviews
 import com.adauto.marvel.core.designsystem.theme.MarvelColors
+import com.adauto.marvel.core.designsystem.theme.MarvelTheme
 import com.adauto.marvel.core.model.ComicDetail
 import com.adauto.marvel.core.model.stripHtml
 import com.adauto.marvel.core.ui.component.ComicCover
 import com.adauto.marvel.core.ui.component.ErrorState
 import com.adauto.marvel.core.ui.component.shimmer
+import com.adauto.marvel.feature.detail.preview.ComicDetailUiStatePreviewParameterProvider
 
 /**
  * Comic Detail Screen presenting:
@@ -457,3 +462,18 @@ internal fun formatOnsaleDate(dateStr: String?): String? {
         dateStr
     }
 }
+
+@ThemePreviews
+@DevicePreviews
+@Composable
+private fun ComicDetailScreenPreview(
+    @PreviewParameter(ComicDetailUiStatePreviewParameterProvider::class) uiState: ComicDetailUiState
+) {
+    MarvelTheme {
+        ComicDetailScreen(
+            uiState = uiState,
+            onAction = {}
+        )
+    }
+}
+
