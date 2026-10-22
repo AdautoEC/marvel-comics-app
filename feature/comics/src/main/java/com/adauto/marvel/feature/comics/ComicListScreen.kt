@@ -11,6 +11,7 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -28,12 +29,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.paging.LoadState
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.itemKey
+import com.adauto.marvel.core.designsystem.preview.DevicePreviews
+import com.adauto.marvel.core.designsystem.preview.ThemePreviews
 import com.adauto.marvel.core.designsystem.theme.MarvelColors
+import com.adauto.marvel.core.designsystem.theme.MarvelTheme
 import com.adauto.marvel.core.model.ComicSummary
 import com.adauto.marvel.core.model.MarvelApiException
 import com.adauto.marvel.core.ui.component.AttributionFooter
@@ -41,6 +46,8 @@ import com.adauto.marvel.core.ui.component.ComicCard
 import com.adauto.marvel.core.ui.component.ErrorState
 import com.adauto.marvel.core.ui.component.OfflineBanner
 import com.adauto.marvel.core.ui.component.ShimmerComicCard
+import com.adauto.marvel.feature.comics.preview.ComicListPreviewState
+import com.adauto.marvel.feature.comics.preview.ComicListUiStatePreviewParameterProvider
 
 /**
  * Comic List Screen rendering a 2-column grid of Marvel comics with UDF architecture,
@@ -218,6 +225,126 @@ fun ComicListScreen(
     }
 }
 
+/**
+ * Pure, stateless Comic List content layout decoupled from Paging 3 runtime,
+ * strictly designed for Android Studio Compose Previews and screenshot testing.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ComicListContent(
+    uiState: ComicListUiState,
+    comics: List<ComicSummary>,
+    isLoading: Boolean,
+    errorMessage: String?,
+    onAction: (ComicListAction) -> Unit,
+    modifier: Modifier = Modifier,
+    gridState: LazyGridState = rememberLazyGridState(),
+    snackbarHostState: SnackbarHostState = remember { SnackbarHostState() }
+) {
+    Scaffold(
+        modifier = modifier.fillMaxSize(),
+        topBar = {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                TopAppBar(
+                    title = {
+                        Text(
+                            text = "MARVEL COMICS",
+                            style = MaterialTheme.typography.titleLarge.copy(
+                                fontWeight = FontWeight.Black,
+                                letterSpacing = 2.sp
+                            ),
+                            color = MarvelColors.MarvelRed
+                        )
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = MarvelColors.DarkBackground,
+                        titleContentColor = MarvelColors.MarvelRed
+                    )
+                )
+                OfflineBanner(
+                    visible = uiState.isOffline,
+                    modifier = Modifier.testTag("OfflineBanner")
+                )
+            }
+        },
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
+        containerColor = MarvelColors.DarkBackground
+    ) { innerPadding ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+        ) {
+            when {
+                isLoading -> {
+                    LazyVerticalGrid(
+                        columns = GridCells.Fixed(2),
+                        state = gridState,
+                        contentPadding = PaddingValues(16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        items(6) {
+                            ShimmerComicCard()
+                        }
+                    }
+                }
+                errorMessage != null -> {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(16.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        ErrorState(
+                            message = errorMessage,
+                            onRetry = { onAction(ComicListAction.RefreshRequested) }
+                        )
+                    }
+                }
+                comics.isEmpty() -> {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(16.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "Nenhum quadrinho encontrado.",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MarvelColors.TextSecondary
+                        )
+                    }
+                }
+                else -> {
+                    LazyVerticalGrid(
+                        columns = GridCells.Fixed(2),
+                        state = gridState,
+                        contentPadding = PaddingValues(16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        items(comics, key = { it.id }) { comic ->
+                            ComicCard(
+                                comic = comic,
+                                onClick = { onAction(ComicListAction.ComicClicked(comic.id)) }
+                            )
+                        }
+
+                        if (uiState.attribution != null) {
+                            item(span = { GridItemSpan(maxLineSpan) }) {
+                                AttributionFooter(text = uiState.attribution)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 private fun formatPagingError(error: Throwable, fallback: String): String {
     return when (error) {
         is MarvelApiException -> when (error.code) {
@@ -227,5 +354,22 @@ private fun formatPagingError(error: Throwable, fallback: String): String {
             else -> error.localizedMessage ?: fallback
         }
         else -> error.localizedMessage ?: fallback
+    }
+}
+
+@ThemePreviews
+@DevicePreviews
+@Composable
+private fun ComicListScreenPreview(
+    @PreviewParameter(ComicListUiStatePreviewParameterProvider::class) state: ComicListPreviewState
+) {
+    MarvelTheme {
+        ComicListContent(
+            uiState = state.uiState,
+            comics = state.comics,
+            isLoading = state.isLoading,
+            errorMessage = state.errorMessage,
+            onAction = {}
+        )
     }
 }
