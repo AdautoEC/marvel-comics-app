@@ -57,7 +57,7 @@ class MovieModelTest {
             MovieCategory.POPULAR,
             MovieCategory.TOP_RATED,
             MovieCategory.FAVORITES,
-            MovieCategory.WATCHED
+            MovieCategory.WATCHLIST
         ).inOrder()
     }
 }
