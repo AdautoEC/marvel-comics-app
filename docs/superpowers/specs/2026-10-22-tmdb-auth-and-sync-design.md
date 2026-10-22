@@ -139,21 +139,25 @@ This design introduces **TMDB User Authentication** and **Bidirectional Cloud Sy
 
 ### 4.5. Bidirectional Sync Strategy
 
-1. **Guest to Authenticated Transition:**
-   * When user signs in:
-     * App fetches all local IDs from `FavoriteDao` and `WatchedDao`.
-     * For any local item not in TMDB remote list, calls `markAsFavorite(id, true)` and `addToWatchlist(id, true)`.
-     * For all items in TMDB remote list, upserts them into `FavoriteMovieEntity` and `WatchedMovieEntity`.
-     * Re-queries local DB: UI updates instantly.
-2. **Authenticated Operations:**
-   * Clicking Favorite:
-     * **Step 1:** Room update (immediate UI reaction).
+1. **Initial Sync Policy (Additive Union):**
+   * On first login, the sync engine executes an **Additive Union** ($Local \cup Remote$):
+     * Any movie favorited or watched locally while in Guest Mode is pushed to TMDB via `markAsFavorite(id, true)` / `addToWatchlist(id, true)`.
+     * All movies favorited or on watchlist in the user's TMDB cloud account are downloaded and upserted into local Room entities.
+     * Neither side deletes items from the other on first login; no data is lost.
+2. **Account Switching & Data Isolation:**
+   * `SessionStorage` tracks `lastActiveAccountId`.
+   * When logging in:
+     * If logging into the *same* account (or first login from guest): Local guest items are merged into this account.
+     * If logging into a *different* account (`newAccountId != lastActiveAccountId`): The local favorites/watched tables are cleared prior to pulling the new account's cloud data, preventing cross-account data pollution.
+3. **Authenticated Operations:**
+   * Clicking Favorite / Watched:
+     * **Step 1:** Room update (immediate optimistic UI reaction).
      * **Step 2:** Async API call `api.markAsFavorite(accountId, sessionId, movie.id, isFavorite)`.
-     * If API call fails (network down), Room state remains valid locally, with retry/sync on next connection.
-3. **Logout:**
-   * Clears `sessionId` and `accountId` from `SessionStorage`.
+     * If the API call fails (network offline), Room remains the offline source of truth, and synchronization retries on next app launch/refresh.
+4. **Logout:**
+   * Clears `sessionId`, `username`, and `avatarPath` from `SessionStorage`.
    * Sets state to `SessionState.Guest`.
-   * Retains local Room database (user does not lose what they have on the device).
+   * Retains the current local Room database for the guest, but records the previous account ID so that a future login by a *different* user does not contaminate the new user's TMDB account.
 
 ---
 
