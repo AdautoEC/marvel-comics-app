@@ -21,6 +21,10 @@ android {
     kotlinOptions {
         jvmTarget = "17"
     }
+
+    testOptions {
+        unitTests.isReturnDefaultValues = true
+    }
 }
 
 dependencies {
@@ -32,6 +36,8 @@ dependencies {
     implementation(libs.okhttp.core)
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.config)
+    implementation(libs.firebase.appcheck.playintegrity)
+    implementation(libs.play.integrity)
     implementation(libs.javax.inject)
 
     testImplementation(libs.junit)
