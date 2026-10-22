@@ -9,8 +9,10 @@ import com.adauto.marvel.core.data.mapper.toEntity
 import com.adauto.marvel.core.database.MarvelDatabase
 import com.adauto.marvel.core.database.entity.ComicEntity
 import com.adauto.marvel.core.database.entity.RemoteKeyEntity
+import com.adauto.marvel.core.model.MarvelApiException
 import com.adauto.marvel.core.network.api.MarvelApi
 import com.skydoves.sandwich.ApiResponse
+import com.skydoves.sandwich.retrofit.statusCode
 import java.io.IOException
 import java.time.Clock
 import java.util.concurrent.TimeUnit
@@ -66,11 +68,19 @@ class ComicsRemoteMediator(
                 MediatorResult.Success(endOfPaginationReached = isEnd)
             }
             is ApiResponse.Failure.Error -> {
-                MediatorResult.Error(IOException("API error"))
+                val code = response.statusCode.code
+                val message = response.message()
+                MediatorResult.Error(MarvelApiException(code = code, message = message))
             }
             is ApiResponse.Failure.Exception -> {
                 MediatorResult.Error(response.throwable)
             }
         }
     }
+}
+
+private fun ApiResponse.Failure.Error.message(): String {
+    val retrofitResponse = payload as? retrofit2.Response<*>
+    val raw = retrofitResponse?.message()?.takeIf { it.isNotBlank() }
+    return raw ?: statusCode.name
 }

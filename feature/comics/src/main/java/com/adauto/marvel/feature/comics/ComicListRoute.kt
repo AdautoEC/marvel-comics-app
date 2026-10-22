@@ -8,7 +8,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.paging.compose.collectAsLazyPagingItems
 import com.adauto.marvel.core.ui.util.asString
 
@@ -27,13 +30,16 @@ fun ComicListRoute(
     val comics = viewModel.comics.collectAsLazyPagingItems()
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
 
-    LaunchedEffect(viewModel.effects) {
-        viewModel.effects.collect { effect ->
-            when (effect) {
-                is ComicListEffect.OpenDetail -> onOpenDetail(effect.id)
-                is ComicListEffect.ShowMessage -> {
-                    snackbarHostState.showSnackbar(effect.message.asString(context))
+    LaunchedEffect(viewModel.effects, lifecycleOwner) {
+        lifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            viewModel.effects.collect { effect ->
+                when (effect) {
+                    is ComicListEffect.OpenDetail -> onOpenDetail(effect.id)
+                    is ComicListEffect.ShowMessage -> {
+                        snackbarHostState.showSnackbar(effect.message.asString(context))
+                    }
                 }
             }
         }

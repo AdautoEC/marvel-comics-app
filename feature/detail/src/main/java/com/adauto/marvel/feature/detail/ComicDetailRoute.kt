@@ -5,7 +5,10 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.repeatOnLifecycle
 
 /**
  * Entry point route for the Comic Detail screen.
@@ -21,11 +24,14 @@ fun ComicDetailRoute(
 ) {
     val effectiveOnBack = if (onBackClick !== onBack) onBackClick else onBack
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val lifecycleOwner = LocalLifecycleOwner.current
 
-    LaunchedEffect(viewModel.effects) {
-        viewModel.effects.collect { effect ->
-            when (effect) {
-                is ComicDetailEffect.NavigateBack -> effectiveOnBack()
+    LaunchedEffect(viewModel.effects, lifecycleOwner) {
+        lifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            viewModel.effects.collect { effect ->
+                when (effect) {
+                    is ComicDetailEffect.NavigateBack -> effectiveOnBack()
+                }
             }
         }
     }

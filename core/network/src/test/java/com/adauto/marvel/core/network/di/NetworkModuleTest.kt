@@ -2,6 +2,7 @@ package com.adauto.marvel.core.network.di
 
 import com.adauto.marvel.core.network.interceptor.MarvelAuthInterceptor
 import com.adauto.marvel.core.network.interceptor.MarvelAuthenticator
+import com.adauto.marvel.core.network.telemetry.RedactingHttpLoggingInterceptor
 import io.mockk.mockk
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -26,6 +27,7 @@ class NetworkModuleTest {
         assertEquals(15000, client.connectTimeoutMillis)
         assertEquals(20000, client.readTimeoutMillis)
         assertTrue(client.interceptors.contains(authInterceptor))
+        assertTrue(client.interceptors.any { it is RedactingHttpLoggingInterceptor })
         assertEquals(authenticator, client.authenticator)
     }
 
