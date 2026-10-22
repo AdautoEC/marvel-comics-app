@@ -72,10 +72,6 @@ fun ComicDetailScreen(
                 ComicDetailLoadingSkeleton(
                     modifier = Modifier.testTag("ComicDetailLoadingShimmer")
                 )
-                FloatingBackButton(
-                    onClick = { onAction(ComicDetailAction.BackClicked) },
-                    modifier = Modifier.align(Alignment.TopStart)
-                )
             }
             uiState.errorMessage != null && uiState.comic == null -> {
                 Box(
@@ -90,22 +86,19 @@ fun ComicDetailScreen(
                         modifier = Modifier.testTag("DetailErrorState")
                     )
                 }
-                FloatingBackButton(
-                    onClick = { onAction(ComicDetailAction.BackClicked) },
-                    modifier = Modifier.align(Alignment.TopStart)
-                )
             }
             uiState.comic != null -> {
                 ComicDetailContent(
                     comic = uiState.comic,
                     modifier = Modifier.testTag("ComicDetailContent")
                 )
-                FloatingBackButton(
-                    onClick = { onAction(ComicDetailAction.BackClicked) },
-                    modifier = Modifier.align(Alignment.TopStart)
-                )
             }
         }
+
+        FloatingBackButton(
+            onClick = { onAction(ComicDetailAction.BackClicked) },
+            modifier = Modifier.align(Alignment.TopStart)
+        )
     }
 }
 
@@ -124,7 +117,7 @@ private fun ComicDetailContent(
                 .fillMaxWidth()
                 .height(heroPosterHeight)
                 .graphicsLayer {
-                    translationY = scrollState.value * 0.5f
+                    translationY = -scrollState.value * 0.5f
                 }
                 .testTag("HeroPoster")
         ) {
