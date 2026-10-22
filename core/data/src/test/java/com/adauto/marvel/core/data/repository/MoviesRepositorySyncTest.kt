@@ -6,6 +6,7 @@ import com.adauto.marvel.core.database.dao.MovieDao
 import com.adauto.marvel.core.database.dao.WatchedDao
 import com.adauto.marvel.core.database.entity.FavoriteMovieEntity
 import com.adauto.marvel.core.database.entity.WatchedMovieEntity
+import com.adauto.marvel.core.model.DomainError
 import com.adauto.marvel.core.model.MovieSummary
 import com.adauto.marvel.core.model.Outcome
 import com.adauto.marvel.core.model.SessionState
@@ -22,11 +23,14 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
+import okhttp3.ResponseBody.Companion.toResponseBody
 import org.junit.Before
 import org.junit.Test
+import retrofit2.Response
 import java.io.IOException
 import java.time.Clock
 import java.time.Instant
@@ -39,7 +43,7 @@ class MoviesRepositorySyncTest {
     private val favoriteDao: FavoriteDao = mockk(relaxed = true)
     private val watchedDao: WatchedDao = mockk(relaxed = true)
     private val movieDao: MovieDao = mockk(relaxed = true)
-    private val sessionManager: SessionManager = mockk()
+    private val sessionManager: SessionManager = mockk(relaxed = true)
     private val fixedClock = Clock.fixed(Instant.ofEpochMilli(1_700_000_000_000L), ZoneOffset.UTC)
 
     private val sessionStateFlow = MutableStateFlow<SessionState>(SessionState.Guest)
@@ -153,6 +157,27 @@ class MoviesRepositorySyncTest {
         }
     }
 
+    @Test
+    fun toggleFavorite_rethrows_CancellationException() = runTest {
+        sessionStateFlow.value = SessionState.Authenticated(
+            accountId = 42,
+            username = "stark",
+            sessionId = "sess_iron"
+        )
+        every { favoriteDao.isFavorite(101) } returns flowOf(false)
+        coEvery {
+            api.markAsFavorite(any(), any(), any())
+        } throws CancellationException("Coroutines cancelled")
+
+        var caught = false
+        try {
+            repository.toggleFavorite(sampleMovie)
+        } catch (e: CancellationException) {
+            caught = true
+        }
+        assertThat(caught).isTrue()
+    }
+
     // endregion
 
     // region toggleWatchlist & toggleWatched tests
@@ -239,6 +264,27 @@ class MoviesRepositorySyncTest {
     }
 
     @Test
+    fun toggleWatchlist_rethrows_CancellationException() = runTest {
+        sessionStateFlow.value = SessionState.Authenticated(
+            accountId = 42,
+            username = "stark",
+            sessionId = "sess_iron"
+        )
+        every { watchedDao.isWatched(101) } returns flowOf(false)
+        coEvery {
+            api.addToWatchlist(any(), any(), any())
+        } throws CancellationException("Coroutines cancelled")
+
+        var caught = false
+        try {
+            repository.toggleWatchlist(sampleMovie)
+        } catch (e: CancellationException) {
+            caught = true
+        }
+        assertThat(caught).isTrue()
+    }
+
+    @Test
     fun toggleWatched_delegates_to_toggleWatchlist() = runTest {
         sessionStateFlow.value = SessionState.Guest
         every { watchedDao.isWatched(101) } returns flowOf(true)
@@ -266,7 +312,7 @@ class MoviesRepositorySyncTest {
     }
 
     @Test
-    fun syncCloudWithLocal_when_authenticated_pushes_local_items_and_pulls_remote_items() = runTest {
+    fun syncCloudWithLocal_when_authenticated_pushes_local_items_and_pulls_multi_page_remote_items() = runTest {
         sessionStateFlow.value = SessionState.Authenticated(
             accountId = 42,
             username = "stark",
@@ -299,33 +345,65 @@ class MoviesRepositorySyncTest {
             api.addToWatchlist(any(), any(), any())
         } returns ApiResponse.Success(TmdbActionResponseDto(1, "Success", true))
 
-        val remoteFav = TmdbMovieDto(
-            id = 30,
-            title = "Remote Fav",
-            overview = "Overview 30",
-            posterPath = "/30.jpg",
+        val remoteFav1 = TmdbMovieDto(
+            id = 31,
+            title = "Remote Fav 1",
+            overview = "Overview 31",
+            posterPath = "/31.jpg",
             backdropPath = null,
             voteAverage = 9.0,
             releaseDate = "2022-01-01"
         )
-        val remoteWatch = TmdbMovieDto(
-            id = 40,
-            title = "Remote Watch",
-            overview = "Overview 40",
-            posterPath = "/40.jpg",
+        val remoteFav2 = TmdbMovieDto(
+            id = 32,
+            title = "Remote Fav 2",
+            overview = "Overview 32",
+            posterPath = "/32.jpg",
+            backdropPath = null,
+            voteAverage = 8.5,
+            releaseDate = "2022-02-01"
+        )
+        val remoteWatch1 = TmdbMovieDto(
+            id = 41,
+            title = "Remote Watch 1",
+            overview = "Overview 41",
+            posterPath = "/41.jpg",
             backdropPath = null,
             voteAverage = 6.5,
             releaseDate = "2023-01-01"
         )
+        val remoteWatch2 = TmdbMovieDto(
+            id = 42,
+            title = "Remote Watch 2",
+            overview = "Overview 42",
+            posterPath = "/42.jpg",
+            backdropPath = null,
+            voteAverage = 7.0,
+            releaseDate = "2023-02-01"
+        )
+
+        // Page 1 & Page 2 for favorites
         coEvery {
             api.getFavoriteMovies(42, "sess_iron", 1)
         } returns ApiResponse.Success(
-            TmdbPageResponseDto(page = 1, results = listOf(remoteFav), totalPages = 1, totalResults = 1)
+            TmdbPageResponseDto(page = 1, results = listOf(remoteFav1), totalPages = 2, totalResults = 2)
         )
+        coEvery {
+            api.getFavoriteMovies(42, "sess_iron", 2)
+        } returns ApiResponse.Success(
+            TmdbPageResponseDto(page = 2, results = listOf(remoteFav2), totalPages = 2, totalResults = 2)
+        )
+
+        // Page 1 & Page 2 for watchlist
         coEvery {
             api.getWatchlistMovies(42, "sess_iron", 1)
         } returns ApiResponse.Success(
-            TmdbPageResponseDto(page = 1, results = listOf(remoteWatch), totalPages = 1, totalResults = 1)
+            TmdbPageResponseDto(page = 1, results = listOf(remoteWatch1), totalPages = 2, totalResults = 2)
+        )
+        coEvery {
+            api.getWatchlistMovies(42, "sess_iron", 2)
+        } returns ApiResponse.Success(
+            TmdbPageResponseDto(page = 2, results = listOf(remoteWatch2), totalPages = 2, totalResults = 2)
         )
 
         val result = repository.syncCloudWithLocal()
@@ -348,13 +426,13 @@ class MoviesRepositorySyncTest {
             )
         }
 
-        // Verifies pull into Room
+        // Verifies multi-page pull into Room
         coVerify(exactly = 1) {
             favoriteDao.upsert(
                 FavoriteMovieEntity(
-                    movieId = 30,
-                    title = "Remote Fav",
-                    posterPath = "/30.jpg",
+                    movieId = 31,
+                    title = "Remote Fav 1",
+                    posterPath = "/31.jpg",
                     voteAverage = 9.0,
                     releaseDate = "2022-01-01",
                     addedAt = 1_700_000_000_000L
@@ -362,13 +440,37 @@ class MoviesRepositorySyncTest {
             )
         }
         coVerify(exactly = 1) {
+            favoriteDao.upsert(
+                FavoriteMovieEntity(
+                    movieId = 32,
+                    title = "Remote Fav 2",
+                    posterPath = "/32.jpg",
+                    voteAverage = 8.5,
+                    releaseDate = "2022-02-01",
+                    addedAt = 1_700_000_000_000L
+                )
+            )
+        }
+        coVerify(exactly = 1) {
             watchedDao.upsert(
                 WatchedMovieEntity(
-                    movieId = 40,
-                    title = "Remote Watch",
-                    posterPath = "/40.jpg",
+                    movieId = 41,
+                    title = "Remote Watch 1",
+                    posterPath = "/41.jpg",
                     voteAverage = 6.5,
                     releaseDate = "2023-01-01",
+                    watchedAt = 1_700_000_000_000L
+                )
+            )
+        }
+        coVerify(exactly = 1) {
+            watchedDao.upsert(
+                WatchedMovieEntity(
+                    movieId = 42,
+                    title = "Remote Watch 2",
+                    posterPath = "/42.jpg",
+                    voteAverage = 7.0,
+                    releaseDate = "2023-02-01",
                     watchedAt = 1_700_000_000_000L
                 )
             )
@@ -376,7 +478,7 @@ class MoviesRepositorySyncTest {
     }
 
     @Test
-    fun syncCloudWithLocal_handles_network_exceptions_gracefully() = runTest {
+    fun syncCloudWithLocal_returns_failure_when_getFavoriteMovies_fails_with_network_error() = runTest {
         sessionStateFlow.value = SessionState.Authenticated(
             accountId = 42,
             username = "stark",
@@ -388,13 +490,88 @@ class MoviesRepositorySyncTest {
         coEvery {
             api.getFavoriteMovies(any(), any(), any())
         } returns ApiResponse.Failure.Exception(IOException("No connection"))
-        coEvery {
-            api.getWatchlistMovies(any(), any(), any())
-        } returns ApiResponse.Failure.Exception(IOException("No connection"))
 
         val result = repository.syncCloudWithLocal()
 
-        assertThat(result).isNotNull()
+        assertThat(result).isInstanceOf(Outcome.Failure::class.java)
+        assertThat((result as Outcome.Failure).error).isEqualTo(DomainError.NoConnection)
+    }
+
+    @Test
+    fun syncCloudWithLocal_returns_failure_when_getWatchlistMovies_fails_with_server_error() = runTest {
+        sessionStateFlow.value = SessionState.Authenticated(
+            accountId = 42,
+            username = "stark",
+            sessionId = "sess_iron"
+        )
+        every { favoriteDao.getAllFavorites() } returns flowOf(emptyList())
+        every { watchedDao.getAllWatched() } returns flowOf(emptyList())
+
+        coEvery {
+            api.getFavoriteMovies(any(), any(), any())
+        } returns ApiResponse.Success(
+            TmdbPageResponseDto(page = 1, results = emptyList(), totalPages = 1, totalResults = 0)
+        )
+        val errorResponse = Response.error<TmdbPageResponseDto<TmdbMovieDto>>(
+            500,
+            "Internal Server Error".toResponseBody()
+        )
+        coEvery {
+            api.getWatchlistMovies(any(), any(), any())
+        } returns ApiResponse.Failure.Error(errorResponse)
+
+        val result = repository.syncCloudWithLocal()
+
+        assertThat(result).isInstanceOf(Outcome.Failure::class.java)
+        assertThat((result as Outcome.Failure).error).isEqualTo(DomainError.Server(500))
+    }
+
+    @Test
+    fun syncCloudWithLocal_returns_failure_and_clears_session_when_remote_returns_401() = runTest {
+        sessionStateFlow.value = SessionState.Authenticated(
+            accountId = 42,
+            username = "stark",
+            sessionId = "sess_iron"
+        )
+        every { favoriteDao.getAllFavorites() } returns flowOf(emptyList())
+        every { watchedDao.getAllWatched() } returns flowOf(emptyList())
+
+        val errorResponse = Response.error<TmdbPageResponseDto<TmdbMovieDto>>(
+            401,
+            "Unauthorized".toResponseBody()
+        )
+        coEvery {
+            api.getFavoriteMovies(any(), any(), any())
+        } returns ApiResponse.Failure.Error(errorResponse)
+
+        val result = repository.syncCloudWithLocal()
+
+        assertThat(result).isInstanceOf(Outcome.Failure::class.java)
+        assertThat((result as Outcome.Failure).error).isEqualTo(DomainError.InvalidKey)
+        coVerify(exactly = 1) { sessionManager.clearSession() }
+    }
+
+    @Test
+    fun syncCloudWithLocal_rethrows_CancellationException() = runTest {
+        sessionStateFlow.value = SessionState.Authenticated(
+            accountId = 42,
+            username = "stark",
+            sessionId = "sess_iron"
+        )
+        every { favoriteDao.getAllFavorites() } returns flowOf(emptyList())
+        every { watchedDao.getAllWatched() } returns flowOf(emptyList())
+
+        coEvery {
+            api.getFavoriteMovies(any(), any(), any())
+        } throws CancellationException("Coroutines cancelled")
+
+        var caught = false
+        try {
+            repository.syncCloudWithLocal()
+        } catch (e: CancellationException) {
+            caught = true
+        }
+        assertThat(caught).isTrue()
     }
 
     // endregion
