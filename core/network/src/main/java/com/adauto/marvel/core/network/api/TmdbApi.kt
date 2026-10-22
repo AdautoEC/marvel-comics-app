@@ -1,10 +1,19 @@
 package com.adauto.marvel.core.network.api
 
+import com.adauto.marvel.core.network.model.TmdbActionResponseDto
+import com.adauto.marvel.core.network.model.TmdbAccountDto
+import com.adauto.marvel.core.network.model.TmdbCreateSessionRequestDto
+import com.adauto.marvel.core.network.model.TmdbFavoriteRequestDto
 import com.adauto.marvel.core.network.model.TmdbMovieDetailDto
 import com.adauto.marvel.core.network.model.TmdbMovieDto
 import com.adauto.marvel.core.network.model.TmdbPageResponseDto
+import com.adauto.marvel.core.network.model.TmdbRequestTokenDto
+import com.adauto.marvel.core.network.model.TmdbSessionResponseDto
+import com.adauto.marvel.core.network.model.TmdbWatchlistRequestDto
 import com.skydoves.sandwich.ApiResponse
+import retrofit2.http.Body
 import retrofit2.http.GET
+import retrofit2.http.POST
 import retrofit2.http.Path
 import retrofit2.http.Query
 
@@ -35,4 +44,45 @@ interface TmdbApi {
         @Query("append_to_response") append: String = "credits",
         @Query("language") language: String = "pt-BR"
     ): ApiResponse<TmdbMovieDetailDto>
+
+    @GET("3/authentication/token/new")
+    suspend fun createRequestToken(): ApiResponse<TmdbRequestTokenDto>
+
+    @POST("3/authentication/session/new")
+    suspend fun createSession(
+        @Body body: TmdbCreateSessionRequestDto
+    ): ApiResponse<TmdbSessionResponseDto>
+
+    @GET("3/account")
+    suspend fun getAccountDetails(
+        @Query("session_id") sessionId: String
+    ): ApiResponse<TmdbAccountDto>
+
+    @POST("3/account/{account_id}/favorite")
+    suspend fun markAsFavorite(
+        @Path("account_id") accountId: Int,
+        @Query("session_id") sessionId: String,
+        @Body body: TmdbFavoriteRequestDto
+    ): ApiResponse<TmdbActionResponseDto>
+
+    @POST("3/account/{account_id}/watchlist")
+    suspend fun addToWatchlist(
+        @Path("account_id") accountId: Int,
+        @Query("session_id") sessionId: String,
+        @Body body: TmdbWatchlistRequestDto
+    ): ApiResponse<TmdbActionResponseDto>
+
+    @GET("3/account/{account_id}/favorite/movies")
+    suspend fun getFavoriteMovies(
+        @Path("account_id") accountId: Int,
+        @Query("session_id") sessionId: String,
+        @Query("page") page: Int = 1
+    ): ApiResponse<TmdbPageResponseDto<TmdbMovieDto>>
+
+    @GET("3/account/{account_id}/watchlist/movies")
+    suspend fun getWatchlistMovies(
+        @Path("account_id") accountId: Int,
+        @Query("session_id") sessionId: String,
+        @Query("page") page: Int = 1
+    ): ApiResponse<TmdbPageResponseDto<TmdbMovieDto>>
 }
