@@ -21,7 +21,7 @@
 
 ## Tasks Overview
 
-- [ ] **Task 1: Core Model Evolution** — Adapt domain models (`MovieSummary`, `MovieDetail`, `Genre`, `CastMember`, `MovieFilter`) and update serialization contracts.
+- [x] **Task 1: Core Model Evolution** — Adapt domain models (`MovieSummary`, `MovieDetail`, `Genre`, `CastMember`, `MovieFilter`) and update serialization contracts.
 - [ ] **Task 2: Core Database Layer** — Room 2.6 entities & DAOs for `movies`, `favorite_movies`, `watched_movies`, and `remote_keys`.
 - [ ] **Task 3: Core Network & TMDB Service** — TMDB API service (`/3/movie/popular`, `/3/movie/top_rated`, `/3/movie/{id}`), `TmdbAuthInterceptor` with `api_key` injection, and DTO mappings.
 - [ ] **Task 4: Core Data Layer** — Paging 3 `MoviesRemoteMediator` with page-based pagination, and `MoviesRepository` exposing reactive Flows for catalog, favorites, and watched lists.
