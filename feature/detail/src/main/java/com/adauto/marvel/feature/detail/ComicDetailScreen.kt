@@ -22,9 +22,16 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -45,20 +52,22 @@ import com.adauto.marvel.core.designsystem.preview.ThemePreviews
 import com.adauto.marvel.core.designsystem.theme.MarvelColors
 import com.adauto.marvel.core.designsystem.theme.MarvelTheme
 import com.adauto.marvel.core.model.ComicDetail
+import com.adauto.marvel.core.model.MovieDetail
 import com.adauto.marvel.core.model.stripHtml
 import com.adauto.marvel.core.ui.component.ComicCover
 import com.adauto.marvel.core.ui.component.ErrorState
+import com.adauto.marvel.core.ui.component.MovieCover
 import com.adauto.marvel.core.ui.component.shimmer
 import com.adauto.marvel.feature.detail.preview.ComicDetailUiStatePreviewParameterProvider
 
 /**
- * Comic Detail Screen presenting:
+ * Movie / Comic Detail Screen presenting:
  * - Parallax full-bleed hero artwork with vertical dark gradient scrim
  * - Floating back navigation button
- * - Issue number badge and prominent title
- * - Stats chips/pills (Issue, Pages, Onsale Date, Price)
- * - Sanitized synopsis description
- * - Creative team creators list
+ * - Action buttons (Favorito & Já assisti) with instant state toggle
+ * - Stats chips/pills (Rating, Runtime, Release Date)
+ * - Synopsis description
+ * - Genres and Cast member list
  * - Loading shimmer placeholders and error retry state
  */
 @Composable
@@ -78,7 +87,7 @@ fun ComicDetailScreen(
                     modifier = Modifier.testTag("ComicDetailLoadingShimmer")
                 )
             }
-            uiState.errorMessage != null && uiState.comic == null -> {
+            uiState.errorMessage != null && uiState.movie == null && uiState.comic == null -> {
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -91,6 +100,13 @@ fun ComicDetailScreen(
                         modifier = Modifier.testTag("DetailErrorState")
                     )
                 }
+            }
+            uiState.movie != null -> {
+                MovieDetailContent(
+                    movie = uiState.movie,
+                    onAction = onAction,
+                    modifier = Modifier.testTag("ComicDetailContent")
+                )
             }
             uiState.comic != null -> {
                 ComicDetailContent(
@@ -107,16 +123,18 @@ fun ComicDetailScreen(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun ComicDetailContent(
-    comic: ComicDetail,
+private fun MovieDetailContent(
+    movie: MovieDetail,
+    onAction: (ComicDetailAction) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val scrollState = rememberScrollState()
-    val heroPosterHeight = 420.dp
+    val heroPosterHeight = 400.dp
 
     Box(modifier = modifier.fillMaxSize()) {
-        // Parallax Hero Artwork Poster
+        // Parallax Backdrop / Poster Artwork
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -126,14 +144,14 @@ private fun ComicDetailContent(
                 }
                 .testTag("HeroPoster")
         ) {
-            ComicCover(
-                coverUrl = comic.coverUrl,
-                contentDescription = comic.title,
+            MovieCover(
+                imageUrl = movie.backdropUrl ?: movie.posterUrl,
+                contentDescription = movie.title,
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop
             )
 
-            // Vertical dark gradient scrim
+            // Scrim overlay
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -150,97 +168,333 @@ private fun ComicDetailContent(
             )
         }
 
-        // Scrollable Content
+        // Scrollable content details
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(scrollState)
-                .padding(horizontal = 20.dp)
         ) {
-            Spacer(modifier = Modifier.height(heroPosterHeight - 80.dp))
+            Spacer(modifier = Modifier.height(290.dp))
 
-            // Issue Badge
-            val issueNumber = comic.issueNumber
-            if (!issueNumber.isNullOrBlank()) {
-                Surface(
-                    shape = RoundedCornerShape(4.dp),
-                    color = MarvelColors.MarvelRed,
-                    modifier = Modifier.testTag("IssueBadge")
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp)
+            ) {
+                // Year & Rating
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Text(
-                        text = issueNumber.uppercase(),
-                        color = Color.White,
-                        style = MaterialTheme.typography.labelMedium.copy(
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 1.sp
-                        ),
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                    )
+                    movie.releaseYear?.let { year ->
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = MarvelColors.MarvelRed
+                        ) {
+                            Text(
+                                text = year,
+                                style = MaterialTheme.typography.labelMedium.copy(
+                                    fontWeight = FontWeight.Bold
+                                ),
+                                color = Color.White,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                            )
+                        }
+                    }
+
+                    Surface(
+                        shape = RoundedCornerShape(6.dp),
+                        color = Color.Black.copy(alpha = 0.6f),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, MarvelColors.SurfaceCard)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Star,
+                                contentDescription = null,
+                                tint = Color(0xFFFFD700),
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = movie.ratingFormatted,
+                                color = Color.White,
+                                style = MaterialTheme.typography.labelMedium.copy(
+                                    fontWeight = FontWeight.Bold
+                                )
+                            )
+                        }
+                    }
+
+                    movie.runtimeFormatted?.let { runtime ->
+                        Text(
+                            text = runtime,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MarvelColors.TextSecondary
+                        )
+                    }
                 }
-                Spacer(modifier = Modifier.height(8.dp))
-            }
 
-            // Comic Title
-            Text(
-                text = comic.title,
-                style = MaterialTheme.typography.headlineLarge.copy(
-                    fontWeight = FontWeight.Bold,
-                    lineHeight = 32.sp
-                ),
-                color = MarvelColors.TextPrimary,
-                modifier = Modifier.testTag("DetailTitle")
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Metadata Pill Row (Issue, Pages, Onsale Date, Price)
-            MetadataPillRow(
-                comic = comic,
-                modifier = Modifier.testTag("MetadataPillRow")
-            )
-
-            // Description / Synopsis Section
-            val sanitizedDescription = stripHtml(comic.description)
-            if (sanitizedDescription.isNotBlank()) {
-                Spacer(modifier = Modifier.height(24.dp))
-                Text(
-                    text = "SINOPSE",
-                    style = MaterialTheme.typography.titleMedium.copy(
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 1.sp
-                    ),
-                    color = MarvelColors.MarvelRed
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = sanitizedDescription,
-                    style = MaterialTheme.typography.bodyLarge.copy(
-                        lineHeight = 24.sp
-                    ),
-                    color = MarvelColors.TextSecondary,
-                    modifier = Modifier.testTag("DetailDescription")
-                )
-            }
-
-            // Creators Section
-            if (comic.creators.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(24.dp))
-                Text(
-                    text = "CRIADORES",
-                    style = MaterialTheme.typography.titleMedium.copy(
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 1.sp
-                    ),
-                    color = MarvelColors.MarvelRed
-                )
                 Spacer(modifier = Modifier.height(12.dp))
-                CreatorsSection(
-                    creators = comic.creators,
-                    modifier = Modifier.testTag("CreatorsSection")
-                )
-            }
 
-            Spacer(modifier = Modifier.height(48.dp))
+                // Title
+                Text(
+                    text = movie.title,
+                    style = MaterialTheme.typography.headlineMedium.copy(
+                        fontWeight = FontWeight.Black,
+                        lineHeight = 32.sp
+                    ),
+                    color = MarvelColors.TextPrimary
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Action Buttons Row: Favorite & Watched
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    // Favorite Button
+                    Button(
+                        onClick = { onAction(ComicDetailAction.FavoriteToggled) },
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (movie.isFavorite) MarvelColors.MarvelRed else MarvelColors.SurfaceCard
+                        ),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Icon(
+                            imageVector = if (movie.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = if (movie.isFavorite) "Favorito" else "Favoritar",
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                    }
+
+                    // Watched Button
+                    OutlinedButton(
+                        onClick = { onAction(ComicDetailAction.WatchedToggled) },
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            containerColor = if (movie.isWatched) Color(0xFF1B5E20) else Color.Transparent
+                        ),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Check,
+                            contentDescription = null,
+                            tint = if (movie.isWatched) Color.White else MarvelColors.TextSecondary,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = if (movie.isWatched) "Assistido" else "Já assisti",
+                            fontWeight = FontWeight.Bold,
+                            color = if (movie.isWatched) Color.White else MarvelColors.TextPrimary
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // Overview Synopsis
+                if (movie.overview.isNotBlank()) {
+                    Text(
+                        text = "Sinopse",
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontWeight = FontWeight.Bold
+                        ),
+                        color = MarvelColors.TextPrimary
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = movie.overview,
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            lineHeight = 22.sp
+                        ),
+                        color = MarvelColors.TextSecondary
+                    )
+                    Spacer(modifier = Modifier.height(20.dp))
+                }
+
+                // Genres
+                if (movie.genres.isNotEmpty()) {
+                    Text(
+                        text = "Gêneros",
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontWeight = FontWeight.Bold
+                        ),
+                        color = MarvelColors.TextPrimary
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    FlowRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        movie.genres.forEach { genre ->
+                            Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                color = MarvelColors.SurfaceCard,
+                                border = androidx.compose.foundation.BorderStroke(1.dp, MarvelColors.SurfaceDark)
+                            ) {
+                                Text(
+                                    text = genre,
+                                    style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium),
+                                    color = MarvelColors.TextPrimary,
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                                )
+                            }
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(20.dp))
+                }
+
+                // Cast members
+                if (movie.cast.isNotEmpty()) {
+                    Text(
+                        text = "Elenco Principal",
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontWeight = FontWeight.Bold
+                        ),
+                        color = MarvelColors.TextPrimary
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    CreatorsSection(creators = movie.cast)
+                }
+
+                Spacer(modifier = Modifier.height(48.dp))
+            }
+        }
+    }
+}
+
+@Composable
+private fun ComicDetailContent(
+    comic: ComicDetail,
+    modifier: Modifier = Modifier
+) {
+    val scrollState = rememberScrollState()
+    val heroPosterHeight = 420.dp
+
+    Box(modifier = modifier.fillMaxSize()) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(heroPosterHeight)
+                .graphicsLayer {
+                    translationY = -scrollState.value * 0.5f
+                }
+                .testTag("HeroPoster")
+        ) {
+            ComicCover(
+                coverUrl = comic.coverUrl,
+                contentDescription = comic.title,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop
+            )
+
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(
+                                Color.Transparent,
+                                MarvelColors.DarkBackground.copy(alpha = 0.4f),
+                                MarvelColors.DarkBackground.copy(alpha = 0.85f),
+                                MarvelColors.DarkBackground
+                            )
+                        )
+                    )
+            )
+        }
+
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(scrollState)
+        ) {
+            Spacer(modifier = Modifier.height(heroPosterHeight - 110.dp))
+
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp)
+            ) {
+                comic.issueNumber?.let { issue ->
+                    Surface(
+                        shape = RoundedCornerShape(4.dp),
+                        color = MarvelColors.MarvelRed
+                    ) {
+                        Text(
+                            text = issue,
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontWeight = FontWeight.Bold
+                            ),
+                            color = Color.White,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+
+                Text(
+                    text = comic.title,
+                    style = MaterialTheme.typography.headlineMedium.copy(
+                        fontWeight = FontWeight.Black,
+                        lineHeight = 32.sp
+                    ),
+                    color = MarvelColors.TextPrimary
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                MetadataPillRow(comic = comic)
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                comic.description?.let { desc ->
+                    Text(
+                        text = "Sinopse",
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontWeight = FontWeight.Bold
+                        ),
+                        color = MarvelColors.TextPrimary
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = stripHtml(desc),
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            lineHeight = 22.sp
+                        ),
+                        color = MarvelColors.TextSecondary
+                    )
+                    Spacer(modifier = Modifier.height(24.dp))
+                }
+
+                if (comic.creators.isNotEmpty()) {
+                    Text(
+                        text = "Equipe Criativa",
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontWeight = FontWeight.Bold
+                        ),
+                        color = MarvelColors.TextPrimary
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    CreatorsSection(creators = comic.creators)
+                }
+
+                Spacer(modifier = Modifier.height(48.dp))
+            }
         }
     }
 }
@@ -256,47 +510,43 @@ private fun MetadataPillRow(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-    val issueNumber = comic.issueNumber
-    if (!issueNumber.isNullOrBlank()) {
-        StatsPill(label = "Edição", value = issueNumber)
-    }
-    if (comic.pageCount > 0) {
-        StatsPill(label = "Páginas", value = "${comic.pageCount}")
-    }
-    val formattedDate = formatOnsaleDate(comic.onsaleDate)
-    if (!formattedDate.isNullOrBlank()) {
-        StatsPill(label = "Lançamento", value = formattedDate)
-    }
-    val printPrice = comic.printPrice
-    if (!printPrice.isNullOrBlank()) {
-        StatsPill(label = "Preço", value = printPrice)
-    }
+        val issueNumber = comic.issueNumber
+        if (!issueNumber.isNullOrBlank()) {
+            MetaPill(label = "Edição", value = issueNumber)
+        }
+        if (comic.pageCount > 0) {
+            MetaPill(label = "Páginas", value = "${comic.pageCount}")
+        }
+        val dateFormatted = formatOnsaleDate(comic.onsaleDate)
+        if (dateFormatted != null) {
+            MetaPill(label = "Lançamento", value = dateFormatted)
+        }
+        val printPrice = comic.printPrice
+        if (!printPrice.isNullOrBlank()) {
+            MetaPill(label = "Preço", value = printPrice)
+        }
     }
 }
 
 @Composable
-private fun StatsPill(
+private fun MetaPill(
     label: String,
     value: String,
     modifier: Modifier = Modifier
 ) {
     Surface(
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(8.dp),
         color = MarvelColors.SurfaceCard,
         border = androidx.compose.foundation.BorderStroke(1.dp, MarvelColors.SurfaceDark),
         modifier = modifier
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
+            verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = label.uppercase(),
-                style = MaterialTheme.typography.labelSmall.copy(
-                    fontWeight = FontWeight.SemiBold,
-                    letterSpacing = 0.5.sp
-                ),
+                text = "$label: ",
+                style = MaterialTheme.typography.labelMedium,
                 color = MarvelColors.TextTertiary
             )
             Text(
@@ -374,7 +624,6 @@ private fun ComicDetailLoadingSkeleton(
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
     ) {
-        // Hero placeholder
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -387,7 +636,6 @@ private fun ComicDetailLoadingSkeleton(
                 .fillMaxWidth()
                 .padding(20.dp)
         ) {
-            // Issue badge placeholder
             Box(
                 modifier = Modifier
                     .size(width = 60.dp, height = 24.dp)
@@ -396,7 +644,6 @@ private fun ComicDetailLoadingSkeleton(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Title placeholders
             Box(
                 modifier = Modifier
                     .fillMaxWidth(0.85f)
@@ -411,30 +658,20 @@ private fun ComicDetailLoadingSkeleton(
                     .shimmer(shape = RoundedCornerShape(4.dp))
             )
 
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(24.dp))
 
-            // Pills placeholder row
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 repeat(3) {
                     Box(
                         modifier = Modifier
-                            .size(width = 90.dp, height = 36.dp)
-                            .shimmer(shape = RoundedCornerShape(12.dp))
+                            .size(width = 80.dp, height = 32.dp)
+                            .shimmer(shape = RoundedCornerShape(8.dp))
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.height(28.dp))
+            Spacer(modifier = Modifier.height(24.dp))
 
-            // Description section header
-            Box(
-                modifier = Modifier
-                    .size(width = 80.dp, height = 18.dp)
-                    .shimmer(shape = RoundedCornerShape(4.dp))
-            )
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // Description lines
             repeat(4) { index ->
                 Box(
                     modifier = Modifier
@@ -476,4 +713,3 @@ private fun ComicDetailScreenPreview(
         )
     }
 }
-
