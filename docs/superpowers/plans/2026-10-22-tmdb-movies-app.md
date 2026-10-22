@@ -24,7 +24,7 @@
 - [x] **Task 1: Core Model Evolution** — Adapt domain models (`MovieSummary`, `MovieDetail`, `Genre`, `CastMember`, `MovieFilter`) and update serialization contracts.
 - [x] **Task 2: Core Database Layer** — Room 2.6 entities & DAOs for `movies`, `favorite_movies`, `watched_movies`, and `remote_keys`.
 - [x] **Task 3: Core Network & TMDB Service** — TMDB API service (`/3/movie/popular`, `/3/movie/top_rated`, `/3/movie/{id}`), `TmdbAuthInterceptor` with `api_key` injection, and DTO mappings.
-- [ ] **Task 4: Core Data Layer** — Paging 3 `MoviesRemoteMediator` with page-based pagination, and `MoviesRepository` exposing reactive Flows for catalog, favorites, and watched lists.
+- [x] **Task 4: Core Data Layer** — Paging 3 `MoviesRemoteMediator` with page-based pagination, and `MoviesRepository` exposing reactive Flows for catalog, favorites, and watched lists.
 - [ ] **Task 5: Core UI & Design System Updates** — Update `MovieCard`, `MovieCover`, `FavoriteButton`, and `WatchedBadge` with accessible semantics.
 - [ ] **Task 6: Feature Movies List (Home Screen)** — Category filter tabs (Popular, Top Rated, Favoritos, Assistidos), 2-column grid, pull-to-refresh, shimmer skeletons.
 - [ ] **Task 7: Feature Movie Detail Screen** — Parallax backdrop hero poster, stats row (Rating, Runtime, Release Date), Synopsis, Cast chips, Favorite & Watched toggle actions.
