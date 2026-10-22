@@ -21,6 +21,8 @@ captures
 .env
 .env.*
 !.env.example
+remoteconfig.template.json
+remoteconfig.*.json
 
 # Google Services (real secrets)
 **/google-services.json
