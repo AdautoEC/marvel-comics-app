@@ -22,3 +22,5 @@ dependencyResolutionManagement {
 rootProject.name = "MarvelComicsApp"
 include(":app")
 include(":core:model")
+include(":core:network")
+
