@@ -1,0 +1,8 @@
+style:
+  ForbiddenImport:
+    active: true
+    imports:
+      - value: 'coil.compose.AsyncImage'
+        reason: 'Todas as imagens devem passar pelo componente centralizado ComicCover em core:ui'
+      - value: 'coil.compose.rememberAsyncImagePainter'
+        reason: 'Use ComicCover em core:ui para evitar duplicação de ImageLoader'
