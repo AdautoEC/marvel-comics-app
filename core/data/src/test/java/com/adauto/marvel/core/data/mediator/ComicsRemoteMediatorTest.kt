@@ -11,6 +11,7 @@ import com.adauto.marvel.core.database.dao.ComicDao
 import com.adauto.marvel.core.database.dao.RemoteKeyDao
 import com.adauto.marvel.core.database.entity.ComicEntity
 import com.adauto.marvel.core.database.entity.RemoteKeyEntity
+import com.adauto.marvel.core.model.MarvelApiException
 import com.adauto.marvel.core.network.api.MarvelApi
 import com.adauto.marvel.core.network.model.ComicDto
 import com.adauto.marvel.core.network.model.MarvelDataContainer
@@ -198,8 +199,29 @@ class ComicsRemoteMediatorTest {
         val result = mediator.load(LoadType.REFRESH, pagingState)
 
         assertThat(result).isInstanceOf(RemoteMediator.MediatorResult.Error::class.java)
+        val errorResult = result as RemoteMediator.MediatorResult.Error
+        assertThat(errorResult.throwable).isInstanceOf(MarvelApiException::class.java)
+        val apiException = errorResult.throwable as MarvelApiException
+        assertThat(apiException.code).isEqualTo(500)
         coVerify(exactly = 0) { comicDao.clearAll() }
         coVerify(exactly = 0) { comicDao.upsert(any()) }
+    }
+
+    @Test
+    fun `refresh load returns Error with code 429 when api returns rate limit`() = runTest {
+        val errorResponse = Response.error<MarvelResponseDto<ComicDto>>(
+            429,
+            "Too Many Requests".toResponseBody()
+        )
+        coEvery { api.getComics(offset = 0, limit = 20) } returns ApiResponse.Failure.Error(errorResponse)
+
+        val result = mediator.load(LoadType.REFRESH, pagingState)
+
+        assertThat(result).isInstanceOf(RemoteMediator.MediatorResult.Error::class.java)
+        val errorResult = result as RemoteMediator.MediatorResult.Error
+        assertThat(errorResult.throwable).isInstanceOf(MarvelApiException::class.java)
+        val apiException = errorResult.throwable as MarvelApiException
+        assertThat(apiException.code).isEqualTo(429)
     }
 
     @Test

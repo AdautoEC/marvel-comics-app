@@ -3,6 +3,7 @@ package com.adauto.marvel.core.network.di
 import com.adauto.marvel.core.network.api.MarvelApi
 import com.adauto.marvel.core.network.interceptor.MarvelAuthInterceptor
 import com.adauto.marvel.core.network.interceptor.MarvelAuthenticator
+import com.adauto.marvel.core.network.telemetry.RedactingHttpLoggingInterceptor
 import com.skydoves.sandwich.retrofit.adapters.ApiResponseCallAdapterFactory
 import dagger.Module
 import dagger.Provides
@@ -47,6 +48,7 @@ object NetworkModule {
             .connectTimeout(15, TimeUnit.SECONDS)
             .readTimeout(20, TimeUnit.SECONDS)
             .addInterceptor(authInterceptor)
+            .addInterceptor(RedactingHttpLoggingInterceptor())
             .authenticator(authenticator)
             .build()
     }

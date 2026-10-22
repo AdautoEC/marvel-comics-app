@@ -35,6 +35,7 @@ import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.itemKey
 import com.adauto.marvel.core.designsystem.theme.MarvelColors
 import com.adauto.marvel.core.model.ComicSummary
+import com.adauto.marvel.core.model.MarvelApiException
 import com.adauto.marvel.core.ui.component.AttributionFooter
 import com.adauto.marvel.core.ui.component.ComicCard
 import com.adauto.marvel.core.ui.component.ErrorState
@@ -125,7 +126,7 @@ fun ComicListScreen(
                             contentAlignment = Alignment.Center
                         ) {
                             ErrorState(
-                                message = error.localizedMessage ?: "Não foi possível carregar os quadrinhos.",
+                                message = formatPagingError(error, "Não foi possível carregar os quadrinhos."),
                                 onRetry = {
                                     onAction(ComicListAction.RefreshRequested)
                                     comics.retry()
@@ -194,7 +195,7 @@ fun ComicListScreen(
                                 val appendError = (comics.loadState.append as LoadState.Error).error
                                 item(span = { GridItemSpan(maxLineSpan) }) {
                                     ErrorState(
-                                        message = appendError.localizedMessage ?: "Erro ao carregar mais quadrinhos.",
+                                        message = formatPagingError(appendError, "Erro ao carregar mais quadrinhos."),
                                         onRetry = { comics.retry() },
                                         modifier = Modifier.testTag("AppendErrorState")
                                     )
@@ -214,5 +215,17 @@ fun ComicListScreen(
                 }
             }
         }
+    }
+}
+
+private fun formatPagingError(error: Throwable, fallback: String): String {
+    return when (error) {
+        is MarvelApiException -> when (error.code) {
+            401, 403 -> "Chave da API da Marvel inválida."
+            429 -> "Limite de requisições diário da Marvel atingido. Tente novamente mais tarde."
+            in 500..599 -> "Erro no servidor Marvel (${error.code})."
+            else -> error.localizedMessage ?: fallback
+        }
+        else -> error.localizedMessage ?: fallback
     }
 }
