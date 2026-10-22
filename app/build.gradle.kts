@@ -5,6 +5,16 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.hilt)
     alias(libs.plugins.ksp)
+    alias(libs.plugins.google.services)
+    alias(libs.plugins.firebase.crashlytics)
+}
+
+val googleServicesFile = file("google-services.json")
+if (!googleServicesFile.exists()) {
+    val fakeFile = rootProject.file("ci/google-services.fake.json")
+    if (fakeFile.exists()) {
+        fakeFile.copyTo(googleServicesFile, overwrite = false)
+    }
 }
 
 android {
