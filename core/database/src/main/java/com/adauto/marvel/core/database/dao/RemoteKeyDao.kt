@@ -10,7 +10,7 @@ interface RemoteKeyDao {
     @Upsert
     suspend fun upsert(keys: List<RemoteKeyEntity>)
 
-    @Query("SELECT nextOffset FROM remote_keys ORDER BY nextOffset DESC LIMIT 1")
+    @Query("SELECT remote_keys.nextOffset FROM remote_keys INNER JOIN comics ON remote_keys.comicId = comics.id ORDER BY comics.position DESC LIMIT 1")
     suspend fun lastNextOffset(): Int?
 
     @Query("DELETE FROM remote_keys")
