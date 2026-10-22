@@ -59,6 +59,7 @@ fun ComicCard(
                 modifier = Modifier.fillMaxSize()
             )
 
+            val scrimStartY = with(androidx.compose.ui.platform.LocalDensity.current) { 120.dp.toPx() }
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -69,7 +70,7 @@ fun ComicCard(
                                 Color(0xCC0F0F14),
                                 Color(0xF00F0F14)
                             ),
-                            startY = 180f
+                            startY = scrimStartY
                         )
                     )
             )
