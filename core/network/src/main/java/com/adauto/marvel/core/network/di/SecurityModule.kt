@@ -11,6 +11,8 @@ import com.adauto.marvel.core.network.security.KeystoreCipher
 import com.adauto.marvel.core.network.security.MarvelKeyProvider
 import com.adauto.marvel.core.network.security.MarvelKeyProviderImpl
 import com.adauto.marvel.core.network.security.RemoteConfigKeySource
+import com.adauto.marvel.core.network.security.TmdbApiKeyProvider
+import com.adauto.marvel.core.network.security.TmdbApiKeyProviderImpl
 import com.google.firebase.remoteconfig.FirebaseRemoteConfig
 import dagger.Binds
 import dagger.Module
@@ -35,6 +37,12 @@ abstract class SecurityModule {
     abstract fun bindRemoteConfigKeySource(
         impl: FirebaseRemoteConfigKeySource
     ): RemoteConfigKeySource
+
+    @Binds
+    @Singleton
+    abstract fun bindTmdbApiKeyProvider(
+        impl: TmdbApiKeyProviderImpl
+    ): TmdbApiKeyProvider
 
     companion object {
         @Provides
