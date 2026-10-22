@@ -20,4 +20,7 @@ interface FavoriteDao {
 
     @Query("SELECT * FROM favorite_movies ORDER BY addedAt DESC")
     fun getAllFavorites(): Flow<List<FavoriteMovieEntity>>
+
+    @Query("DELETE FROM favorite_movies")
+    suspend fun clearAll()
 }

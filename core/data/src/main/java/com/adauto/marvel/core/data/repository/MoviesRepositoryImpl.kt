@@ -16,7 +16,11 @@ import com.adauto.marvel.core.model.MovieCategory
 import com.adauto.marvel.core.model.MovieDetail
 import com.adauto.marvel.core.model.MovieSummary
 import com.adauto.marvel.core.model.Outcome
+import com.adauto.marvel.core.model.SessionState
 import com.adauto.marvel.core.network.api.TmdbApi
+import com.adauto.marvel.core.network.model.TmdbFavoriteRequestDto
+import com.adauto.marvel.core.network.model.TmdbWatchlistRequestDto
+import com.adauto.marvel.core.network.security.session.SessionManager
 import com.skydoves.sandwich.ApiResponse
 import com.skydoves.sandwich.retrofit.statusCode
 import kotlinx.coroutines.flow.Flow
@@ -30,6 +34,7 @@ import javax.inject.Singleton
 class MoviesRepositoryImpl @Inject constructor(
     private val api: TmdbApi,
     private val database: MarvelDatabase,
+    private val sessionManager: SessionManager,
     private val clock: Clock = Clock.systemUTC()
 ) : MoviesRepository {
 
@@ -117,6 +122,7 @@ class MoviesRepositoryImpl @Inject constructor(
 
     override suspend fun toggleFavorite(movie: MovieSummary) {
         val isFav = database.favoriteDao().isFavorite(movie.id).first()
+        val newFavState = !isFav
         if (isFav) {
             database.favoriteDao().delete(movie.id)
         } else {
@@ -131,10 +137,22 @@ class MoviesRepositoryImpl @Inject constructor(
                 )
             )
         }
+
+        val state = sessionManager.sessionState.value
+        if (state is SessionState.Authenticated) {
+            runCatching {
+                api.markAsFavorite(
+                    accountId = state.accountId,
+                    sessionId = state.sessionId,
+                    body = TmdbFavoriteRequestDto(media_id = movie.id, favorite = newFavState)
+                )
+            }
+        }
     }
 
-    override suspend fun toggleWatched(movie: MovieSummary) {
+    override suspend fun toggleWatchlist(movie: MovieSummary) {
         val isWatch = database.watchedDao().isWatched(movie.id).first()
+        val newWatchState = !isWatch
         if (isWatch) {
             database.watchedDao().delete(movie.id)
         } else {
@@ -149,6 +167,95 @@ class MoviesRepositoryImpl @Inject constructor(
                 )
             )
         }
+
+        val state = sessionManager.sessionState.value
+        if (state is SessionState.Authenticated) {
+            runCatching {
+                api.addToWatchlist(
+                    accountId = state.accountId,
+                    sessionId = state.sessionId,
+                    body = TmdbWatchlistRequestDto(media_id = movie.id, watchlist = newWatchState)
+                )
+            }
+        }
+    }
+
+    override suspend fun toggleWatched(movie: MovieSummary) {
+        toggleWatchlist(movie)
+    }
+
+    override suspend fun syncCloudWithLocal(): Outcome<Unit> {
+        val state = sessionManager.sessionState.value
+        if (state !is SessionState.Authenticated) {
+            return Outcome.Success(Unit)
+        }
+
+        val accountId = state.accountId
+        val sessionId = state.sessionId
+
+        // 1. Push local favorites & watchlist to TMDB
+        runCatching {
+            val localFavorites = database.favoriteDao().getAllFavorites().first()
+            for (fav in localFavorites) {
+                api.markAsFavorite(
+                    accountId = accountId,
+                    sessionId = sessionId,
+                    body = TmdbFavoriteRequestDto(media_id = fav.movieId, favorite = true)
+                )
+            }
+
+            val localWatched = database.watchedDao().getAllWatched().first()
+            for (watch in localWatched) {
+                api.addToWatchlist(
+                    accountId = accountId,
+                    sessionId = sessionId,
+                    body = TmdbWatchlistRequestDto(media_id = watch.movieId, watchlist = true)
+                )
+            }
+        }
+
+        // 2. Pull remote favorites & watchlist and upsert into Room
+        runCatching {
+            val favResponse = api.getFavoriteMovies(accountId = accountId, sessionId = sessionId, page = 1)
+            if (favResponse is ApiResponse.Success) {
+                for (movieDto in favResponse.data.results) {
+                    database.favoriteDao().upsert(
+                        FavoriteMovieEntity(
+                            movieId = movieDto.id,
+                            title = movieDto.title,
+                            posterPath = movieDto.posterPath,
+                            voteAverage = movieDto.voteAverage,
+                            releaseDate = movieDto.releaseDate,
+                            addedAt = clock.millis()
+                        )
+                    )
+                }
+            } else if (favResponse is ApiResponse.Failure.Error && favResponse.statusCode.code == 401) {
+                sessionManager.clearSession()
+                return Outcome.Failure(DomainError.InvalidKey)
+            }
+
+            val watchResponse = api.getWatchlistMovies(accountId = accountId, sessionId = sessionId, page = 1)
+            if (watchResponse is ApiResponse.Success) {
+                for (movieDto in watchResponse.data.results) {
+                    database.watchedDao().upsert(
+                        WatchedMovieEntity(
+                            movieId = movieDto.id,
+                            title = movieDto.title,
+                            posterPath = movieDto.posterPath,
+                            voteAverage = movieDto.voteAverage,
+                            releaseDate = movieDto.releaseDate,
+                            watchedAt = clock.millis()
+                        )
+                    )
+                }
+            } else if (watchResponse is ApiResponse.Failure.Error && watchResponse.statusCode.code == 401) {
+                sessionManager.clearSession()
+                return Outcome.Failure(DomainError.InvalidKey)
+            }
+        }
+
+        return Outcome.Success(Unit)
     }
 
     override fun observeFavorites(): Flow<List<MovieSummary>> {

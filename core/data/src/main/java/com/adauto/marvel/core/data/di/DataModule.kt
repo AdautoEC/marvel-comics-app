@@ -1,5 +1,7 @@
 package com.adauto.marvel.core.data.di
 
+import com.adauto.marvel.core.data.repository.AuthRepository
+import com.adauto.marvel.core.data.repository.AuthRepositoryImpl
 import com.adauto.marvel.core.data.repository.ComicsRepository
 import com.adauto.marvel.core.data.repository.ComicsRepositoryImpl
 import com.adauto.marvel.core.data.repository.MoviesRepository
@@ -23,6 +25,10 @@ interface DataModule {
     @Binds
     @Singleton
     fun bindMoviesRepository(impl: MoviesRepositoryImpl): MoviesRepository
+
+    @Binds
+    @Singleton
+    fun bindAuthRepository(impl: AuthRepositoryImpl): AuthRepository
 
     companion object {
         @Provides
