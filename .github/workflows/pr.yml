@@ -38,4 +38,4 @@ jobs:
           cp ci/google-services.fake.json app/google-services.json
 
       - name: Run checks and assemble
-        run: ./gradlew lintDebug testDebugUnitTest assembleDebug assembleRelease --stacktrace
+        run: ./gradlew detekt lintDebug testDebugUnitTest assembleDebug assembleRelease --stacktrace

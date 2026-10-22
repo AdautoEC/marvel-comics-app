@@ -39,10 +39,12 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
 
       - name: Setup google-services.json
+        env:
+          GOOGLE_SERVICES_JSON_B64: ${{ secrets.GOOGLE_SERVICES_JSON_B64 }}
         run: |
           mkdir -p app
-          if [ -n "${{ secrets.GOOGLE_SERVICES_JSON_B64 }}" ]; then
-            echo "${{ secrets.GOOGLE_SERVICES_JSON_B64 }}" | base64 -d > app/google-services.json
+          if [ -n "$GOOGLE_SERVICES_JSON_B64" ]; then
+            echo "$GOOGLE_SERVICES_JSON_B64" | base64 -d > app/google-services.json
           else
             echo "Secrets not found; using ci/google-services.fake.json as fallback"
             cp ci/google-services.fake.json app/google-services.json

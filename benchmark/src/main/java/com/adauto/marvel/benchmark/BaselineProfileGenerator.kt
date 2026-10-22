@@ -33,11 +33,11 @@ class BaselineProfileGenerator {
             pressHome()
             startActivityAndWait()
 
-            // Wait until the comics grid is rendered and items are loaded
-            device.wait(Until.hasObject(By.res("comic_card")), 5_000)
+            // Wait until comic items are rendered
+            device.wait(Until.hasObject(By.descContains("Ver detalhes")), 5_000)
 
             // Scroll comics feed
-            val comicsList = device.findObject(By.res("comics_grid"))
+            val comicsList = device.findObject(By.scrollable(true))
             comicsList?.let { list ->
                 list.setGestureMargin(device.displayWidth / 5)
                 list.fling(Direction.DOWN)
@@ -47,12 +47,12 @@ class BaselineProfileGenerator {
             }
 
             // Navigate to detail screen
-            val firstCard = device.findObject(By.res("comic_card"))
+            val firstCard = device.findObject(By.descContains("Ver detalhes"))
             firstCard?.click()
             device.waitForIdle()
 
             // Scroll detail screen
-            val detailScroll = device.findObject(By.res("detail_scroll"))
+            val detailScroll = device.findObject(By.scrollable(true))
             detailScroll?.let { scroll ->
                 scroll.fling(Direction.DOWN)
                 device.waitForIdle()
