@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -21,10 +22,14 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.adauto.marvel.core.designsystem.preview.ThemePreviews
 import com.adauto.marvel.core.designsystem.theme.MarvelColors
+import com.adauto.marvel.core.designsystem.theme.MarvelTheme
 import com.adauto.marvel.core.model.ComicSummary
+import com.adauto.marvel.core.ui.preview.ComicCardPreviewParameterProvider
 
 /**
  * Standard card representing a Marvel comic in lists and grids.
@@ -85,6 +90,21 @@ fun ComicCard(
                 modifier = Modifier
                     .align(Alignment.BottomStart)
                     .padding(12.dp)
+            )
+        }
+    }
+}
+
+@ThemePreviews
+@Composable
+private fun ComicCardPreview(
+    @PreviewParameter(ComicCardPreviewParameterProvider::class) comic: ComicSummary
+) {
+    MarvelTheme {
+        Box(modifier = Modifier.padding(16.dp).width(160.dp)) {
+            ComicCard(
+                comic = comic,
+                onClick = {}
             )
         }
     }

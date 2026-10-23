@@ -11,7 +11,9 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.adauto.marvel.core.designsystem.preview.ThemePreviews
 import com.adauto.marvel.core.designsystem.theme.MarvelColors
+import com.adauto.marvel.core.designsystem.theme.MarvelTheme
 
 const val DEFAULT_ATTRIBUTION_TEXT = "Data provided by Marvel. © 2026 MARVEL"
 
@@ -36,5 +38,13 @@ fun AttributionFooter(
             fontSize = 12.sp,
             textAlign = TextAlign.Center
         )
+    }
+}
+
+@ThemePreviews
+@Composable
+private fun AttributionFooterPreview() {
+    MarvelTheme {
+        AttributionFooter()
     }
 }

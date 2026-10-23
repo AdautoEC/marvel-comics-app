@@ -1,5 +1,6 @@
 package com.adauto.marvel.feature.comics
 
+import android.net.Uri
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -13,11 +14,12 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.paging.compose.collectAsLazyPagingItems
+import com.adauto.marvel.core.ui.util.CustomTabLauncher
 import com.adauto.marvel.core.ui.util.asString
 
 /**
- * Entry point route for the Comic List screen.
- * Collects UI state and paginated items, listens for one-off effects via buffered channel,
+ * Entry point route for the Cinema Hub Movies List screen.
+ * Collects UI state and paginated movies, listens for one-off effects via buffered channel,
  * and delegates actions to the [ComicListViewModel].
  */
 @Composable
@@ -27,7 +29,7 @@ fun ComicListRoute(
     viewModel: ComicListViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val comics = viewModel.comics.collectAsLazyPagingItems()
+    val movies = viewModel.movies.collectAsLazyPagingItems()
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -40,14 +42,17 @@ fun ComicListRoute(
                     is ComicListEffect.ShowMessage -> {
                         snackbarHostState.showSnackbar(effect.message.asString(context))
                     }
+                    is ComicListEffect.LaunchTmdbAuth -> {
+                        CustomTabLauncher.launchPartialCustomTab(context, Uri.parse(effect.authUrl))
+                    }
                 }
             }
         }
     }
 
-    ComicListScreen(
+    MovieListScreen(
         uiState = uiState,
-        comics = comics,
+        movies = movies,
         onAction = viewModel::onAction,
         modifier = modifier,
         snackbarHostState = snackbarHostState

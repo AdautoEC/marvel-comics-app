@@ -108,4 +108,57 @@ class RedactingHttpLoggingInterceptorTest {
         assertTrue("Log should indicate REDACTED", combinedLog.contains("REDACTED"))
         assertTrue("Log should keep format parameter", combinedLog.contains("format=comic"))
     }
+
+    @Test
+    fun sanitizeUrlForTelemetry_replacesTmdbSensitiveParamsWhilePreservingOthers() {
+        val originalUrl =
+            "https://api.themoviedb.org/3/account?api_key=tmdb-secret-key&session_id=user-session-12345&language=en-US"
+                .toHttpUrl()
+
+        val sanitized = sanitizeUrlForTelemetry(originalUrl)
+        val parsedSanitized = sanitized.toHttpUrl()
+
+        // Verify TMDB sensitive parameters are replaced with [REDACTED]
+        assertEquals("[REDACTED]", parsedSanitized.queryParameter("api_key"))
+        assertEquals("[REDACTED]", parsedSanitized.queryParameter("session_id"))
+
+        // Verify other parameters are preserved
+        assertEquals("en-US", parsedSanitized.queryParameter("language"))
+
+        // Verify raw sensitive strings are completely absent
+        assertFalse(sanitized.contains("tmdb-secret-key"))
+        assertFalse(sanitized.contains("user-session-12345"))
+    }
+
+    @Test
+    fun interceptor_redactsTmdbSensitiveQueryParamsInLogs() {
+        server.enqueue(MockResponse().setResponseCode(200).setBody("OK"))
+
+        val loggedMessages = mutableListOf<String>()
+        val interceptor = RedactingHttpLoggingInterceptor { message ->
+            loggedMessages.add(message)
+        }
+
+        val client = OkHttpClient.Builder()
+            .addInterceptor(interceptor)
+            .build()
+
+        val requestUrl = server.url("/3/account")
+            .newBuilder()
+            .addQueryParameter("api_key", "tmdb-secret-key")
+            .addQueryParameter("session_id", "secret-session-id")
+            .addQueryParameter("page", "1")
+            .build()
+
+        val request = Request.Builder().url(requestUrl).build()
+        val response = client.newCall(request).execute()
+
+        assertEquals(200, response.code)
+
+        val combinedLog = loggedMessages.joinToString("\n")
+        assertFalse("Log must not contain sensitive api_key", combinedLog.contains("tmdb-secret-key"))
+        assertFalse("Log must not contain sensitive session_id", combinedLog.contains("secret-session-id"))
+        assertTrue("Log should indicate REDACTED", combinedLog.contains("REDACTED"))
+        assertTrue("Log should keep page parameter", combinedLog.contains("page=1"))
+    }
 }

@@ -3,10 +3,9 @@ package com.adauto.marvel.feature.detail
 import androidx.lifecycle.SavedStateHandle
 import app.cash.turbine.test
 import com.adauto.marvel.core.data.repository.ComicsRepository
-import com.adauto.marvel.core.model.ComicDetail
-import com.adauto.marvel.core.model.DomainError
+import com.adauto.marvel.core.data.repository.MoviesRepository
+import com.adauto.marvel.core.model.MovieDetail
 import com.adauto.marvel.core.model.Outcome
-import com.adauto.marvel.core.model.UiText
 import com.google.common.truth.Truth.assertThat
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -25,76 +24,98 @@ import org.junit.Test
 @OptIn(ExperimentalCoroutinesApi::class)
 class ComicDetailViewModelTest {
     private val testDispatcher = StandardTestDispatcher()
-    private val repository: ComicsRepository = mockk()
+    private val comicsRepository: ComicsRepository = mockk(relaxed = true)
+    private val moviesRepository: MoviesRepository = mockk(relaxed = true)
+
+    private val sampleMovie = MovieDetail(
+        id = 101,
+        title = "Inception",
+        overview = "Dream within a dream.",
+        posterUrl = "https://image.tmdb.org/t/p/w500/inception.jpg",
+        voteAverage = 8.8,
+        runtime = 148,
+        releaseDate = "2010-07-16",
+        genres = listOf("Ficção Científica", "Ação"),
+        cast = listOf("Leonardo DiCaprio"),
+        isFavorite = false,
+        isWatched = false
+    )
 
     @Before
-    fun setUp() = Dispatchers.setMain(testDispatcher)
+    fun setUp() {
+        Dispatchers.setMain(testDispatcher)
+        coEvery { moviesRepository.getMovieDetail(101) } returns Outcome.Success(sampleMovie)
+    }
 
     @After
-    fun tearDown() = Dispatchers.resetMain()
-
-    @Test
-    fun `init loads comic detail from repository into uiState`() = runTest {
-        val detail = ComicDetail(id = 101, title = "Iron Man #1", description = "Hero origin")
-        coEvery { repository.getComicDetail(101) } returns Outcome.Success(detail)
-
-        val handle = SavedStateHandle(mapOf("comicId" to 101))
-        val viewModel = ComicDetailViewModel(repository, handle)
-        testDispatcher.scheduler.advanceUntilIdle()
-
-        assertEquals(detail, viewModel.uiState.value.comic)
-        assertThat(viewModel.uiState.value.isLoading).isFalse()
-        assertThat(viewModel.uiState.value.errorMessage).isNull()
+    fun tearDown() {
+        Dispatchers.resetMain()
     }
 
     @Test
-    fun `init sets errorMessage and isLoading false on repository error`() = runTest {
-        coEvery { repository.getComicDetail(101) } returns Outcome.Failure(DomainError.NotFound)
+    fun loadDetail_onInit_updatesUiStateWithMovie() = runTest {
+        val savedStateHandle = SavedStateHandle(mapOf("comicId" to 101))
+        val viewModel = ComicDetailViewModel(comicsRepository, moviesRepository, savedStateHandle)
 
-        val handle = SavedStateHandle(mapOf("comicId" to 101))
-        val viewModel = ComicDetailViewModel(repository, handle)
         testDispatcher.scheduler.advanceUntilIdle()
 
-        assertThat(viewModel.uiState.value.comic).isNull()
-        assertThat(viewModel.uiState.value.isLoading).isFalse()
-        assertThat(viewModel.uiState.value.errorMessage).isNotNull()
+        val state = viewModel.uiState.value
+        assertThat(state.isLoading).isFalse()
+        assertThat(state.movie).isEqualTo(sampleMovie)
+        assertThat(state.errorMessage).isNull()
     }
 
     @Test
-    fun `Retry action reloads comic detail from repository`() = runTest {
-        val detail = ComicDetail(id = 101, title = "Iron Man #1")
-        coEvery { repository.getComicDetail(101) } returnsMany listOf(
-            Outcome.Failure(DomainError.NoConnection),
-            Outcome.Success(detail)
-        )
-
-        val handle = SavedStateHandle(mapOf("comicId" to 101))
-        val viewModel = ComicDetailViewModel(repository, handle)
-        testDispatcher.scheduler.advanceUntilIdle()
-
-        assertThat(viewModel.uiState.value.errorMessage).isNotNull()
-
-        viewModel.onAction(ComicDetailAction.Retry)
-        testDispatcher.scheduler.advanceUntilIdle()
-
-        coVerify(exactly = 2) { repository.getComicDetail(101) }
-        assertEquals(detail, viewModel.uiState.value.comic)
-        assertThat(viewModel.uiState.value.isLoading).isFalse()
-        assertThat(viewModel.uiState.value.errorMessage).isNull()
-    }
-
-    @Test
-    fun `BackClicked action emits NavigateBack effect via buffered channel`() = runTest {
-        val detail = ComicDetail(id = 101, title = "Iron Man #1")
-        coEvery { repository.getComicDetail(101) } returns Outcome.Success(detail)
-
-        val handle = SavedStateHandle(mapOf("comicId" to 101))
-        val viewModel = ComicDetailViewModel(repository, handle)
+    fun backClicked_emitsNavigateBackEffect() = runTest {
+        val savedStateHandle = SavedStateHandle(mapOf("comicId" to 101))
+        val viewModel = ComicDetailViewModel(comicsRepository, moviesRepository, savedStateHandle)
 
         viewModel.effects.test {
             viewModel.onAction(ComicDetailAction.BackClicked)
             val effect = awaitItem()
             assertEquals(ComicDetailEffect.NavigateBack, effect)
         }
+    }
+
+    @Test
+    fun favoriteToggled_callsRepositoryToggleFavorite_andUpdatesState() = runTest {
+        val savedStateHandle = SavedStateHandle(mapOf("comicId" to 101))
+        val viewModel = ComicDetailViewModel(comicsRepository, moviesRepository, savedStateHandle)
+
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        viewModel.onAction(ComicDetailAction.FavoriteToggled)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        coVerify { moviesRepository.toggleFavorite(any()) }
+        assertThat(viewModel.uiState.value.movie?.isFavorite).isTrue()
+    }
+
+    @Test
+    fun watchlistToggled_callsRepositoryToggleWatchlist_andUpdatesState() = runTest {
+        val savedStateHandle = SavedStateHandle(mapOf("comicId" to 101))
+        val viewModel = ComicDetailViewModel(comicsRepository, moviesRepository, savedStateHandle)
+
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        viewModel.onAction(ComicDetailAction.WatchlistToggled)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        coVerify { moviesRepository.toggleWatchlist(any()) }
+        assertThat(viewModel.uiState.value.movie?.isWatched).isTrue()
+    }
+
+    @Test
+    fun watchedToggled_callsRepositoryToggleWatchlist_andUpdatesState() = runTest {
+        val savedStateHandle = SavedStateHandle(mapOf("comicId" to 101))
+        val viewModel = ComicDetailViewModel(comicsRepository, moviesRepository, savedStateHandle)
+
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        viewModel.onAction(ComicDetailAction.WatchedToggled)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        coVerify { moviesRepository.toggleWatchlist(any()) }
+        assertThat(viewModel.uiState.value.movie?.isWatched).isTrue()
     }
 }

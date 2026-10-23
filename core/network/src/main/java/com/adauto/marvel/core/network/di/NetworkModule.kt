@@ -1,8 +1,10 @@
 package com.adauto.marvel.core.network.di
 
 import com.adauto.marvel.core.network.api.MarvelApi
+import com.adauto.marvel.core.network.api.TmdbApi
 import com.adauto.marvel.core.network.interceptor.MarvelAuthInterceptor
 import com.adauto.marvel.core.network.interceptor.MarvelAuthenticator
+import com.adauto.marvel.core.network.interceptor.TmdbAuthInterceptor
 import com.adauto.marvel.core.network.telemetry.RedactingHttpLoggingInterceptor
 import com.skydoves.sandwich.retrofit.adapters.ApiResponseCallAdapterFactory
 import dagger.Module
@@ -22,11 +24,16 @@ import javax.inject.Singleton
 @Retention(AnnotationRetention.BINARY)
 annotation class MarvelOkHttpClient
 
+@Qualifier
+@Retention(AnnotationRetention.BINARY)
+annotation class TmdbOkHttpClient
+
 @Module
 @InstallIn(SingletonComponent::class)
 object NetworkModule {
 
     const val MARVEL_BASE_URL = "https://gateway.marvel.com/"
+    const val TMDB_BASE_URL = "https://api.themoviedb.org/"
 
     @Provides
     @Singleton
@@ -55,12 +62,26 @@ object NetworkModule {
 
     @Provides
     @Singleton
+    @TmdbOkHttpClient
+    fun provideTmdbOkHttpClient(
+        authInterceptor: TmdbAuthInterceptor
+    ): OkHttpClient {
+        return OkHttpClient.Builder()
+            .connectTimeout(15, TimeUnit.SECONDS)
+            .readTimeout(20, TimeUnit.SECONDS)
+            .addInterceptor(authInterceptor)
+            .addInterceptor(RedactingHttpLoggingInterceptor())
+            .build()
+    }
+
+    @Provides
+    @Singleton
     fun provideRetrofit(
-        @MarvelOkHttpClient okHttpClient: OkHttpClient,
+        @TmdbOkHttpClient okHttpClient: OkHttpClient,
         json: Json
     ): Retrofit {
         return Retrofit.Builder()
-            .baseUrl(MARVEL_BASE_URL)
+            .baseUrl(TMDB_BASE_URL)
             .client(okHttpClient)
             .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
             .addCallAdapterFactory(ApiResponseCallAdapterFactory.create())
@@ -69,7 +90,22 @@ object NetworkModule {
 
     @Provides
     @Singleton
-    fun provideMarvelApi(retrofit: Retrofit): MarvelApi {
-        return retrofit.create(MarvelApi::class.java)
+    fun provideTmdbApi(retrofit: Retrofit): TmdbApi {
+        return retrofit.create(TmdbApi::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideMarvelApi(
+        @MarvelOkHttpClient okHttpClient: OkHttpClient,
+        json: Json
+    ): MarvelApi {
+        return Retrofit.Builder()
+            .baseUrl(MARVEL_BASE_URL)
+            .client(okHttpClient)
+            .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
+            .addCallAdapterFactory(ApiResponseCallAdapterFactory.create())
+            .build()
+            .create(MarvelApi::class.java)
     }
 }

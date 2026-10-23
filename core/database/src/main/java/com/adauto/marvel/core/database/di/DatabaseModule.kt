@@ -4,7 +4,10 @@ import android.content.Context
 import androidx.room.Room
 import com.adauto.marvel.core.database.MarvelDatabase
 import com.adauto.marvel.core.database.dao.ComicDao
+import com.adauto.marvel.core.database.dao.FavoriteDao
+import com.adauto.marvel.core.database.dao.MovieDao
 import com.adauto.marvel.core.database.dao.RemoteKeyDao
+import com.adauto.marvel.core.database.dao.WatchedDao
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -25,7 +28,9 @@ object DatabaseModule {
             context,
             MarvelDatabase::class.java,
             "marvel.db"
-        ).build()
+        )
+            .fallbackToDestructiveMigration()
+            .build()
     }
 
     @Provides
@@ -33,4 +38,13 @@ object DatabaseModule {
 
     @Provides
     fun provideRemoteKeyDao(database: MarvelDatabase): RemoteKeyDao = database.remoteKeyDao()
+
+    @Provides
+    fun provideMovieDao(database: MarvelDatabase): MovieDao = database.movieDao()
+
+    @Provides
+    fun provideFavoriteDao(database: MarvelDatabase): FavoriteDao = database.favoriteDao()
+
+    @Provides
+    fun provideWatchedDao(database: MarvelDatabase): WatchedDao = database.watchedDao()
 }

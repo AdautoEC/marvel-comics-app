@@ -5,6 +5,17 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.hilt)
     alias(libs.plugins.ksp)
+    alias(libs.plugins.google.services)
+    alias(libs.plugins.firebase.crashlytics)
+    alias(libs.plugins.firebase.perf)
+}
+
+val googleServicesFile = file("google-services.json")
+if (!googleServicesFile.exists()) {
+    val fakeFile = rootProject.file("ci/google-services.fake.json")
+    if (fakeFile.exists()) {
+        fakeFile.copyTo(googleServicesFile, overwrite = false)
+    }
 }
 
 android {
@@ -74,6 +85,7 @@ dependencies {
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.navigation.compose)
+    implementation(libs.androidx.browser)
 
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)
@@ -87,6 +99,7 @@ dependencies {
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.crashlytics)
     implementation(libs.firebase.appcheck.playintegrity)
+    implementation(libs.firebase.perf)
 
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
@@ -97,6 +110,7 @@ dependencies {
     implementation(libs.kotlinx.collections.immutable)
 
     debugImplementation(libs.androidx.compose.ui.tooling)
+    debugImplementation(libs.androidx.compose.ui.test.manifest)
 
     testImplementation(libs.junit)
     testImplementation(libs.truth)
@@ -105,7 +119,7 @@ dependencies {
     testImplementation(libs.turbine)
 
     androidTestImplementation(platform(libs.androidx.compose.bom))
-    androidTestImplementation("androidx.compose.ui:ui-test-junit4")
-    androidTestImplementation("androidx.test.ext:junit:1.2.1")
-    androidTestImplementation("androidx.test:runner:1.6.2")
+    androidTestImplementation(libs.androidx.compose.ui.test.junit4)
+    androidTestImplementation(libs.androidx.test.ext.junit)
+    androidTestImplementation(libs.androidx.test.runner)
 }
