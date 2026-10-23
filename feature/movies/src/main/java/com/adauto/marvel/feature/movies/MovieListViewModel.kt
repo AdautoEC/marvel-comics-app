@@ -13,7 +13,9 @@ import com.adauto.marvel.core.model.SessionState
 import com.adauto.marvel.core.model.UiText
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -53,6 +55,8 @@ class MovieListViewModel @Inject constructor(
     private val _effects = Channel<MovieListEffect>(Channel.BUFFERED)
     val effects: Flow<MovieListEffect> = _effects.receiveAsFlow()
 
+    private var refreshJob: Job? = null
+
     init {
         viewModelScope.launch {
             authRepository.sessionState.collect { state ->
@@ -64,9 +68,16 @@ class MovieListViewModel @Inject constructor(
     fun onAction(action: MovieListAction) {
         when (action) {
             is MovieListAction.RefreshRequested -> {
-                if (_uiState.value.sessionState is SessionState.Authenticated) {
-                    viewModelScope.launch {
-                        moviesRepository.syncCloudWithLocal()
+                if (refreshJob?.isActive == true) return
+                refreshJob = viewModelScope.launch {
+                    _uiState.update { it.copy(isRefreshing = true) }
+                    try {
+                        if (_uiState.value.sessionState is SessionState.Authenticated) {
+                            moviesRepository.syncCloudWithLocal()
+                        }
+                        delay(400)
+                    } finally {
+                        _uiState.update { it.copy(isRefreshing = false) }
                     }
                 }
             }

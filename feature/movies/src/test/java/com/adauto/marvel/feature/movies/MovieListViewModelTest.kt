@@ -86,4 +86,43 @@ class MovieListViewModelTest {
         testDispatcher.scheduler.advanceUntilIdle()
         coVerify { moviesRepository.toggleWatched(sampleMovie) }
     }
+
+    @Test
+    fun refreshRequested_togglesIsRefreshingState() = runTest {
+        val viewModel = MovieListViewModel(moviesRepository, authRepository)
+        viewModel.uiState.test {
+            // Initial state: not refreshing
+            val initial = awaitItem()
+            assertThat(initial.isRefreshing).isFalse()
+
+            // Trigger refresh
+            viewModel.onAction(MovieListAction.RefreshRequested)
+
+            // Should transition to refreshing true
+            val refreshing = awaitItem()
+            assertThat(refreshing.isRefreshing).isTrue()
+
+            // Advance virtual time (400ms delay + finish)
+            testDispatcher.scheduler.advanceUntilIdle()
+
+            // Should reset to refreshing false
+            val finished = awaitItem()
+            assertThat(finished.isRefreshing).isFalse()
+        }
+    }
+
+    @Test
+    fun refreshRequested_whenAuthenticated_callsSyncCloudWithLocal() = runTest {
+        val authState = MutableStateFlow<SessionState>(
+            SessionState.Authenticated(accountId = 42, username = "adauto", sessionId = "sess_123")
+        )
+        every { authRepository.sessionState } returns authState
+        val viewModel = MovieListViewModel(moviesRepository, authRepository)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        viewModel.onAction(MovieListAction.RefreshRequested)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        coVerify { moviesRepository.syncCloudWithLocal() }
+    }
 }
