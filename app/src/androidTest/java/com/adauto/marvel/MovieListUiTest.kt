@@ -12,6 +12,7 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToIndex
+import androidx.compose.ui.test.performTextInput
 import androidx.paging.PagingData
 import androidx.paging.compose.collectAsLazyPagingItems
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -172,5 +173,69 @@ class MovieListUiTest {
         composeTestRule.onNodeWithTag("GuestSyncBanner_ConnectBtn").performClick()
 
         assertTrue(connectClicked)
+    }
+
+    @Test
+    fun searchBar_clickingSearchIcon_togglesSearchActive() {
+        var actionDispatched: MovieListAction? = null
+
+        composeTestRule.setContent {
+            val pagingFlow = remember { flowOf(PagingData.from(sampleMovies)) }
+            val pagingItems = pagingFlow.collectAsLazyPagingItems()
+
+            MovieListScreen(
+                uiState = MovieListUiState(isSearchActive = false),
+                movies = pagingItems,
+                onAction = { actionDispatched = it }
+            )
+        }
+
+        composeTestRule.onNodeWithTag("SearchIconButton").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("SearchIconButton").performClick()
+
+        assertEquals(MovieListAction.ToggleSearchClicked, actionDispatched)
+    }
+
+    @Test
+    fun searchBar_whenActive_showsTextFieldAndDispatchesQueryChanged() {
+        var actionDispatched: MovieListAction? = null
+
+        composeTestRule.setContent {
+            val pagingFlow = remember { flowOf(PagingData.from(sampleMovies)) }
+            val pagingItems = pagingFlow.collectAsLazyPagingItems()
+
+            MovieListScreen(
+                uiState = MovieListUiState(isSearchActive = true, searchQuery = ""),
+                movies = pagingItems,
+                onAction = { actionDispatched = it }
+            )
+        }
+
+        composeTestRule.onNodeWithTag("SearchTextField").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("CloseSearchButton").assertIsDisplayed()
+
+        composeTestRule.onNodeWithTag("SearchTextField").performTextInput("Matrix")
+        assertEquals(MovieListAction.SearchQueryChanged("Matrix"), actionDispatched)
+    }
+
+    @Test
+    fun searchBar_whenQueryMatchesNoItems_displaysCustomEmptyMessage() {
+        composeTestRule.setContent {
+            val pagingFlow = remember { flowOf(PagingData.empty<MovieSummary>()) }
+            val pagingItems = pagingFlow.collectAsLazyPagingItems()
+
+            MovieListScreen(
+                uiState = MovieListUiState(
+                    isSearchActive = true,
+                    searchQuery = "Inexistente",
+                    selectedCategory = MovieCategory.POPULAR
+                ),
+                movies = pagingItems,
+                onAction = {}
+            )
+        }
+
+        composeTestRule.onNodeWithTag("EmptyStateText").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Nenhum filme encontrado para \"Inexistente\" em Populares.").assertIsDisplayed()
     }
 }

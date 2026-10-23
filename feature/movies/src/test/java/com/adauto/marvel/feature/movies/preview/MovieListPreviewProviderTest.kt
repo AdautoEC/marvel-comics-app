@@ -12,7 +12,7 @@ class MovieListPreviewProviderTest {
         val provider = MovieListUiStatePreviewParameterProvider()
         val values = provider.values.toList()
 
-        assertThat(values).hasSize(6)
+        assertThat(values).hasSize(7)
 
         // 1. Loading
         assertThat(values[0].isLoading).isTrue()
@@ -35,5 +35,9 @@ class MovieListPreviewProviderTest {
         // 6. Watchlist Tab
         assertThat(values[5].uiState.selectedCategory).isEqualTo(MovieCategory.WATCHLIST)
         assertThat(values[5].uiState.sessionState).isEqualTo(SessionState.Guest)
+
+        // 7. Search Active
+        assertThat(values[6].uiState.isSearchActive).isTrue()
+        assertThat(values[6].uiState.searchQuery).isEqualTo("Clube")
     }
 }

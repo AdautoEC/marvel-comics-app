@@ -14,8 +14,14 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.ScrollableTabRow
@@ -23,13 +29,19 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.PreviewParameter
@@ -76,29 +88,9 @@ fun MovieListScreen(
         modifier = modifier.fillMaxSize(),
         topBar = {
             Column(modifier = Modifier.fillMaxWidth()) {
-                TopAppBar(
-                    title = {
-                        Text(
-                            text = "CINEMA HUB",
-                            style = MaterialTheme.typography.titleLarge.copy(
-                                fontWeight = FontWeight.Black,
-                                letterSpacing = 2.sp
-                            ),
-                            color = MarvelColors.MarvelRed
-                        )
-                    },
-                    actions = {
-                        UserSessionPill(
-                            sessionState = uiState.sessionState,
-                            onConnectClicked = { onAction(MovieListAction.ConnectTmdbClicked) },
-                            onLogoutClicked = { onAction(MovieListAction.LogoutClicked) },
-                            modifier = Modifier.padding(end = 12.dp)
-                        )
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = MarvelColors.DarkBackground,
-                        titleContentColor = MarvelColors.MarvelRed
-                    )
+                MovieListTopBar(
+                    uiState = uiState,
+                    onAction = onAction
                 )
 
                 // Category Filter Tabs
@@ -202,9 +194,13 @@ fun MovieListScreen(
                                 .padding(16.dp),
                             contentAlignment = Alignment.Center
                         ) {
-                            val emptyMessage = when (uiState.selectedCategory) {
-                                MovieCategory.FAVORITES -> "Nenhum filme favoritado ainda.\nToque no coração para salvar!"
-                                MovieCategory.WATCHLIST -> "Nenhum filme na lista de Quero Assistir."
+                            val emptyMessage = when {
+                                uiState.searchQuery.isNotBlank() ->
+                                    "Nenhum filme encontrado para \"${uiState.searchQuery}\" em ${uiState.selectedCategory.displayName}."
+                                uiState.selectedCategory == MovieCategory.FAVORITES ->
+                                    "Nenhum filme favoritado ainda.\nToque no coração para salvar!"
+                                uiState.selectedCategory == MovieCategory.WATCHLIST ->
+                                    "Nenhum filme na lista de Quero Assistir."
                                 else -> "Nenhum filme encontrado."
                             }
                             Text(
@@ -281,6 +277,115 @@ fun MovieListScreen(
                 }
             }
         }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun MovieListTopBar(
+    uiState: MovieListUiState,
+    onAction: (MovieListAction) -> Unit
+) {
+    if (uiState.isSearchActive) {
+        val focusRequester = remember { FocusRequester() }
+        LaunchedEffect(Unit) {
+            focusRequester.requestFocus()
+        }
+        TopAppBar(
+            navigationIcon = {
+                IconButton(
+                    onClick = { onAction(MovieListAction.ToggleSearchClicked) },
+                    modifier = Modifier.testTag("CloseSearchButton")
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = "Fechar pesquisa",
+                        tint = MarvelColors.TextPrimary
+                    )
+                }
+            },
+            title = {
+                TextField(
+                    value = uiState.searchQuery,
+                    onValueChange = { onAction(MovieListAction.SearchQueryChanged(it)) },
+                    placeholder = {
+                        Text(
+                            text = "Buscar em ${uiState.selectedCategory.displayName}...",
+                            color = MarvelColors.TextSecondary,
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    },
+                    singleLine = true,
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = Color.Transparent,
+                        unfocusedContainerColor = Color.Transparent,
+                        disabledContainerColor = Color.Transparent,
+                        focusedIndicatorColor = Color.Transparent,
+                        unfocusedIndicatorColor = Color.Transparent,
+                        cursorColor = MarvelColors.MarvelRed,
+                        focusedTextColor = MarvelColors.TextPrimary,
+                        unfocusedTextColor = MarvelColors.TextPrimary
+                    ),
+                    textStyle = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .focusRequester(focusRequester)
+                        .testTag("SearchTextField")
+                )
+            },
+            actions = {
+                if (uiState.searchQuery.isNotEmpty()) {
+                    IconButton(
+                        onClick = { onAction(MovieListAction.SearchQueryChanged("")) },
+                        modifier = Modifier.testTag("ClearSearchButton")
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Limpar pesquisa",
+                            tint = MarvelColors.TextSecondary
+                        )
+                    }
+                }
+            },
+            colors = TopAppBarDefaults.topAppBarColors(
+                containerColor = MarvelColors.DarkBackground
+            )
+        )
+    } else {
+        TopAppBar(
+            title = {
+                Text(
+                    text = "CINEMA HUB",
+                    style = MaterialTheme.typography.titleLarge.copy(
+                        fontWeight = FontWeight.Black,
+                        letterSpacing = 2.sp
+                    ),
+                    color = MarvelColors.MarvelRed
+                )
+            },
+            actions = {
+                IconButton(
+                    onClick = { onAction(MovieListAction.ToggleSearchClicked) },
+                    modifier = Modifier.testTag("SearchIconButton")
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Search,
+                        contentDescription = "Pesquisar filmes",
+                        tint = MarvelColors.TextPrimary
+                    )
+                }
+                UserSessionPill(
+                    sessionState = uiState.sessionState,
+                    onConnectClicked = { onAction(MovieListAction.ConnectTmdbClicked) },
+                    onLogoutClicked = { onAction(MovieListAction.LogoutClicked) },
+                    modifier = Modifier.padding(end = 12.dp)
+                )
+            },
+            colors = TopAppBarDefaults.topAppBarColors(
+                containerColor = MarvelColors.DarkBackground,
+                titleContentColor = MarvelColors.MarvelRed
+            )
+        )
     }
 }
 

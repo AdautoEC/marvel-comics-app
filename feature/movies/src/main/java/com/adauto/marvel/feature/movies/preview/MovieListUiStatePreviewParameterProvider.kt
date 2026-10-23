@@ -90,6 +90,22 @@ class MovieListUiStatePreviewParameterProvider : PreviewParameterProvider<MovieL
                 selectedCategory = MovieCategory.WATCHLIST,
                 sessionState = SessionState.Guest
             )
+        ),
+        // 7. Search Active State
+        MovieListPreviewState(
+            uiState = MovieListUiState(
+                isSearchActive = true,
+                searchQuery = "Clube"
+            ),
+            movies = listOf(
+                MovieSummary(
+                    id = 1,
+                    title = "Clube da Luta",
+                    posterUrl = "https://image.tmdb.org/t/p/w500/pB8BM7pdSp6B6Ih7QZ4DrQ3PmJK.jpg",
+                    voteAverage = 8.4,
+                    releaseDate = "1999-10-15"
+                )
+            )
         )
     )
 }
