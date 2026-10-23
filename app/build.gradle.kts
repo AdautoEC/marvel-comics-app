@@ -7,6 +7,7 @@ plugins {
     alias(libs.plugins.ksp)
     alias(libs.plugins.google.services)
     alias(libs.plugins.firebase.crashlytics)
+    alias(libs.plugins.firebase.perf)
 }
 
 val googleServicesFile = file("google-services.json")
@@ -98,6 +99,7 @@ dependencies {
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.crashlytics)
     implementation(libs.firebase.appcheck.playintegrity)
+    implementation(libs.firebase.perf)
 
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
