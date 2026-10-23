@@ -9,9 +9,9 @@ import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeUp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.adauto.marvel.core.model.MovieDetail
-import com.adauto.marvel.feature.detail.ComicDetailAction
-import com.adauto.marvel.feature.detail.ComicDetailScreen
-import com.adauto.marvel.feature.detail.ComicDetailUiState
+import com.adauto.marvel.feature.detail.MovieDetailAction
+import com.adauto.marvel.feature.detail.MovieDetailScreen
+import com.adauto.marvel.feature.detail.MovieDetailUiState
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -41,8 +41,8 @@ class MovieDetailUiTest {
     @Test
     fun movieDetail_rendersTitleRatingAndOverview() {
         composeTestRule.setContent {
-            ComicDetailScreen(
-                uiState = ComicDetailUiState(
+            MovieDetailScreen(
+                uiState = MovieDetailUiState(
                     movie = sampleMovie,
                     isLoading = false
                 ),
@@ -62,11 +62,11 @@ class MovieDetailUiTest {
 
     @Test
     fun favoriteButton_clicking_dispatchesFavoriteToggledAction() {
-        var actionDispatched: ComicDetailAction? = null
+        var actionDispatched: MovieDetailAction? = null
 
         composeTestRule.setContent {
-            ComicDetailScreen(
-                uiState = ComicDetailUiState(
+            MovieDetailScreen(
+                uiState = MovieDetailUiState(
                     movie = sampleMovie.copy(isFavorite = false),
                     isLoading = false
                 ),
@@ -78,16 +78,16 @@ class MovieDetailUiTest {
         composeTestRule.onNodeWithText("Favoritar").assertIsDisplayed()
 
         composeTestRule.onNodeWithTag("FavoriteButton").performClick()
-        assertEquals(ComicDetailAction.FavoriteToggled, actionDispatched)
+        assertEquals(MovieDetailAction.FavoriteToggled, actionDispatched)
     }
 
     @Test
     fun watchlistButton_clicking_dispatchesWatchlistToggledAction() {
-        var actionDispatched: ComicDetailAction? = null
+        var actionDispatched: MovieDetailAction? = null
 
         composeTestRule.setContent {
-            ComicDetailScreen(
-                uiState = ComicDetailUiState(
+            MovieDetailScreen(
+                uiState = MovieDetailUiState(
                     movie = sampleMovie.copy(isWatched = false),
                     isLoading = false
                 ),
@@ -99,7 +99,7 @@ class MovieDetailUiTest {
         composeTestRule.onNodeWithText("Quero Assistir").assertIsDisplayed()
 
         composeTestRule.onNodeWithTag("WatchlistButton").performClick()
-        assertEquals(ComicDetailAction.WatchlistToggled, actionDispatched)
+        assertEquals(MovieDetailAction.WatchlistToggled, actionDispatched)
     }
 
     @Test
@@ -107,13 +107,13 @@ class MovieDetailUiTest {
         var backClicked = false
 
         composeTestRule.setContent {
-            ComicDetailScreen(
-                uiState = ComicDetailUiState(
+            MovieDetailScreen(
+                uiState = MovieDetailUiState(
                     movie = sampleMovie,
                     isLoading = false
                 ),
                 onAction = { action ->
-                    if (action is ComicDetailAction.BackClicked) {
+                    if (action is MovieDetailAction.BackClicked) {
                         backClicked = true
                     }
                 }
@@ -129,8 +129,8 @@ class MovieDetailUiTest {
     @Test
     fun movieDetail_scrolling_revealsOverviewContent() {
         composeTestRule.setContent {
-            ComicDetailScreen(
-                uiState = ComicDetailUiState(
+            MovieDetailScreen(
+                uiState = MovieDetailUiState(
                     movie = sampleMovie,
                     isLoading = false
                 ),
@@ -139,7 +139,7 @@ class MovieDetailUiTest {
         }
 
         // Swipe up to scroll down through parallax content
-        composeTestRule.onNodeWithTag("ComicDetailContent").performTouchInput {
+        composeTestRule.onNodeWithTag("MovieDetailContent").performTouchInput {
             swipeUp()
         }
 

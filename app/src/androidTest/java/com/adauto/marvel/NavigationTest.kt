@@ -2,8 +2,8 @@ package com.adauto.marvel
 
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.adauto.marvel.navigation.ComicDetailRoute
-import com.adauto.marvel.navigation.ComicListRoute
+import com.adauto.marvel.navigation.MovieDetailRoute
+import com.adauto.marvel.navigation.MovieListRoute
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Rule
@@ -18,10 +18,10 @@ class NavigationTest {
 
     @Test
     fun verifyRoutesInstantiation() {
-        val listRoute = ComicListRoute
+        val listRoute = MovieListRoute
         assertNotNull(listRoute)
 
-        val detailRoute = ComicDetailRoute(comicId = 101)
-        assertEquals(101, detailRoute.comicId)
+        val detailRoute = MovieDetailRoute(movieId = 101)
+        assertEquals(101, detailRoute.movieId)
     }
 }

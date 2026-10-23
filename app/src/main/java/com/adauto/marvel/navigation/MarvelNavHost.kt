@@ -5,9 +5,8 @@ import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
-import androidx.navigation.toRoute
-import com.adauto.marvel.feature.comics.ComicListRoute as ComicListScreen
-import com.adauto.marvel.feature.detail.ComicDetailRoute as ComicDetailScreen
+import com.adauto.marvel.feature.detail.MovieDetailRoute as MovieDetailScreen
+import com.adauto.marvel.feature.movies.MovieListRoute as MovieListScreen
 
 @Composable
 fun MarvelNavHost(
@@ -16,18 +15,18 @@ fun MarvelNavHost(
 ) {
     NavHost(
         navController = navController,
-        startDestination = ComicListRoute,
+        startDestination = MovieListRoute,
         modifier = modifier
     ) {
-        composable<ComicListRoute> {
-            ComicListScreen(
-                onOpenDetail = { comicId ->
-                    navController.navigate(ComicDetailRoute(comicId))
+        composable<MovieListRoute> {
+            MovieListScreen(
+                onOpenDetail = { movieId ->
+                    navController.navigate(MovieDetailRoute(movieId))
                 }
             )
         }
-        composable<ComicDetailRoute> {
-            ComicDetailScreen(
+        composable<MovieDetailRoute> {
+            MovieDetailScreen(
                 onBackClick = { navController.popBackStack() }
             )
         }

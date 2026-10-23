@@ -18,9 +18,9 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.adauto.marvel.core.model.MovieCategory
 import com.adauto.marvel.core.model.MovieSummary
 import com.adauto.marvel.core.model.SessionState
-import com.adauto.marvel.feature.comics.ComicListAction
-import com.adauto.marvel.feature.comics.ComicListUiState
-import com.adauto.marvel.feature.comics.MovieListScreen
+import com.adauto.marvel.feature.movies.MovieListAction
+import com.adauto.marvel.feature.movies.MovieListScreen
+import com.adauto.marvel.feature.movies.MovieListUiState
 import kotlinx.coroutines.flow.flowOf
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -51,7 +51,7 @@ class MovieListUiTest {
             val pagingItems = pagingFlow.collectAsLazyPagingItems()
 
             MovieListScreen(
-                uiState = ComicListUiState(),
+                uiState = MovieListUiState(),
                 movies = pagingItems,
                 onAction = {}
             )
@@ -61,7 +61,7 @@ class MovieListUiTest {
         composeTestRule.onNodeWithText("Filme #1").assertIsDisplayed()
 
         // Scroll down in grid to the 18th movie
-        composeTestRule.onNodeWithTag("ComicListGrid")
+        composeTestRule.onNodeWithTag("MovieListGrid")
             .performScrollToIndex(18)
 
         // Item 18 is now scrolled into view and visible
@@ -70,7 +70,7 @@ class MovieListUiTest {
 
     @Test
     fun categoryTabs_switchingToFavoritesAndWatchlist_displaysGuestSyncBanner() {
-        var dispatchedAction: ComicListAction? = null
+        var dispatchedAction: MovieListAction? = null
 
         composeTestRule.setContent {
             var selectedCategory by remember { mutableStateOf(MovieCategory.POPULAR) }
@@ -78,14 +78,14 @@ class MovieListUiTest {
             val pagingItems = pagingFlow.collectAsLazyPagingItems()
 
             MovieListScreen(
-                uiState = ComicListUiState(
+                uiState = MovieListUiState(
                     sessionState = SessionState.Guest,
                     selectedCategory = selectedCategory
                 ),
                 movies = pagingItems,
                 onAction = { action ->
                     dispatchedAction = action
-                    if (action is ComicListAction.CategorySelected) {
+                    if (action is MovieListAction.CategorySelected) {
                         selectedCategory = action.category
                     }
                 }
@@ -98,7 +98,7 @@ class MovieListUiTest {
         // Click Favoritos tab
         composeTestRule.onNodeWithText("Favoritos").performClick()
         composeTestRule.waitForIdle()
-        assertEquals(ComicListAction.CategorySelected(MovieCategory.FAVORITES), dispatchedAction)
+        assertEquals(MovieListAction.CategorySelected(MovieCategory.FAVORITES), dispatchedAction)
 
         // Banner is displayed
         composeTestRule.onNodeWithTag("GuestSyncBanner").assertIsDisplayed()
@@ -107,7 +107,7 @@ class MovieListUiTest {
         // Click Quero Assistir tab
         composeTestRule.onNodeWithText("Quero Assistir").performClick()
         composeTestRule.waitForIdle()
-        assertEquals(ComicListAction.CategorySelected(MovieCategory.WATCHLIST), dispatchedAction)
+        assertEquals(MovieListAction.CategorySelected(MovieCategory.WATCHLIST), dispatchedAction)
 
         // Banner remains displayed for Watchlist in Guest mode
         composeTestRule.onNodeWithTag("GuestSyncBanner").assertIsDisplayed()
@@ -127,10 +127,10 @@ class MovieListUiTest {
             val pagingItems = pagingFlow.collectAsLazyPagingItems()
 
             MovieListScreen(
-                uiState = ComicListUiState(sessionState = SessionState.Guest),
+                uiState = MovieListUiState(sessionState = SessionState.Guest),
                 movies = pagingItems,
                 onAction = { action ->
-                    if (action is ComicListAction.ConnectTmdbClicked) {
+                    if (action is MovieListAction.ConnectTmdbClicked) {
                         connectClicked = true
                     }
                 }
@@ -155,13 +155,13 @@ class MovieListUiTest {
             val pagingItems = pagingFlow.collectAsLazyPagingItems()
 
             MovieListScreen(
-                uiState = ComicListUiState(
+                uiState = MovieListUiState(
                     sessionState = SessionState.Guest,
                     selectedCategory = MovieCategory.FAVORITES
                 ),
                 movies = pagingItems,
                 onAction = { action ->
-                    if (action is ComicListAction.ConnectTmdbClicked) {
+                    if (action is MovieListAction.ConnectTmdbClicked) {
                         connectClicked = true
                     }
                 }

@@ -92,12 +92,6 @@ fun ShimmerMovieCard(
     )
 }
 
-@Composable
-fun ShimmerComicCard(
-    modifier: Modifier = Modifier,
-    shape: Shape = RoundedCornerShape(16.dp)
-) = ShimmerMovieCard(modifier, shape)
-
 @ThemePreviews
 @Composable
 private fun ShimmerMovieCardPreview() {

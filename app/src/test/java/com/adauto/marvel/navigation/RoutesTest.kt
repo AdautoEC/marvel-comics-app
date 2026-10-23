@@ -8,30 +8,30 @@ import org.junit.Test
 class RoutesTest {
 
     @Test
-    fun comicListRoute_serializesAndDeserializesCorrectly() {
-        val encoded = Json.encodeToString(ComicListRoute)
-        val decoded = Json.decodeFromString<ComicListRoute>(encoded)
+    fun movieListRoute_serializesAndDeserializesCorrectly() {
+        val encoded = Json.encodeToString(MovieListRoute)
+        val decoded = Json.decodeFromString<MovieListRoute>(encoded)
 
-        assertThat(decoded).isEqualTo(ComicListRoute)
+        assertThat(decoded).isEqualTo(MovieListRoute)
     }
 
     @Test
-    fun comicDetailRoute_serializesAndDeserializesWithParameters() {
-        val original = ComicDetailRoute(comicId = 42)
+    fun movieDetailRoute_serializesAndDeserializesWithParameters() {
+        val original = MovieDetailRoute(movieId = 42)
         val encoded = Json.encodeToString(original)
-        val decoded = Json.decodeFromString<ComicDetailRoute>(encoded)
+        val decoded = Json.decodeFromString<MovieDetailRoute>(encoded)
 
-        assertThat(decoded.comicId).isEqualTo(42)
+        assertThat(decoded.movieId).isEqualTo(42)
         assertThat(decoded).isEqualTo(original)
     }
 
     @Test
-    fun comicDetailRoute_supportsCopyAndEquality() {
-        val route1 = ComicDetailRoute(comicId = 100)
-        val route2 = route1.copy(comicId = 200)
+    fun movieDetailRoute_supportsCopyAndEquality() {
+        val route1 = MovieDetailRoute(movieId = 100)
+        val route2 = route1.copy(movieId = 200)
 
-        assertThat(route1.comicId).isEqualTo(100)
-        assertThat(route2.comicId).isEqualTo(200)
+        assertThat(route1.movieId).isEqualTo(100)
+        assertThat(route2.movieId).isEqualTo(200)
         assertThat(route1).isNotEqualTo(route2)
     }
 }

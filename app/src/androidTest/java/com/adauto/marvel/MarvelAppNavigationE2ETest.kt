@@ -16,14 +16,14 @@ import androidx.paging.compose.collectAsLazyPagingItems
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.adauto.marvel.core.model.MovieDetail
 import com.adauto.marvel.core.model.MovieSummary
-import com.adauto.marvel.feature.comics.ComicListAction
-import com.adauto.marvel.feature.comics.ComicListUiState
-import com.adauto.marvel.feature.comics.MovieListScreen
-import com.adauto.marvel.feature.detail.ComicDetailAction
-import com.adauto.marvel.feature.detail.ComicDetailScreen
-import com.adauto.marvel.feature.detail.ComicDetailUiState
-import com.adauto.marvel.navigation.ComicDetailRoute
-import com.adauto.marvel.navigation.ComicListRoute
+import com.adauto.marvel.feature.detail.MovieDetailAction
+import com.adauto.marvel.feature.detail.MovieDetailScreen
+import com.adauto.marvel.feature.detail.MovieDetailUiState
+import com.adauto.marvel.feature.movies.MovieListAction
+import com.adauto.marvel.feature.movies.MovieListScreen
+import com.adauto.marvel.feature.movies.MovieListUiState
+import com.adauto.marvel.navigation.MovieDetailRoute
+import com.adauto.marvel.navigation.MovieListRoute
 import kotlinx.coroutines.flow.flowOf
 import org.junit.Rule
 import org.junit.Test
@@ -63,32 +63,32 @@ class MarvelAppNavigationE2ETest {
 
         NavHost(
             navController = navController,
-            startDestination = ComicListRoute
+            startDestination = MovieListRoute
         ) {
-            composable<ComicListRoute> {
+            composable<MovieListRoute> {
                 val pagingFlow = remember { flowOf(PagingData.from(listOf(sampleMovieSummary))) }
                 val pagingItems = pagingFlow.collectAsLazyPagingItems()
 
                 MovieListScreen(
-                    uiState = ComicListUiState(),
+                    uiState = MovieListUiState(),
                     movies = pagingItems,
                     onAction = { action ->
-                        if (action is ComicListAction.ComicClicked) {
-                            navController.navigate(ComicDetailRoute(action.id))
+                        if (action is MovieListAction.MovieClicked) {
+                            navController.navigate(MovieDetailRoute(action.id))
                         }
                     }
                 )
             }
 
-            composable<ComicDetailRoute> { backStackEntry ->
-                val route = backStackEntry.toRoute<ComicDetailRoute>()
-                ComicDetailScreen(
-                    uiState = ComicDetailUiState(
-                        movie = if (route.comicId == 550) sampleMovieDetail else null,
+            composable<MovieDetailRoute> { backStackEntry ->
+                val route = backStackEntry.toRoute<MovieDetailRoute>()
+                MovieDetailScreen(
+                    uiState = MovieDetailUiState(
+                        movie = if (route.movieId == 550) sampleMovieDetail else null,
                         isLoading = false
                     ),
                     onAction = { action ->
-                        if (action is ComicDetailAction.BackClicked) {
+                        if (action is MovieDetailAction.BackClicked) {
                             navController.popBackStack()
                         }
                     }
@@ -105,11 +105,11 @@ class MarvelAppNavigationE2ETest {
 
         // 1. Verify on List Screen
         composeTestRule.onNodeWithText("CINEMA HUB").assertIsDisplayed()
-        composeTestRule.onNodeWithTag("ComicListGrid").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("MovieListGrid").assertIsDisplayed()
         composeTestRule.onNodeWithText("Clube da Luta").assertIsDisplayed()
 
         // 2. Click on the movie card to navigate to detail
-        composeTestRule.onNodeWithTag("ComicCard_550").performClick()
+        composeTestRule.onNodeWithTag("MovieCard_550").performClick()
 
         // 3. Verify on Detail Screen
         composeTestRule.onNodeWithTag("HeroPoster").assertIsDisplayed()
@@ -122,6 +122,6 @@ class MarvelAppNavigationE2ETest {
 
         // 5. Verify back on List Screen
         composeTestRule.onNodeWithText("CINEMA HUB").assertIsDisplayed()
-        composeTestRule.onNodeWithTag("ComicListGrid").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("MovieListGrid").assertIsDisplayed()
     }
 }

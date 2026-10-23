@@ -3,7 +3,7 @@ package com.adauto.marvel.navigation
 import kotlinx.serialization.Serializable
 
 @Serializable
-data object ComicListRoute
+data object MovieListRoute
 
 @Serializable
-data class ComicDetailRoute(val comicId: Int)
+data class MovieDetailRoute(val movieId: Int)
