@@ -18,7 +18,7 @@ class ComicListPreviewProviderTest {
         assertThat(values[0].isLoading).isTrue()
 
         // 2. Populated (Authenticated)
-        assertThat(values[1].comics).isNotEmpty()
+        assertThat(values[1].movies).isNotEmpty()
         assertThat(values[1].isLoading).isFalse()
         assertThat(values[1].uiState.sessionState).isInstanceOf(SessionState.Authenticated::class.java)
 
@@ -26,7 +26,7 @@ class ComicListPreviewProviderTest {
         assertThat(values[2].uiState.isOffline).isTrue()
 
         // 4. Empty
-        assertThat(values[3].comics).isEmpty()
+        assertThat(values[3].movies).isEmpty()
         assertThat(values[3].isLoading).isFalse()
 
         // 5. Error

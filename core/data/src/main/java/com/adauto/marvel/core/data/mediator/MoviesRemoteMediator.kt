@@ -8,7 +8,7 @@ import androidx.room.withTransaction
 import com.adauto.marvel.core.data.mapper.toMovieEntity
 import com.adauto.marvel.core.database.MarvelDatabase
 import com.adauto.marvel.core.database.entity.MovieEntity
-import com.adauto.marvel.core.model.MarvelApiException
+import com.adauto.marvel.core.model.TmdbApiException
 import com.adauto.marvel.core.network.api.TmdbApi
 import com.skydoves.sandwich.ApiResponse
 import com.skydoves.sandwich.retrofit.statusCode
@@ -73,7 +73,7 @@ class MoviesRemoteMediator(
             is ApiResponse.Failure.Error -> {
                 val code = response.statusCode.code
                 val message = response.errorMessage()
-                MediatorResult.Error(MarvelApiException(code, "TMDB API Error $code: $message"))
+                MediatorResult.Error(TmdbApiException(code, "TMDB API Error $code: $message"))
             }
             is ApiResponse.Failure.Exception -> {
                 MediatorResult.Error(response.throwable)

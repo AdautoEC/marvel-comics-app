@@ -500,21 +500,6 @@ private fun ComicDetailLoadingSkeleton(
     }
 }
 
-internal fun formatOnsaleDate(dateStr: String?): String? {
-    if (dateStr.isNullOrBlank()) return null
-    return try {
-        val prefix = dateStr.take(10)
-        val parts = prefix.split("-")
-        if (parts.size == 3) {
-            "${parts[2]}/${parts[1]}/${parts[0]}"
-        } else {
-            dateStr
-        }
-    } catch (_: Exception) {
-        dateStr
-    }
-}
-
 private val BookmarkIcon: ImageVector by lazy {
     ImageVector.Builder(
         name = "Bookmark",

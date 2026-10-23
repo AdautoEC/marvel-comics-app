@@ -53,8 +53,8 @@ class ImageClientIsolationTest {
 
         val interceptorNames = imageClient.interceptors.map { it::class.java.name }
         assertTrue(
-            "Image client must not contain MarvelAuthInterceptor",
-            interceptorNames.none { it.contains("MarvelAuthInterceptor") }
+            "Image client must not contain AuthInterceptor",
+            interceptorNames.none { it.contains("AuthInterceptor") }
         )
     }
 }

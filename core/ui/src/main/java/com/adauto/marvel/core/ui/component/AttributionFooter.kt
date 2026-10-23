@@ -15,10 +15,10 @@ import com.adauto.marvel.core.designsystem.preview.ThemePreviews
 import com.adauto.marvel.core.designsystem.theme.MarvelColors
 import com.adauto.marvel.core.designsystem.theme.MarvelTheme
 
-const val DEFAULT_ATTRIBUTION_TEXT = "Data provided by Marvel. © 2026 MARVEL"
+const val DEFAULT_ATTRIBUTION_TEXT = "Este produto usa a API TMDB, mas não é endossado ou certificado pelo TMDB."
 
 /**
- * Footer displaying the mandatory Marvel Comics API attribution notice.
+ * Footer displaying the TMDB API attribution notice.
  */
 @Composable
 fun AttributionFooter(

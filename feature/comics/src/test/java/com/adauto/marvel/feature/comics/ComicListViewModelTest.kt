@@ -2,7 +2,6 @@ package com.adauto.marvel.feature.comics
 
 import app.cash.turbine.test
 import com.adauto.marvel.core.data.repository.AuthRepository
-import com.adauto.marvel.core.data.repository.ComicsRepository
 import com.adauto.marvel.core.data.repository.MoviesRepository
 import com.adauto.marvel.core.model.MovieCategory
 import com.adauto.marvel.core.model.MovieSummary

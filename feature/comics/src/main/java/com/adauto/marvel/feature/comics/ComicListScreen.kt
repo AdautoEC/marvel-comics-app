@@ -40,18 +40,16 @@ import com.adauto.marvel.core.designsystem.preview.DevicePreviews
 import com.adauto.marvel.core.designsystem.preview.ThemePreviews
 import com.adauto.marvel.core.designsystem.theme.MarvelColors
 import com.adauto.marvel.core.designsystem.theme.MarvelTheme
-import com.adauto.marvel.core.model.ComicSummary
-import com.adauto.marvel.core.model.MarvelApiException
 import com.adauto.marvel.core.model.MovieCategory
 import com.adauto.marvel.core.model.MovieSummary
 import com.adauto.marvel.core.model.SessionState
+import com.adauto.marvel.core.model.TmdbApiException
 import com.adauto.marvel.core.model.UiText
 import com.adauto.marvel.core.ui.component.AttributionFooter
-import com.adauto.marvel.core.ui.component.ComicCard
 import com.adauto.marvel.core.ui.component.ErrorState
 import com.adauto.marvel.core.ui.component.MovieCard
 import com.adauto.marvel.core.ui.component.OfflineBanner
-import com.adauto.marvel.core.ui.component.ShimmerComicCard
+import com.adauto.marvel.core.ui.component.ShimmerMovieCard
 import com.adauto.marvel.feature.comics.component.GuestSyncBanner
 import com.adauto.marvel.feature.comics.component.UserSessionPill
 import com.adauto.marvel.feature.comics.preview.ComicListPreviewState
@@ -172,7 +170,7 @@ fun MovieListScreen(
                                 .testTag("ComicListShimmerGrid")
                         ) {
                             items(6) {
-                                ShimmerComicCard()
+                                ShimmerMovieCard()
                             }
                         }
                     }
@@ -283,93 +281,9 @@ fun MovieListScreen(
     }
 }
 
-/**
- * Backwards compatible overload for ComicListScreen.
- */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun ComicListScreen(
-    uiState: ComicListUiState,
-    comics: LazyPagingItems<ComicSummary>,
-    onAction: (ComicListAction) -> Unit,
-    modifier: Modifier = Modifier,
-    gridState: LazyGridState = rememberLazyGridState(),
-    snackbarHostState: SnackbarHostState = remember { SnackbarHostState() }
-) {
-    Scaffold(
-        modifier = modifier.fillMaxSize(),
-        topBar = {
-            Column(modifier = Modifier.fillMaxWidth()) {
-                TopAppBar(
-                    title = {
-                        Text(
-                            text = "MARVEL COMICS",
-                            style = MaterialTheme.typography.titleLarge.copy(
-                                fontWeight = FontWeight.Black,
-                                letterSpacing = 2.sp
-                            ),
-                            color = MarvelColors.MarvelRed
-                        )
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = MarvelColors.DarkBackground,
-                        titleContentColor = MarvelColors.MarvelRed
-                    )
-                )
-                OfflineBanner(
-                    visible = uiState.isOffline,
-                    modifier = Modifier.testTag("OfflineBanner")
-                )
-            }
-        },
-        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
-        containerColor = MarvelColors.DarkBackground
-    ) { innerPadding ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-        ) {
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(2),
-                state = gridState,
-                contentPadding = PaddingValues(16.dp),
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-                modifier = Modifier
-                    .fillMaxSize()
-                    .testTag("ComicListGrid")
-            ) {
-                items(
-                    count = comics.itemCount,
-                    key = comics.itemKey { it.id }
-                ) { index ->
-                    val comic = comics[index]
-                    if (comic != null) {
-                        ComicCard(
-                            comic = comic,
-                            onClick = { onAction(ComicListAction.ComicClicked(comic.id)) },
-                            modifier = Modifier.testTag("ComicCard_${comic.id}")
-                        )
-                    }
-                }
-
-                if (uiState.attribution != null) {
-                    item(span = { GridItemSpan(maxLineSpan) }) {
-                        AttributionFooter(
-                            text = uiState.attribution,
-                            modifier = Modifier.testTag("AttributionFooter")
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
 internal fun formatPagingError(throwable: Throwable, fallback: String): UiText {
     return when (throwable) {
-        is MarvelApiException -> {
+        is TmdbApiException -> {
             when (throwable.code) {
                 429 -> UiText.Dynamic("Limite de requisições excedido. Tente mais tarde.")
                 401 -> UiText.Dynamic("Chave de API inválida.")
