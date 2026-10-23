@@ -3,6 +3,7 @@ package com.adauto.marvel.core.network.integrity
 import android.content.Context
 import com.google.firebase.appcheck.AppCheckProviderFactory
 import com.google.firebase.appcheck.FirebaseAppCheck
+import com.google.firebase.appcheck.debug.DebugAppCheckProviderFactory
 import com.google.firebase.appcheck.playintegrity.PlayIntegrityAppCheckProviderFactory
 import io.mockk.every
 import io.mockk.mockk
@@ -72,6 +73,23 @@ class ClientIntegrityManagerTest {
         every { PlayIntegrityAppCheckProviderFactory.getInstance() } returns factory
 
         manager.initializeAppCheck(context)
+
+        verify { firebaseAppCheck.installAppCheckProviderFactory(factory) }
+    }
+
+    @Test
+    fun initializeAppCheck_whenDebug_installsDebugProvider() {
+        val context = mockk<Context>()
+        val firebaseAppCheck = mockk<FirebaseAppCheck>(relaxed = true)
+        val factory = mockk<DebugAppCheckProviderFactory>()
+
+        mockkStatic(FirebaseAppCheck::class)
+        mockkStatic(DebugAppCheckProviderFactory::class)
+
+        every { FirebaseAppCheck.getInstance() } returns firebaseAppCheck
+        every { DebugAppCheckProviderFactory.getInstance() } returns factory
+
+        manager.initializeAppCheck(context, isDebug = true)
 
         verify { firebaseAppCheck.installAppCheckProviderFactory(factory) }
     }
