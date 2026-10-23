@@ -10,7 +10,7 @@ class ComicDetailPreviewProviderTest {
         val provider = ComicDetailUiStatePreviewParameterProvider()
         val values = provider.values.toList()
 
-        assertThat(values).hasSize(4)
+        assertThat(values).hasSize(6)
 
         // 1. Loading
         assertThat(values[0].isLoading).isTrue()
@@ -28,5 +28,15 @@ class ComicDetailPreviewProviderTest {
 
         // 4. Error
         assertThat(values[3].errorMessage).isNotNull()
+
+        // 5. Populated Movie (Active Actions)
+        assertThat(values[4].movie).isNotNull()
+        assertThat(values[4].movie?.isFavorite).isTrue()
+        assertThat(values[4].movie?.isWatched).isTrue()
+
+        // 6. Populated Movie (Inactive Actions)
+        assertThat(values[5].movie).isNotNull()
+        assertThat(values[5].movie?.isFavorite).isFalse()
+        assertThat(values[5].movie?.isWatched).isFalse()
     }
 }

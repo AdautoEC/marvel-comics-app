@@ -1,5 +1,7 @@
 package com.adauto.marvel.feature.comics.preview
 
+import com.adauto.marvel.core.model.MovieCategory
+import com.adauto.marvel.core.model.SessionState
 import com.google.common.truth.Truth.assertThat
 import org.junit.Test
 
@@ -10,14 +12,15 @@ class ComicListPreviewProviderTest {
         val provider = ComicListUiStatePreviewParameterProvider()
         val values = provider.values.toList()
 
-        assertThat(values).hasSize(5)
+        assertThat(values).hasSize(6)
 
         // 1. Loading
         assertThat(values[0].isLoading).isTrue()
 
-        // 2. Populated
+        // 2. Populated (Authenticated)
         assertThat(values[1].comics).isNotEmpty()
         assertThat(values[1].isLoading).isFalse()
+        assertThat(values[1].uiState.sessionState).isInstanceOf(SessionState.Authenticated::class.java)
 
         // 3. Offline
         assertThat(values[2].uiState.isOffline).isTrue()
@@ -28,5 +31,9 @@ class ComicListPreviewProviderTest {
 
         // 5. Error
         assertThat(values[4].errorMessage).isNotNull()
+
+        // 6. Watchlist Tab
+        assertThat(values[5].uiState.selectedCategory).isEqualTo(MovieCategory.WATCHLIST)
+        assertThat(values[5].uiState.sessionState).isEqualTo(SessionState.Guest)
     }
 }

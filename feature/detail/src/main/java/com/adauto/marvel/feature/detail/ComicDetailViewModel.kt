@@ -64,7 +64,7 @@ class ComicDetailViewModel @Inject constructor(
                     _uiState.update { it.copy(movie = current.copy(isFavorite = !current.isFavorite)) }
                 }
             }
-            is ComicDetailAction.WatchedToggled -> {
+            is ComicDetailAction.WatchlistToggled, is ComicDetailAction.WatchedToggled -> {
                 val current = _uiState.value.movie ?: return
                 val summary = MovieSummary(
                     id = current.id,
@@ -75,7 +75,7 @@ class ComicDetailViewModel @Inject constructor(
                     isWatched = current.isWatched
                 )
                 viewModelScope.launch {
-                    moviesRepository.toggleWatched(summary)
+                    moviesRepository.toggleWatchlist(summary)
                     _uiState.update { it.copy(movie = current.copy(isWatched = !current.isWatched)) }
                 }
             }

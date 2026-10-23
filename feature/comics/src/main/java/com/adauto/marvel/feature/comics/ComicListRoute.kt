@@ -1,5 +1,6 @@
 package com.adauto.marvel.feature.comics
 
+import android.net.Uri
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -13,6 +14,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.paging.compose.collectAsLazyPagingItems
+import com.adauto.marvel.core.ui.util.CustomTabLauncher
 import com.adauto.marvel.core.ui.util.asString
 
 /**
@@ -39,6 +41,9 @@ fun ComicListRoute(
                     is ComicListEffect.OpenDetail -> onOpenDetail(effect.id)
                     is ComicListEffect.ShowMessage -> {
                         snackbarHostState.showSnackbar(effect.message.asString(context))
+                    }
+                    is ComicListEffect.LaunchTmdbAuth -> {
+                        CustomTabLauncher.launchPartialCustomTab(context, Uri.parse(effect.authUrl))
                     }
                 }
             }
