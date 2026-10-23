@@ -29,13 +29,13 @@ private const val TMDB_AUTH_BASE_URL = "https://www.themoviedb.org/authenticate"
 private const val TMDB_REDIRECT_URI = "marvelapp://tmdb-callback"
 
 @HiltViewModel
-class ComicListViewModel @Inject constructor(
+class MovieListViewModel @Inject constructor(
     private val moviesRepository: MoviesRepository,
     private val authRepository: AuthRepository
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(ComicListUiState())
-    val uiState: StateFlow<ComicListUiState> = _uiState.asStateFlow()
+    private val _uiState = MutableStateFlow(MovieListUiState())
+    val uiState: StateFlow<MovieListUiState> = _uiState.asStateFlow()
 
     private val _selectedCategory = MutableStateFlow(MovieCategory.POPULAR)
 
@@ -50,8 +50,8 @@ class ComicListViewModel @Inject constructor(
         }
         .cachedIn(viewModelScope)
 
-    private val _effects = Channel<ComicListEffect>(Channel.BUFFERED)
-    val effects: Flow<ComicListEffect> = _effects.receiveAsFlow()
+    private val _effects = Channel<MovieListEffect>(Channel.BUFFERED)
+    val effects: Flow<MovieListEffect> = _effects.receiveAsFlow()
 
     init {
         viewModelScope.launch {
@@ -61,49 +61,49 @@ class ComicListViewModel @Inject constructor(
         }
     }
 
-    fun onAction(action: ComicListAction) {
+    fun onAction(action: MovieListAction) {
         when (action) {
-            is ComicListAction.RefreshRequested -> {
+            is MovieListAction.RefreshRequested -> {
                 if (_uiState.value.sessionState is SessionState.Authenticated) {
                     viewModelScope.launch {
                         moviesRepository.syncCloudWithLocal()
                     }
                 }
             }
-            is ComicListAction.CategorySelected -> {
+            is MovieListAction.CategorySelected -> {
                 _selectedCategory.value = action.category
                 _uiState.update { it.copy(selectedCategory = action.category) }
             }
-            is ComicListAction.ComicClicked -> {
+            is MovieListAction.MovieClicked -> {
                 viewModelScope.launch {
-                    _effects.send(ComicListEffect.OpenDetail(action.id))
+                    _effects.send(MovieListEffect.OpenDetail(action.id))
                 }
             }
-            is ComicListAction.FavoriteToggled -> {
+            is MovieListAction.FavoriteToggled -> {
                 viewModelScope.launch {
                     moviesRepository.toggleFavorite(action.movie)
                 }
             }
-            is ComicListAction.WatchlistToggled -> {
+            is MovieListAction.WatchlistToggled -> {
                 viewModelScope.launch {
                     moviesRepository.toggleWatchlist(action.movie)
                 }
             }
-            is ComicListAction.WatchedToggled -> {
+            is MovieListAction.WatchedToggled -> {
                 viewModelScope.launch {
                     moviesRepository.toggleWatched(action.movie)
                 }
             }
-            is ComicListAction.ConnectTmdbClicked -> {
+            is MovieListAction.ConnectTmdbClicked -> {
                 viewModelScope.launch {
                     when (val result = authRepository.createRequestToken()) {
                         is Outcome.Success -> {
                             val url = "$TMDB_AUTH_BASE_URL/${result.value}?redirect_to=$TMDB_REDIRECT_URI"
-                            _effects.send(ComicListEffect.LaunchTmdbAuth(url))
+                            _effects.send(MovieListEffect.LaunchTmdbAuth(url))
                         }
                         is Outcome.Failure -> {
                             _effects.send(
-                                ComicListEffect.ShowMessage(
+                                MovieListEffect.ShowMessage(
                                     UiText.Dynamic("Não foi possível iniciar a conexão com o TMDB.")
                                 )
                             )
@@ -111,7 +111,7 @@ class ComicListViewModel @Inject constructor(
                     }
                 }
             }
-            is ComicListAction.LogoutClicked -> {
+            is MovieListAction.LogoutClicked -> {
                 viewModelScope.launch {
                     authRepository.logout()
                 }

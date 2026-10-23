@@ -52,20 +52,20 @@ import com.adauto.marvel.core.ui.component.OfflineBanner
 import com.adauto.marvel.core.ui.component.ShimmerMovieCard
 import com.adauto.marvel.feature.movies.component.GuestSyncBanner
 import com.adauto.marvel.feature.movies.component.UserSessionPill
-import com.adauto.marvel.feature.movies.preview.ComicListPreviewState
-import com.adauto.marvel.feature.movies.preview.ComicListUiStatePreviewParameterProvider
+import com.adauto.marvel.feature.movies.preview.MovieListPreviewState
+import com.adauto.marvel.feature.movies.preview.MovieListUiStatePreviewParameterProvider
 
 /**
  * Cinema Hub Movies List Screen rendering a 2-column grid of movies with UDF architecture,
- * Category filter tabs (Populares, Mais Votados, Favoritos, Assistidos), pull-to-refresh,
+ * Category filter tabs (Populares, Mais Votados, Favoritos, Quero Assistir), pull-to-refresh,
  * offline banner, and shimmer loading placeholders.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MovieListScreen(
-    uiState: ComicListUiState,
+    uiState: MovieListUiState,
     movies: LazyPagingItems<MovieSummary>,
-    onAction: (ComicListAction) -> Unit,
+    onAction: (MovieListAction) -> Unit,
     modifier: Modifier = Modifier,
     gridState: LazyGridState = rememberLazyGridState(),
     snackbarHostState: SnackbarHostState = remember { SnackbarHostState() }
@@ -88,8 +88,8 @@ fun MovieListScreen(
                     actions = {
                         UserSessionPill(
                             sessionState = uiState.sessionState,
-                            onConnectClicked = { onAction(ComicListAction.ConnectTmdbClicked) },
-                            onLogoutClicked = { onAction(ComicListAction.LogoutClicked) },
+                            onConnectClicked = { onAction(MovieListAction.ConnectTmdbClicked) },
+                            onLogoutClicked = { onAction(MovieListAction.LogoutClicked) },
                             modifier = Modifier.padding(end = 12.dp)
                         )
                     },
@@ -111,7 +111,7 @@ fun MovieListScreen(
                         val selected = category == uiState.selectedCategory
                         Tab(
                             selected = selected,
-                            onClick = { onAction(ComicListAction.CategorySelected(category)) },
+                            onClick = { onAction(MovieListAction.CategorySelected(category)) },
                             text = {
                                 Text(
                                     text = category.displayName,
@@ -125,34 +125,34 @@ fun MovieListScreen(
                     }
                 }
 
-                // Guest Sync Banner when in Favorites or Watchlist and user is Guest
-                val showGuestSyncBanner = uiState.sessionState is SessionState.Guest &&
-                    (uiState.selectedCategory == MovieCategory.FAVORITES || uiState.selectedCategory == MovieCategory.WATCHLIST)
+                // Offline Notice
+                if (uiState.isOffline) {
+                    OfflineBanner()
+                }
 
-                GuestSyncBanner(
-                    onConnectClicked = { onAction(ComicListAction.ConnectTmdbClicked) },
-                    visible = showGuestSyncBanner
-                )
-
-                OfflineBanner(
-                    visible = uiState.isOffline,
-                    modifier = Modifier.testTag("OfflineBanner")
-                )
+                // Guest Sync Banner for offline saved libraries
+                if (uiState.selectedCategory in setOf(MovieCategory.FAVORITES, MovieCategory.WATCHLIST)) {
+                    GuestSyncBanner(
+                        visible = uiState.sessionState is SessionState.Guest,
+                        onConnectClicked = { onAction(MovieListAction.ConnectTmdbClicked) },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
             }
         },
-        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         containerColor = MarvelColors.DarkBackground
-    ) { innerPadding ->
+    ) { paddingValues ->
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
+                .padding(paddingValues)
         ) {
             val isRefreshing = uiState.isRefreshing || (movies.loadState.refresh is LoadState.Loading && movies.itemCount > 0)
             PullToRefreshBox(
                 isRefreshing = isRefreshing,
                 onRefresh = {
-                    onAction(ComicListAction.RefreshRequested)
+                    onAction(MovieListAction.RefreshRequested)
                     movies.refresh()
                 },
                 modifier = Modifier.fillMaxSize()
@@ -167,7 +167,7 @@ fun MovieListScreen(
                             verticalArrangement = Arrangement.spacedBy(16.dp),
                             modifier = Modifier
                                 .fillMaxSize()
-                                .testTag("ComicListShimmerGrid")
+                                .testTag("MovieListShimmerGrid")
                         ) {
                             items(6) {
                                 ShimmerMovieCard()
@@ -185,7 +185,7 @@ fun MovieListScreen(
                             ErrorState(
                                 message = formatPagingError(error, "Não foi possível carregar os filmes."),
                                 onRetry = {
-                                    onAction(ComicListAction.RefreshRequested)
+                                    onAction(MovieListAction.RefreshRequested)
                                     movies.retry()
                                 },
                                 modifier = Modifier.testTag("RefreshErrorState")
@@ -221,7 +221,7 @@ fun MovieListScreen(
                             verticalArrangement = Arrangement.spacedBy(16.dp),
                             modifier = Modifier
                                 .fillMaxSize()
-                                .testTag("ComicListGrid")
+                                .testTag("MovieListGrid")
                         ) {
                             items(
                                 count = movies.itemCount,
@@ -231,9 +231,9 @@ fun MovieListScreen(
                                 if (movie != null) {
                                     MovieCard(
                                         movie = movie,
-                                        onClick = { onAction(ComicListAction.ComicClicked(movie.id)) },
-                                        onFavoriteToggle = { onAction(ComicListAction.FavoriteToggled(movie)) },
-                                        modifier = Modifier.testTag("ComicCard_${movie.id}")
+                                        onClick = { onAction(MovieListAction.MovieClicked(movie.id)) },
+                                        onFavoriteToggle = { onAction(MovieListAction.FavoriteToggled(movie)) },
+                                        modifier = Modifier.testTag("MovieCard_${movie.id}")
                                     )
                                 }
                             }
@@ -297,17 +297,17 @@ internal fun formatPagingError(throwable: Throwable, fallback: String): UiText {
 @ThemePreviews
 @DevicePreviews
 @Composable
-private fun ComicListScreenPreview(
-    @PreviewParameter(ComicListUiStatePreviewParameterProvider::class) previewState: ComicListPreviewState
+private fun MovieListScreenPreview(
+    @PreviewParameter(MovieListUiStatePreviewParameterProvider::class) previewState: MovieListPreviewState
 ) {
     MarvelTheme {
-        ComicListContentPreview(previewState = previewState)
+        MovieListContentPreview(previewState = previewState)
     }
 }
 
 @Composable
-internal fun ComicListContentPreview(
-    previewState: ComicListPreviewState
+internal fun MovieListContentPreview(
+    previewState: MovieListPreviewState
 ) {
     Box(
         modifier = Modifier

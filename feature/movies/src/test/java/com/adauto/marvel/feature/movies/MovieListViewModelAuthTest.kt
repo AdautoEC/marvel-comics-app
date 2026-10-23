@@ -24,7 +24,7 @@ import org.junit.Before
 import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
-class ComicListViewModelAuthTest {
+class MovieListViewModelAuthTest {
 
     private val testDispatcher = StandardTestDispatcher()
     private val moviesRepository: MoviesRepository = mockk(relaxed = true)
@@ -50,15 +50,15 @@ class ComicListViewModelAuthTest {
     fun clicking_connect_triggers_OpenAuthUrl_effect_with_request_token() = runTest {
         coEvery { authRepository.createRequestToken() } returns Outcome.Success("tok_456")
 
-        val viewModel = ComicListViewModel(moviesRepository, authRepository)
+        val viewModel = MovieListViewModel(moviesRepository, authRepository)
 
         viewModel.effects.test {
-            viewModel.onAction(ComicListAction.ConnectTmdbClicked)
+            viewModel.onAction(MovieListAction.ConnectTmdbClicked)
             testDispatcher.scheduler.advanceUntilIdle()
 
             val effect = awaitItem()
-            assertThat(effect).isInstanceOf(ComicListEffect.LaunchTmdbAuth::class.java)
-            assertThat((effect as ComicListEffect.LaunchTmdbAuth).authUrl)
+            assertThat(effect).isInstanceOf(MovieListEffect.LaunchTmdbAuth::class.java)
+            assertThat((effect as MovieListEffect.LaunchTmdbAuth).authUrl)
                 .contains("themoviedb.org/authenticate/tok_456")
             assertThat(effect.authUrl)
                 .contains("redirect_to=marvelapp://tmdb-callback")
@@ -67,9 +67,9 @@ class ComicListViewModelAuthTest {
 
     @Test
     fun clicking_logout_calls_authRepository_logout() = runTest {
-        val viewModel = ComicListViewModel(moviesRepository, authRepository)
+        val viewModel = MovieListViewModel(moviesRepository, authRepository)
 
-        viewModel.onAction(ComicListAction.LogoutClicked)
+        viewModel.onAction(MovieListAction.LogoutClicked)
         testDispatcher.scheduler.advanceUntilIdle()
 
         coVerify(exactly = 1) { authRepository.logout() }
@@ -77,7 +77,7 @@ class ComicListViewModelAuthTest {
 
     @Test
     fun sessionState_updates_flow_into_uiState() = runTest {
-        val viewModel = ComicListViewModel(moviesRepository, authRepository)
+        val viewModel = MovieListViewModel(moviesRepository, authRepository)
         testDispatcher.scheduler.advanceUntilIdle()
 
         assertThat(viewModel.uiState.value.sessionState).isEqualTo(SessionState.Guest)
@@ -96,10 +96,10 @@ class ComicListViewModelAuthTest {
 
     @Test
     fun watchlistToggled_calls_moviesRepository_toggleWatchlist() = runTest {
-        val viewModel = ComicListViewModel(moviesRepository, authRepository)
+        val viewModel = MovieListViewModel(moviesRepository, authRepository)
         val movie = MovieSummary(id = 42, title = "Spider-Man", posterUrl = null)
 
-        viewModel.onAction(ComicListAction.WatchlistToggled(movie))
+        viewModel.onAction(MovieListAction.WatchlistToggled(movie))
         testDispatcher.scheduler.advanceUntilIdle()
 
         coVerify(exactly = 1) { moviesRepository.toggleWatchlist(movie) }
@@ -112,10 +112,10 @@ class ComicListViewModelAuthTest {
             username = "spiderfan",
             sessionId = "sess_789"
         )
-        val viewModel = ComicListViewModel(moviesRepository, authRepository)
+        val viewModel = MovieListViewModel(moviesRepository, authRepository)
         testDispatcher.scheduler.advanceUntilIdle()
 
-        viewModel.onAction(ComicListAction.RefreshRequested)
+        viewModel.onAction(MovieListAction.RefreshRequested)
         testDispatcher.scheduler.advanceUntilIdle()
 
         coVerify(exactly = 1) { moviesRepository.syncCloudWithLocal() }
@@ -124,10 +124,10 @@ class ComicListViewModelAuthTest {
     @Test
     fun refreshRequested_when_guest_does_not_trigger_syncCloudWithLocal() = runTest {
         sessionStateFlow.value = SessionState.Guest
-        val viewModel = ComicListViewModel(moviesRepository, authRepository)
+        val viewModel = MovieListViewModel(moviesRepository, authRepository)
         testDispatcher.scheduler.advanceUntilIdle()
 
-        viewModel.onAction(ComicListAction.RefreshRequested)
+        viewModel.onAction(MovieListAction.RefreshRequested)
         testDispatcher.scheduler.advanceUntilIdle()
 
         coVerify(exactly = 0) { moviesRepository.syncCloudWithLocal() }

@@ -4,25 +4,25 @@ import androidx.compose.ui.tooling.preview.PreviewParameterProvider
 import com.adauto.marvel.core.model.MovieCategory
 import com.adauto.marvel.core.model.MovieSummary
 import com.adauto.marvel.core.model.SessionState
-import com.adauto.marvel.feature.movies.ComicListUiState
+import com.adauto.marvel.feature.movies.MovieListUiState
 
-data class ComicListPreviewState(
-    val uiState: ComicListUiState,
+data class MovieListPreviewState(
+    val uiState: MovieListUiState,
     val movies: List<MovieSummary> = emptyList(),
     val isLoading: Boolean = false,
     val errorMessage: String? = null
 )
 
-class ComicListUiStatePreviewParameterProvider : PreviewParameterProvider<ComicListPreviewState> {
-    override val values: Sequence<ComicListPreviewState> = sequenceOf(
+class MovieListUiStatePreviewParameterProvider : PreviewParameterProvider<MovieListPreviewState> {
+    override val values: Sequence<MovieListPreviewState> = sequenceOf(
         // 1. Loading / Shimmer State
-        ComicListPreviewState(
-            uiState = ComicListUiState(),
+        MovieListPreviewState(
+            uiState = MovieListUiState(),
             isLoading = true
         ),
         // 2. Populated Success State (Authenticated)
-        ComicListPreviewState(
-            uiState = ComicListUiState(
+        MovieListPreviewState(
+            uiState = MovieListUiState(
                 sessionState = SessionState.Authenticated(
                     accountId = 42,
                     username = "adautocine",
@@ -60,8 +60,8 @@ class ComicListUiStatePreviewParameterProvider : PreviewParameterProvider<ComicL
             )
         ),
         // 3. Offline State with Movies
-        ComicListPreviewState(
-            uiState = ComicListUiState(isOffline = true),
+        MovieListPreviewState(
+            uiState = MovieListUiState(isOffline = true),
             movies = listOf(
                 MovieSummary(
                     id = 1,
@@ -75,18 +75,18 @@ class ComicListUiStatePreviewParameterProvider : PreviewParameterProvider<ComicL
             )
         ),
         // 4. Empty State
-        ComicListPreviewState(
-            uiState = ComicListUiState(),
+        MovieListPreviewState(
+            uiState = MovieListUiState(),
             movies = emptyList()
         ),
         // 5. Error State
-        ComicListPreviewState(
-            uiState = ComicListUiState(),
+        MovieListPreviewState(
+            uiState = MovieListUiState(),
             errorMessage = "Limite de requisições excedido. Tente novamente mais tarde."
         ),
         // 6. Watchlist Tab (Guest)
-        ComicListPreviewState(
-            uiState = ComicListUiState(
+        MovieListPreviewState(
+            uiState = MovieListUiState(
                 selectedCategory = MovieCategory.WATCHLIST,
                 sessionState = SessionState.Guest
             )

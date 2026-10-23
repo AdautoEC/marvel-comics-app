@@ -5,11 +5,11 @@ import com.adauto.marvel.core.model.SessionState
 import com.google.common.truth.Truth.assertThat
 import org.junit.Test
 
-class ComicListPreviewProviderTest {
+class MovieListPreviewProviderTest {
 
     @Test
-    fun comicListUiStatePreviewParameterProvider_suppliesAllCoreUiStates() {
-        val provider = ComicListUiStatePreviewParameterProvider()
+    fun movieListUiStatePreviewParameterProvider_suppliesAllCoreUiStates() {
+        val provider = MovieListUiStatePreviewParameterProvider()
         val values = provider.values.toList()
 
         assertThat(values).hasSize(6)

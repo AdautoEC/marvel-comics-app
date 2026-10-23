@@ -10,7 +10,6 @@ import com.google.common.truth.Truth.assertThat
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
-import io.mockk.verify
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -25,7 +24,7 @@ import org.junit.Before
 import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
-class ComicListViewModelTest {
+class MovieListViewModelTest {
     private val testDispatcher = StandardTestDispatcher()
     private val moviesRepository: MoviesRepository = mockk(relaxed = true)
     private val authRepository: AuthRepository = mockk(relaxed = true)
@@ -46,7 +45,7 @@ class ComicListViewModelTest {
 
     @Test
     fun initialUiState_hasExpectedDefaults() = runTest {
-        val viewModel = ComicListViewModel(moviesRepository, authRepository)
+        val viewModel = MovieListViewModel(moviesRepository, authRepository)
         val state = viewModel.uiState.value
         assertThat(state.isOffline).isFalse()
         assertThat(state.isRefreshing).isFalse()
@@ -55,35 +54,35 @@ class ComicListViewModelTest {
 
     @Test
     fun categorySelected_updatesUiState() = runTest {
-        val viewModel = ComicListViewModel(moviesRepository, authRepository)
-        viewModel.onAction(ComicListAction.CategorySelected(MovieCategory.TOP_RATED))
+        val viewModel = MovieListViewModel(moviesRepository, authRepository)
+        viewModel.onAction(MovieListAction.CategorySelected(MovieCategory.TOP_RATED))
         assertThat(viewModel.uiState.value.selectedCategory).isEqualTo(MovieCategory.TOP_RATED)
     }
 
     @Test
-    fun comicClickedAction_emitsOpenDetailEffect_viaBufferedChannel() = runTest {
-        val viewModel = ComicListViewModel(moviesRepository, authRepository)
+    fun movieClickedAction_emitsOpenDetailEffect_viaBufferedChannel() = runTest {
+        val viewModel = MovieListViewModel(moviesRepository, authRepository)
         viewModel.effects.test {
-            viewModel.onAction(ComicListAction.ComicClicked(101))
+            viewModel.onAction(MovieListAction.MovieClicked(101))
             val effect = awaitItem()
-            assertEquals(ComicListEffect.OpenDetail(101), effect)
+            assertEquals(MovieListEffect.OpenDetail(101), effect)
         }
     }
 
     @Test
     fun favoriteToggled_callsRepositoryToggleFavorite() = runTest {
-        val viewModel = ComicListViewModel(moviesRepository, authRepository)
+        val viewModel = MovieListViewModel(moviesRepository, authRepository)
         val sampleMovie = MovieSummary(id = 1, title = "Iron Man", posterUrl = null, voteAverage = 8.0)
-        viewModel.onAction(ComicListAction.FavoriteToggled(sampleMovie))
+        viewModel.onAction(MovieListAction.FavoriteToggled(sampleMovie))
         testDispatcher.scheduler.advanceUntilIdle()
         coVerify { moviesRepository.toggleFavorite(sampleMovie) }
     }
 
     @Test
     fun watchedToggled_callsRepositoryToggleWatched() = runTest {
-        val viewModel = ComicListViewModel(moviesRepository, authRepository)
+        val viewModel = MovieListViewModel(moviesRepository, authRepository)
         val sampleMovie = MovieSummary(id = 1, title = "Iron Man", posterUrl = null, voteAverage = 8.0)
-        viewModel.onAction(ComicListAction.WatchedToggled(sampleMovie))
+        viewModel.onAction(MovieListAction.WatchedToggled(sampleMovie))
         testDispatcher.scheduler.advanceUntilIdle()
         coVerify { moviesRepository.toggleWatched(sampleMovie) }
     }

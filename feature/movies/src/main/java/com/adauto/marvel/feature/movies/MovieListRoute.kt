@@ -20,13 +20,13 @@ import com.adauto.marvel.core.ui.util.asString
 /**
  * Entry point route for the Cinema Hub Movies List screen.
  * Collects UI state and paginated movies, listens for one-off effects via buffered channel,
- * and delegates actions to the [ComicListViewModel].
+ * and delegates actions to the [MovieListViewModel].
  */
 @Composable
-fun ComicListRoute(
+fun MovieListRoute(
     onOpenDetail: (Int) -> Unit,
     modifier: Modifier = Modifier,
-    viewModel: ComicListViewModel = hiltViewModel()
+    viewModel: MovieListViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val movies = viewModel.movies.collectAsLazyPagingItems()
@@ -38,11 +38,11 @@ fun ComicListRoute(
         lifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
             viewModel.effects.collect { effect ->
                 when (effect) {
-                    is ComicListEffect.OpenDetail -> onOpenDetail(effect.id)
-                    is ComicListEffect.ShowMessage -> {
+                    is MovieListEffect.OpenDetail -> onOpenDetail(effect.id)
+                    is MovieListEffect.ShowMessage -> {
                         snackbarHostState.showSnackbar(effect.message.asString(context))
                     }
-                    is ComicListEffect.LaunchTmdbAuth -> {
+                    is MovieListEffect.LaunchTmdbAuth -> {
                         CustomTabLauncher.launchPartialCustomTab(context, Uri.parse(effect.authUrl))
                     }
                 }

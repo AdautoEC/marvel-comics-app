@@ -15,7 +15,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 
-class ComicListScreenTest {
+class MovieListScreenTest {
 
     @get:Rule
     val composeTestRule = createComposeRule()
@@ -33,7 +33,7 @@ class ComicListScreenTest {
             val pagingFlow = remember { flowOf(PagingData.from(sampleMovies)) }
             val pagingItems = pagingFlow.collectAsLazyPagingItems()
             MovieListScreen(
-                uiState = ComicListUiState(),
+                uiState = MovieListUiState(),
                 movies = pagingItems,
                 onAction = {}
             )
@@ -47,12 +47,12 @@ class ComicListScreenTest {
     }
 
     @Test
-    fun comicListScreen_displaysOfflineBannerWhenOffline() {
+    fun movieListScreen_displaysOfflineBannerWhenOffline() {
         composeTestRule.setContent {
             val pagingFlow = remember { flowOf(PagingData.from(sampleMovies)) }
             val pagingItems = pagingFlow.collectAsLazyPagingItems()
             MovieListScreen(
-                uiState = ComicListUiState(isOffline = true),
+                uiState = MovieListUiState(isOffline = true),
                 movies = pagingItems,
                 onAction = {}
             )
@@ -62,12 +62,12 @@ class ComicListScreenTest {
     }
 
     @Test
-    fun comicListScreen_displaysAttributionFooter() {
+    fun movieListScreen_displaysAttributionFooter() {
         composeTestRule.setContent {
             val pagingFlow = remember { flowOf(PagingData.from(sampleMovies)) }
             val pagingItems = pagingFlow.collectAsLazyPagingItems()
             MovieListScreen(
-                uiState = ComicListUiState(attribution = "Este produto usa a API TMDB, mas não é endossado ou certificado pelo TMDB."),
+                uiState = MovieListUiState(attribution = "Este produto usa a API TMDB, mas não é endossado ou certificado pelo TMDB."),
                 movies = pagingItems,
                 onAction = {}
             )
@@ -77,17 +77,17 @@ class ComicListScreenTest {
     }
 
     @Test
-    fun comicListScreen_clickingMovie_triggersComicClickedAction() {
+    fun movieListScreen_clickingMovie_triggersMovieClickedAction() {
         var clickedId: Int? = null
 
         composeTestRule.setContent {
             val pagingFlow = remember { flowOf(PagingData.from(sampleMovies)) }
             val pagingItems = pagingFlow.collectAsLazyPagingItems()
             MovieListScreen(
-                uiState = ComicListUiState(),
+                uiState = MovieListUiState(),
                 movies = pagingItems,
                 onAction = { action ->
-                    if (action is ComicListAction.ComicClicked) {
+                    if (action is MovieListAction.MovieClicked) {
                         clickedId = action.id
                     }
                 }
