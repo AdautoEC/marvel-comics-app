@@ -58,6 +58,7 @@ dependencies {
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.turbine)
     testImplementation(libs.truth)
+    testImplementation(libs.paging.testing)
 
     debugImplementation(libs.androidx.compose.ui.test.manifest)
 

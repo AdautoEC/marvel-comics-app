@@ -1,5 +1,7 @@
 package com.adauto.marvel.feature.movies
 
+import androidx.paging.PagingData
+import androidx.paging.testing.asSnapshot
 import app.cash.turbine.test
 import com.adauto.marvel.core.data.repository.AuthRepository
 import com.adauto.marvel.core.data.repository.MoviesRepository
@@ -14,6 +16,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.take
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -124,5 +128,67 @@ class MovieListViewModelTest {
         testDispatcher.scheduler.advanceUntilIdle()
 
         coVerify { moviesRepository.syncCloudWithLocal() }
+    }
+
+    @Test
+    fun searchQueryChanged_updatesUiStateSearchQuery() = runTest {
+        val viewModel = MovieListViewModel(moviesRepository, authRepository)
+        viewModel.onAction(MovieListAction.SearchQueryChanged("Duna"))
+        assertThat(viewModel.uiState.value.searchQuery).isEqualTo("Duna")
+    }
+
+    @Test
+    fun toggleSearchClicked_togglesSearchActiveStateAndClearsQueryWhenDeactivating() = runTest {
+        val viewModel = MovieListViewModel(moviesRepository, authRepository)
+
+        // Initial: inactive
+        assertThat(viewModel.uiState.value.isSearchActive).isFalse()
+
+        // Toggle on
+        viewModel.onAction(MovieListAction.ToggleSearchClicked)
+        assertThat(viewModel.uiState.value.isSearchActive).isTrue()
+
+        // Set query
+        viewModel.onAction(MovieListAction.SearchQueryChanged("Duna"))
+        assertThat(viewModel.uiState.value.searchQuery).isEqualTo("Duna")
+
+        // Toggle off: should deactivate and reset query
+        viewModel.onAction(MovieListAction.ToggleSearchClicked)
+        assertThat(viewModel.uiState.value.isSearchActive).isFalse()
+        assertThat(viewModel.uiState.value.searchQuery).isEmpty()
+    }
+
+    @Test
+    fun categorySelected_resetsSearchQueryAndActiveState() = runTest {
+        val viewModel = MovieListViewModel(moviesRepository, authRepository)
+
+        viewModel.onAction(MovieListAction.ToggleSearchClicked)
+        viewModel.onAction(MovieListAction.SearchQueryChanged("Duna"))
+        assertThat(viewModel.uiState.value.isSearchActive).isTrue()
+        assertThat(viewModel.uiState.value.searchQuery).isEqualTo("Duna")
+
+        viewModel.onAction(MovieListAction.CategorySelected(MovieCategory.TOP_RATED))
+        assertThat(viewModel.uiState.value.isSearchActive).isFalse()
+        assertThat(viewModel.uiState.value.searchQuery).isEmpty()
+    }
+
+    @Test
+    fun searchQuery_filtersMoviesStreamByTitleCaseInsensitive() = runTest {
+        val movie1 = MovieSummary(id = 1, title = "Clube da Luta", posterUrl = null, voteAverage = 8.8)
+        val movie2 = MovieSummary(id = 2, title = "Pulp Fiction", posterUrl = null, voteAverage = 8.9)
+        val movie3 = MovieSummary(id = 3, title = "Clube dos Cinco", posterUrl = null, voteAverage = 7.8)
+
+        every { moviesRepository.movies(MovieCategory.POPULAR) } returns flowOf(
+            PagingData.from(listOf(movie1, movie2, movie3))
+        )
+
+        val viewModel = MovieListViewModel(moviesRepository, authRepository)
+
+        // Search for "clube" (lowercase, partial)
+        viewModel.onAction(MovieListAction.SearchQueryChanged("clube"))
+
+        val filteredMovies = viewModel.moviesFlow.take(1).asSnapshot()
+        assertThat(filteredMovies).hasSize(2)
+        assertThat(filteredMovies.map { it.title }).containsExactly("Clube da Luta", "Clube dos Cinco")
     }
 }

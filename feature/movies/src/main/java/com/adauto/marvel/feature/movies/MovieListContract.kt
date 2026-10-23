@@ -13,7 +13,9 @@ data class MovieListUiState(
     val isRefreshing: Boolean = false,
     val selectedCategory: MovieCategory = MovieCategory.POPULAR,
     val sessionState: SessionState = SessionState.Guest,
-    val attribution: String? = DEFAULT_ATTRIBUTION_TEXT
+    val attribution: String? = DEFAULT_ATTRIBUTION_TEXT,
+    val searchQuery: String = "",
+    val isSearchActive: Boolean = false
 )
 
 sealed interface MovieListAction {
@@ -25,6 +27,8 @@ sealed interface MovieListAction {
     data class WatchedToggled(val movie: MovieSummary) : MovieListAction
     data object ConnectTmdbClicked : MovieListAction
     data object LogoutClicked : MovieListAction
+    data class SearchQueryChanged(val query: String) : MovieListAction
+    data object ToggleSearchClicked : MovieListAction
 }
 
 sealed interface MovieListEffect {

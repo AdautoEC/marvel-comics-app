@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.paging.PagingData
 import androidx.paging.cachedIn
+import androidx.paging.filter
 import com.adauto.marvel.core.data.repository.AuthRepository
 import com.adauto.marvel.core.data.repository.MoviesRepository
 import com.adauto.marvel.core.model.MovieCategory
@@ -20,6 +21,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.receiveAsFlow
@@ -40,17 +42,31 @@ class MovieListViewModel @Inject constructor(
     val uiState: StateFlow<MovieListUiState> = _uiState.asStateFlow()
 
     private val _selectedCategory = MutableStateFlow(MovieCategory.POPULAR)
+    private val _searchQuery = MutableStateFlow("")
+    private val _isSearchActive = MutableStateFlow(false)
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    val movies: Flow<PagingData<MovieSummary>> = _selectedCategory
-        .flatMapLatest { category ->
+    internal val moviesFlow: Flow<PagingData<MovieSummary>> = combine(
+        _selectedCategory.flatMapLatest { category ->
             when (category) {
                 MovieCategory.FAVORITES -> moviesRepository.observeFavorites().map { PagingData.from(it) }
                 MovieCategory.WATCHLIST -> moviesRepository.observeWatched().map { PagingData.from(it) }
                 else -> moviesRepository.movies(category)
             }
+        },
+        _searchQuery
+    ) { pagingData, query ->
+        val trimmed = query.trim()
+        if (trimmed.isBlank()) {
+            pagingData
+        } else {
+            pagingData.filter { movie ->
+                movie.title.contains(trimmed, ignoreCase = true)
+            }
         }
-        .cachedIn(viewModelScope)
+    }
+
+    val movies: Flow<PagingData<MovieSummary>> = moviesFlow.cachedIn(viewModelScope)
 
     private val _effects = Channel<MovieListEffect>(Channel.BUFFERED)
     val effects: Flow<MovieListEffect> = _effects.receiveAsFlow()
@@ -82,8 +98,33 @@ class MovieListViewModel @Inject constructor(
                 }
             }
             is MovieListAction.CategorySelected -> {
+                _searchQuery.value = ""
+                _isSearchActive.value = false
                 _selectedCategory.value = action.category
-                _uiState.update { it.copy(selectedCategory = action.category) }
+                _uiState.update {
+                    it.copy(
+                        selectedCategory = action.category,
+                        searchQuery = "",
+                        isSearchActive = false
+                    )
+                }
+            }
+            is MovieListAction.SearchQueryChanged -> {
+                _searchQuery.value = action.query
+                _uiState.update { it.copy(searchQuery = action.query) }
+            }
+            is MovieListAction.ToggleSearchClicked -> {
+                val nextActive = !_uiState.value.isSearchActive
+                _isSearchActive.value = nextActive
+                if (!nextActive) {
+                    _searchQuery.value = ""
+                }
+                _uiState.update {
+                    it.copy(
+                        isSearchActive = nextActive,
+                        searchQuery = if (!nextActive) "" else it.searchQuery
+                    )
+                }
             }
             is MovieListAction.MovieClicked -> {
                 viewModelScope.launch {
