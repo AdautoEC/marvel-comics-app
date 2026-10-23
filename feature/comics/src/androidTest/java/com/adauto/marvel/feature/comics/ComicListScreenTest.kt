@@ -9,7 +9,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.paging.PagingData
 import androidx.paging.compose.collectAsLazyPagingItems
-import com.adauto.marvel.core.model.ComicSummary
+import com.adauto.marvel.core.model.MovieSummary
 import kotlinx.coroutines.flow.flowOf
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -20,9 +20,9 @@ class ComicListScreenTest {
     @get:Rule
     val composeTestRule = createComposeRule()
 
-    private val sampleComics = listOf(
-        ComicSummary(id = 101, title = "The Amazing Spider-Man #1", issueNumber = "#1", coverUrl = null),
-        ComicSummary(id = 102, title = "Iron Man #1", issueNumber = "#1", coverUrl = null)
+    private val sampleMovies = listOf(
+        MovieSummary(id = 101, title = "Clube da Luta", posterUrl = null),
+        MovieSummary(id = 102, title = "Inception", posterUrl = null)
     )
 
     @Test
@@ -30,11 +30,11 @@ class ComicListScreenTest {
         val restorationTester = StateRestorationTester(composeTestRule)
 
         restorationTester.setContent {
-            val pagingFlow = remember { flowOf(PagingData.from(sampleComics)) }
+            val pagingFlow = remember { flowOf(PagingData.from(sampleMovies)) }
             val pagingItems = pagingFlow.collectAsLazyPagingItems()
-            ComicListScreen(
+            MovieListScreen(
                 uiState = ComicListUiState(),
-                comics = pagingItems,
+                movies = pagingItems,
                 onAction = {}
             )
         }
@@ -43,17 +43,17 @@ class ComicListScreenTest {
         restorationTester.emulateSavedInstanceStateRestore()
 
         // Content remains restored and visible
-        composeTestRule.onNodeWithText("The Amazing Spider-Man #1").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Clube da Luta").assertIsDisplayed()
     }
 
     @Test
     fun comicListScreen_displaysOfflineBannerWhenOffline() {
         composeTestRule.setContent {
-            val pagingFlow = remember { flowOf(PagingData.from(sampleComics)) }
+            val pagingFlow = remember { flowOf(PagingData.from(sampleMovies)) }
             val pagingItems = pagingFlow.collectAsLazyPagingItems()
-            ComicListScreen(
+            MovieListScreen(
                 uiState = ComicListUiState(isOffline = true),
-                comics = pagingItems,
+                movies = pagingItems,
                 onAction = {}
             )
         }
@@ -64,28 +64,28 @@ class ComicListScreenTest {
     @Test
     fun comicListScreen_displaysAttributionFooter() {
         composeTestRule.setContent {
-            val pagingFlow = remember { flowOf(PagingData.from(sampleComics)) }
+            val pagingFlow = remember { flowOf(PagingData.from(sampleMovies)) }
             val pagingItems = pagingFlow.collectAsLazyPagingItems()
-            ComicListScreen(
-                uiState = ComicListUiState(attribution = "Data provided by Marvel. © 2026 MARVEL"),
-                comics = pagingItems,
+            MovieListScreen(
+                uiState = ComicListUiState(attribution = "Este produto usa a API TMDB, mas não é endossado ou certificado pelo TMDB."),
+                movies = pagingItems,
                 onAction = {}
             )
         }
 
-        composeTestRule.onNodeWithText("Data provided by Marvel. © 2026 MARVEL").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Este produto usa a API TMDB, mas não é endossado ou certificado pelo TMDB.").assertIsDisplayed()
     }
 
     @Test
-    fun comicListScreen_clickingComic_triggersComicClickedAction() {
+    fun comicListScreen_clickingMovie_triggersComicClickedAction() {
         var clickedId: Int? = null
 
         composeTestRule.setContent {
-            val pagingFlow = remember { flowOf(PagingData.from(sampleComics)) }
+            val pagingFlow = remember { flowOf(PagingData.from(sampleMovies)) }
             val pagingItems = pagingFlow.collectAsLazyPagingItems()
-            ComicListScreen(
+            MovieListScreen(
                 uiState = ComicListUiState(),
-                comics = pagingItems,
+                movies = pagingItems,
                 onAction = { action ->
                     if (action is ComicListAction.ComicClicked) {
                         clickedId = action.id
@@ -94,7 +94,7 @@ class ComicListScreenTest {
             )
         }
 
-        composeTestRule.onNodeWithText("The Amazing Spider-Man #1").performClick()
+        composeTestRule.onNodeWithText("Clube da Luta").performClick()
         assertEquals(101, clickedId)
     }
 }

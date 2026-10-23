@@ -37,7 +37,7 @@ class MovieListUiTest {
     private val sampleMovies = (1..20).map { id ->
         MovieSummary(
             id = id,
-            title = "Filme Marvel #$id",
+            title = "Filme #$id",
             posterUrl = null,
             releaseDate = "2024-01-01",
             voteAverage = 8.5
@@ -58,14 +58,14 @@ class MovieListUiTest {
         }
 
         // Initial items are visible
-        composeTestRule.onNodeWithText("Filme Marvel #1").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Filme #1").assertIsDisplayed()
 
         // Scroll down in grid to the 18th movie
         composeTestRule.onNodeWithTag("ComicListGrid")
             .performScrollToIndex(18)
 
         // Item 18 is now scrolled into view and visible
-        composeTestRule.onNodeWithText("Filme Marvel #18").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Filme #18").assertIsDisplayed()
     }
 
     @Test

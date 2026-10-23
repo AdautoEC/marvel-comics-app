@@ -1,9 +1,6 @@
 package com.adauto.marvel.core.network.di
 
-import com.adauto.marvel.core.network.api.MarvelApi
 import com.adauto.marvel.core.network.api.TmdbApi
-import com.adauto.marvel.core.network.interceptor.MarvelAuthInterceptor
-import com.adauto.marvel.core.network.interceptor.MarvelAuthenticator
 import com.adauto.marvel.core.network.interceptor.TmdbAuthInterceptor
 import com.adauto.marvel.core.network.telemetry.RedactingHttpLoggingInterceptor
 import com.skydoves.sandwich.retrofit.adapters.ApiResponseCallAdapterFactory
@@ -22,17 +19,12 @@ import javax.inject.Singleton
 
 @Qualifier
 @Retention(AnnotationRetention.BINARY)
-annotation class MarvelOkHttpClient
-
-@Qualifier
-@Retention(AnnotationRetention.BINARY)
 annotation class TmdbOkHttpClient
 
 @Module
 @InstallIn(SingletonComponent::class)
 object NetworkModule {
 
-    const val MARVEL_BASE_URL = "https://gateway.marvel.com/"
     const val TMDB_BASE_URL = "https://api.themoviedb.org/"
 
     @Provides
@@ -42,22 +34,6 @@ object NetworkModule {
             ignoreUnknownKeys = true
             coerceInputValues = true
         }
-    }
-
-    @Provides
-    @Singleton
-    @MarvelOkHttpClient
-    fun provideMarvelOkHttpClient(
-        authInterceptor: MarvelAuthInterceptor,
-        authenticator: MarvelAuthenticator
-    ): OkHttpClient {
-        return OkHttpClient.Builder()
-            .connectTimeout(15, TimeUnit.SECONDS)
-            .readTimeout(20, TimeUnit.SECONDS)
-            .addInterceptor(authInterceptor)
-            .addInterceptor(RedactingHttpLoggingInterceptor())
-            .authenticator(authenticator)
-            .build()
     }
 
     @Provides
@@ -92,20 +68,5 @@ object NetworkModule {
     @Singleton
     fun provideTmdbApi(retrofit: Retrofit): TmdbApi {
         return retrofit.create(TmdbApi::class.java)
-    }
-
-    @Provides
-    @Singleton
-    fun provideMarvelApi(
-        @MarvelOkHttpClient okHttpClient: OkHttpClient,
-        json: Json
-    ): MarvelApi {
-        return Retrofit.Builder()
-            .baseUrl(MARVEL_BASE_URL)
-            .client(okHttpClient)
-            .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
-            .addCallAdapterFactory(ApiResponseCallAdapterFactory.create())
-            .build()
-            .create(MarvelApi::class.java)
     }
 }

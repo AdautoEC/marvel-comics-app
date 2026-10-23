@@ -24,7 +24,7 @@ object ImageClientModule {
         return OkHttpClient.Builder()
             .connectTimeout(15, TimeUnit.SECONDS)
             .readTimeout(20, TimeUnit.SECONDS)
-            // Explicitly NO MarvelAuthInterceptor to prevent leaking credentials to image CDNs
+            // Dedicated client isolated from auth interceptors to prevent leaking credentials to image CDNs
             .build()
     }
 }

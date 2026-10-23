@@ -75,10 +75,10 @@ fun Modifier.shimmer(
 }
 
 /**
- * Placeholder skeleton card matching the 2:3 aspect ratio and rounded corners of [ComicCard].
+ * Placeholder skeleton card matching the 2:3 aspect ratio and rounded corners of [MovieCard].
  */
 @Composable
-fun ShimmerComicCard(
+fun ShimmerMovieCard(
     modifier: Modifier = Modifier,
     shape: Shape = RoundedCornerShape(16.dp)
 ) {
@@ -92,12 +92,18 @@ fun ShimmerComicCard(
     )
 }
 
+@Composable
+fun ShimmerComicCard(
+    modifier: Modifier = Modifier,
+    shape: Shape = RoundedCornerShape(16.dp)
+) = ShimmerMovieCard(modifier, shape)
+
 @ThemePreviews
 @Composable
-private fun ShimmerComicCardPreview() {
+private fun ShimmerMovieCardPreview() {
     MarvelTheme {
         Box(modifier = Modifier.padding(16.dp).width(160.dp)) {
-            ShimmerComicCard()
+            ShimmerMovieCard()
         }
     }
 }

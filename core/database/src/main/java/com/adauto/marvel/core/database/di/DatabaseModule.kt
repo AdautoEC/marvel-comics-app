@@ -3,10 +3,8 @@ package com.adauto.marvel.core.database.di
 import android.content.Context
 import androidx.room.Room
 import com.adauto.marvel.core.database.MarvelDatabase
-import com.adauto.marvel.core.database.dao.ComicDao
 import com.adauto.marvel.core.database.dao.FavoriteDao
 import com.adauto.marvel.core.database.dao.MovieDao
-import com.adauto.marvel.core.database.dao.RemoteKeyDao
 import com.adauto.marvel.core.database.dao.WatchedDao
 import dagger.Module
 import dagger.Provides
@@ -32,12 +30,6 @@ object DatabaseModule {
             .fallbackToDestructiveMigration()
             .build()
     }
-
-    @Provides
-    fun provideComicDao(database: MarvelDatabase): ComicDao = database.comicDao()
-
-    @Provides
-    fun provideRemoteKeyDao(database: MarvelDatabase): RemoteKeyDao = database.remoteKeyDao()
 
     @Provides
     fun provideMovieDao(database: MarvelDatabase): MovieDao = database.movieDao()

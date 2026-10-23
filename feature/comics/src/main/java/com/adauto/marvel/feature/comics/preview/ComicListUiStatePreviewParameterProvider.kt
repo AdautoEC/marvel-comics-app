@@ -1,14 +1,14 @@
 package com.adauto.marvel.feature.comics.preview
 
 import androidx.compose.ui.tooling.preview.PreviewParameterProvider
-import com.adauto.marvel.core.model.ComicSummary
 import com.adauto.marvel.core.model.MovieCategory
+import com.adauto.marvel.core.model.MovieSummary
 import com.adauto.marvel.core.model.SessionState
 import com.adauto.marvel.feature.comics.ComicListUiState
 
 data class ComicListPreviewState(
     val uiState: ComicListUiState,
-    val comics: List<ComicSummary> = emptyList(),
+    val movies: List<MovieSummary> = emptyList(),
     val isLoading: Boolean = false,
     val errorMessage: String? = null
 )
@@ -25,58 +25,64 @@ class ComicListUiStatePreviewParameterProvider : PreviewParameterProvider<ComicL
             uiState = ComicListUiState(
                 sessionState = SessionState.Authenticated(
                     accountId = 42,
-                    username = "tonystark",
+                    username = "adautocine",
                     sessionId = "sess_42"
                 )
             ),
-            comics = listOf(
-                ComicSummary(
+            movies = listOf(
+                MovieSummary(
                     id = 1,
-                    title = "The Amazing Spider-Man #800",
-                    issueNumber = "#800",
-                    coverUrl = "https://i.annihil.us/u/prod/marvel/i/mg/c/50/5b55018a1a361.jpg"
+                    title = "Clube da Luta",
+                    posterUrl = "https://image.tmdb.org/t/p/w500/pB8BM7pdSp6B6Ih7QZ4DrQ3PmJK.jpg",
+                    voteAverage = 8.4,
+                    releaseDate = "1999-10-15",
+                    isFavorite = true,
+                    isWatched = true
                 ),
-                ComicSummary(
+                MovieSummary(
                     id = 2,
-                    title = "Avengers: Endgame Prelude #1",
-                    issueNumber = "#1",
-                    coverUrl = "https://i.annihil.us/u/prod/marvel/i/mg/c/50/5b55018a1a362.jpg"
+                    title = "Inception",
+                    posterUrl = "https://image.tmdb.org/t/p/w500/edv5CZvWj09upOsy2Y6IwDhK8bt.jpg",
+                    voteAverage = 8.8,
+                    releaseDate = "2010-07-16",
+                    isFavorite = false,
+                    isWatched = false
                 ),
-                ComicSummary(
+                MovieSummary(
                     id = 3,
-                    title = "X-Men: House of X #1",
-                    issueNumber = "#1",
-                    coverUrl = "https://i.annihil.us/u/prod/marvel/i/mg/c/50/5b55018a1a363.jpg"
-                ),
-                ComicSummary(
-                    id = 4,
-                    title = "Daredevil: Born Again #1",
-                    issueNumber = "#1",
-                    coverUrl = null
+                    title = "Interestelar",
+                    posterUrl = null,
+                    voteAverage = 8.6,
+                    releaseDate = "2014-11-07",
+                    isFavorite = false,
+                    isWatched = false
                 )
             )
         ),
-        // 3. Offline State with Comics
+        // 3. Offline State with Movies
         ComicListPreviewState(
             uiState = ComicListUiState(isOffline = true),
-            comics = listOf(
-                ComicSummary(
+            movies = listOf(
+                MovieSummary(
                     id = 1,
-                    title = "The Amazing Spider-Man #800",
-                    issueNumber = "#800",
-                    coverUrl = "https://i.annihil.us/u/prod/marvel/i/mg/c/50/5b55018a1a361.jpg"
+                    title = "Clube da Luta",
+                    posterUrl = "https://image.tmdb.org/t/p/w500/pB8BM7pdSp6B6Ih7QZ4DrQ3PmJK.jpg",
+                    voteAverage = 8.4,
+                    releaseDate = "1999-10-15",
+                    isFavorite = true,
+                    isWatched = true
                 )
             )
         ),
         // 4. Empty State
         ComicListPreviewState(
             uiState = ComicListUiState(),
-            comics = emptyList()
+            movies = emptyList()
         ),
         // 5. Error State
         ComicListPreviewState(
             uiState = ComicListUiState(),
-            errorMessage = "Limite de requisições diário da Marvel atingido. Tente novamente mais tarde."
+            errorMessage = "Limite de requisições excedido. Tente novamente mais tarde."
         ),
         // 6. Watchlist Tab (Guest)
         ComicListPreviewState(
