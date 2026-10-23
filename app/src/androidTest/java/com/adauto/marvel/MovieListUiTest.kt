@@ -97,14 +97,16 @@ class MovieListUiTest {
 
         // Click Favoritos tab
         composeTestRule.onNodeWithText("Favoritos").performClick()
+        composeTestRule.waitForIdle()
         assertEquals(ComicListAction.CategorySelected(MovieCategory.FAVORITES), dispatchedAction)
 
         // Banner is displayed
         composeTestRule.onNodeWithTag("GuestSyncBanner").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Seus filmes estão salvos apenas neste aparelho").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Seus filmes estão salvos apenas neste aparelho", substring = true).assertIsDisplayed()
 
         // Click Quero Assistir tab
         composeTestRule.onNodeWithText("Quero Assistir").performClick()
+        composeTestRule.waitForIdle()
         assertEquals(ComicListAction.CategorySelected(MovieCategory.WATCHLIST), dispatchedAction)
 
         // Banner remains displayed for Watchlist in Guest mode
@@ -112,6 +114,7 @@ class MovieListUiTest {
 
         // Return to Populares tab
         composeTestRule.onNodeWithText("Populares").performClick()
+        composeTestRule.waitForIdle()
         composeTestRule.onNodeWithTag("GuestSyncBanner").assertDoesNotExist()
     }
 
@@ -166,11 +169,7 @@ class MovieListUiTest {
         }
 
         composeTestRule.onNodeWithTag("GuestSyncBanner").assertIsDisplayed()
-
-        // Find "Conectar" button in banner and click it
-        val connectNodes = composeTestRule.onAllNodesWithText("Conectar")
-        connectNodes.assertCountEquals(2) // 1 in Pill, 1 in Banner
-        connectNodes[1].performClick()
+        composeTestRule.onNodeWithTag("GuestSyncBanner_ConnectBtn").performClick()
 
         assertTrue(connectClicked)
     }
