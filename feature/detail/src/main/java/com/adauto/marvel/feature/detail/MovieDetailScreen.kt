@@ -61,7 +61,7 @@ import com.adauto.marvel.core.ui.component.shimmer
 import com.adauto.marvel.feature.detail.preview.MovieDetailUiStatePreviewParameterProvider
 
 /**
- * Movie / Comic Detail Screen presenting:
+ * Movie Detail Screen presenting:
  * - Parallax full-bleed hero artwork with vertical dark gradient scrim
  * - Floating back navigation button
  * - Action buttons (Favorito & Já assisti) with instant state toggle

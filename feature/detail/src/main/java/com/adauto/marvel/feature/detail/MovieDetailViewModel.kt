@@ -28,8 +28,6 @@ class MovieDetailViewModel @Inject constructor(
     private val movieId: Int = checkNotNull(
         savedStateHandle.get<Int>("movieId")
             ?: savedStateHandle.get<String>("movieId")?.toIntOrNull()
-            ?: savedStateHandle.get<Int>("comicId")
-            ?: savedStateHandle.get<String>("comicId")?.toIntOrNull()
     ) { "movieId is required" }
 
     private val _uiState = MutableStateFlow(MovieDetailUiState(isLoading = true))

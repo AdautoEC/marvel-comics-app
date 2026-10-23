@@ -34,7 +34,7 @@ class MovieDetailScreenTest {
     )
 
     @Test
-    fun comicDetailScreen_displaysLoadingSkeleton_whenLoading() {
+    fun movieDetailScreen_displaysLoadingSkeleton_whenLoading() {
         composeTestRule.setContent {
             MovieDetailScreen(
                 uiState = MovieDetailUiState(isLoading = true),
@@ -46,7 +46,7 @@ class MovieDetailScreenTest {
     }
 
     @Test
-    fun comicDetailScreen_displaysPopulatedContent_andHandlesBackButton() {
+    fun movieDetailScreen_displaysPopulatedContent_andHandlesBackButton() {
         var backClicked = false
 
         composeTestRule.setContent {
@@ -70,7 +70,7 @@ class MovieDetailScreenTest {
     }
 
     @Test
-    fun comicDetailScreen_displaysErrorState_andTriggersRetry() {
+    fun movieDetailScreen_displaysErrorState_andTriggersRetry() {
         var retryTriggered = false
 
         composeTestRule.setContent {

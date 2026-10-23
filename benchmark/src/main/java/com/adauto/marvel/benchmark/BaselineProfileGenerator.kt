@@ -13,9 +13,9 @@ import org.junit.runner.RunWith
  * Baseline profile generator for optimizing startup time and scroll jank.
  *
  * Captures critical user journeys (CUJs):
- * 1. Cold app startup to comic list rendering.
- * 2. Flinging and scrolling through the paginated comic list.
- * 3. Navigating to comic detail and scrolling hero artwork & stats chips.
+ * 1. Cold app startup to movie list rendering.
+ * 2. Flinging and scrolling through the paginated movie list.
+ * 3. Navigating to movie detail and scrolling hero artwork & stats chips.
  */
 @RunWith(AndroidJUnit4::class)
 class BaselineProfileGenerator {
@@ -33,12 +33,12 @@ class BaselineProfileGenerator {
             pressHome()
             startActivityAndWait()
 
-            // Wait until comic items are rendered
+            // Wait until movie items are rendered
             device.wait(Until.hasObject(By.descContains("Ver detalhes")), 5_000)
 
-            // Scroll comics feed
-            val comicsList = device.findObject(By.scrollable(true))
-            comicsList?.let { list ->
+            // Scroll movies feed
+            val moviesList = device.findObject(By.scrollable(true))
+            moviesList?.let { list ->
                 list.setGestureMargin(device.displayWidth / 5)
                 list.fling(Direction.DOWN)
                 device.waitForIdle()

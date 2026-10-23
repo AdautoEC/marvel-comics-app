@@ -28,7 +28,7 @@ class RedactingHttpLoggingInterceptorTest {
 
     @Test
     fun sanitizeUrlForTelemetry_replacesSensitiveParamsWhilePreservingOthers() {
-        val originalUrl = "https://gateway.marvel.com/v1/public/comics?ts=12345&apikey=super-secret-key&hash=abcdef0123456789&limit=20&offset=40".toHttpUrl()
+        val originalUrl = "https://gateway.marvel.com/v1/public/characters?ts=12345&apikey=super-secret-key&hash=abcdef0123456789&limit=20&offset=40".toHttpUrl()
 
         val sanitized = sanitizeUrlForTelemetry(originalUrl)
         val parsedSanitized = sanitized.toHttpUrl()
@@ -62,7 +62,7 @@ class RedactingHttpLoggingInterceptorTest {
 
     @Test
     fun sanitizeUrlForTelemetry_handlesUrlWithNoQueryParams() {
-        val originalUrl = "https://gateway.marvel.com/v1/public/comics".toHttpUrl()
+        val originalUrl = "https://gateway.marvel.com/v1/public/characters".toHttpUrl()
 
         val sanitized = sanitizeUrlForTelemetry(originalUrl)
 
@@ -82,12 +82,12 @@ class RedactingHttpLoggingInterceptorTest {
             .addInterceptor(interceptor)
             .build()
 
-        val requestUrl = server.url("/v1/public/comics")
+        val requestUrl = server.url("/3/movie/popular")
             .newBuilder()
             .addQueryParameter("ts", "99999")
             .addQueryParameter("apikey", "my-public-key")
             .addQueryParameter("hash", "my-md5-hash")
-            .addQueryParameter("format", "comic")
+            .addQueryParameter("language", "pt-BR")
             .build()
 
         val request = Request.Builder().url(requestUrl).build()
@@ -106,7 +106,7 @@ class RedactingHttpLoggingInterceptorTest {
 
         // Redacted indicator and non-sensitive params should be in the log
         assertTrue("Log should indicate REDACTED", combinedLog.contains("REDACTED"))
-        assertTrue("Log should keep format parameter", combinedLog.contains("format=comic"))
+        assertTrue("Log should keep language parameter", combinedLog.contains("language=pt-BR"))
     }
 
     @Test

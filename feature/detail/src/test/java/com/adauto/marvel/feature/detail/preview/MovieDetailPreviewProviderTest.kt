@@ -6,7 +6,7 @@ import org.junit.Test
 class MovieDetailPreviewProviderTest {
 
     @Test
-    fun comicDetailUiStatePreviewParameterProvider_suppliesAllCoreUiStates() {
+    fun movieDetailUiStatePreviewParameterProvider_suppliesAllCoreUiStates() {
         val provider = MovieDetailUiStatePreviewParameterProvider()
         val values = provider.values.toList()
 
