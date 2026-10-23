@@ -23,7 +23,9 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        handleDeepLink(intent)
+        if (savedInstanceState == null) {
+            handleDeepLink(intent)
+        }
         enableEdgeToEdge()
         setContent {
             MarvelTheme {
@@ -42,6 +44,7 @@ class MainActivity : ComponentActivity() {
     private fun handleDeepLink(intent: Intent?) {
         val requestToken = DeepLinkHandler.extractApprovedRequestToken(intent)
         if (requestToken != null) {
+            intent?.data = null
             lifecycleScope.launch {
                 authRepository.completeAuthentication(requestToken)
             }
