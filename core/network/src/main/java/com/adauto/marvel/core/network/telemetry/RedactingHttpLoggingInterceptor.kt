@@ -6,10 +6,10 @@ import okhttp3.Response
 import okhttp3.logging.HttpLoggingInterceptor
 import java.util.concurrent.TimeUnit
 
-private val SENSITIVE_QUERY_PARAMS = setOf("apikey", "hash", "ts")
+private val SENSITIVE_QUERY_PARAMS = setOf("apikey", "hash", "ts", "api_key", "session_id")
 
 /**
- * Strips sensitive authentication parameters (apikey, hash, ts) from the given URL
+ * Strips sensitive authentication parameters (apikey, hash, ts, api_key, session_id) from the given URL
  * before logging or telemetry recording.
  */
 fun sanitizeUrlForTelemetry(url: HttpUrl): String {

@@ -11,6 +11,12 @@ import com.adauto.marvel.core.network.security.KeystoreCipher
 import com.adauto.marvel.core.network.security.MarvelKeyProvider
 import com.adauto.marvel.core.network.security.MarvelKeyProviderImpl
 import com.adauto.marvel.core.network.security.RemoteConfigKeySource
+import com.adauto.marvel.core.network.security.TmdbApiKeyProvider
+import com.adauto.marvel.core.network.security.TmdbApiKeyProviderImpl
+import com.adauto.marvel.core.network.security.session.DataStoreSessionStorage
+import com.adauto.marvel.core.network.security.session.SessionManager
+import com.adauto.marvel.core.network.security.session.SessionManagerImpl
+import com.adauto.marvel.core.network.security.session.SessionStorage
 import com.google.firebase.remoteconfig.FirebaseRemoteConfig
 import dagger.Binds
 import dagger.Module
@@ -36,6 +42,18 @@ abstract class SecurityModule {
         impl: FirebaseRemoteConfigKeySource
     ): RemoteConfigKeySource
 
+    @Binds
+    @Singleton
+    abstract fun bindTmdbApiKeyProvider(
+        impl: TmdbApiKeyProviderImpl
+    ): TmdbApiKeyProvider
+
+    @Binds
+    @Singleton
+    abstract fun bindSessionManager(
+        impl: SessionManagerImpl
+    ): SessionManager
+
     companion object {
         @Provides
         @Singleton
@@ -58,6 +76,17 @@ abstract class SecurityModule {
                 produceFile = { context.preferencesDataStoreFile("marvel_keys_storage") }
             )
             return DataStoreEncryptedKeyStorage(dataStore)
+        }
+
+        @Provides
+        @Singleton
+        fun provideSessionStorage(
+            @ApplicationContext context: Context
+        ): SessionStorage {
+            val dataStore = PreferenceDataStoreFactory.create(
+                produceFile = { context.preferencesDataStoreFile("tmdb_session_storage") }
+            )
+            return DataStoreSessionStorage(dataStore)
         }
 
         @Provides
