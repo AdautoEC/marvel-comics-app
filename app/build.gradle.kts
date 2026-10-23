@@ -95,7 +95,7 @@ dependencies {
     implementation(project(":core:data"))
     implementation(project(":core:designsystem"))
     implementation(project(":core:ui"))
-    implementation(project(":feature:comics"))
+    implementation(project(":feature:movies"))
     implementation(project(":feature:detail"))
 
     implementation(libs.androidx.core.ktx)
