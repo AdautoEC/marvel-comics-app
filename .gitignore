@@ -33,3 +33,7 @@ remoteconfig.*.json
 ShortenLinks/
 ShortenLinks.zip
 
+# Superpowers and local documentation
+.superpowers/
+docs/
+
