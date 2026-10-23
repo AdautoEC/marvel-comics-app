@@ -18,13 +18,13 @@ class DeepLinkIntentTest {
         mockkStatic(Uri::class)
         every { Uri.parse(any()) } answers {
             val urlString = firstArg<String>()
-            val javaUri = java.net.URI(urlString)
+            val parsed = java.net.URI(urlString)
             val mockUri = mockk<Uri>()
-            every { mockUri.scheme } returns javaUri.scheme
-            every { mockUri.host } returns javaUri.host
+            every { mockUri.scheme } returns parsed.scheme
+            every { mockUri.host } returns parsed.host
             every { mockUri.getQueryParameter(any()) } answers { call ->
                 val key = call.invocation.args[0] as String
-                val query = javaUri.query ?: return@answers null
+                val query = parsed.query ?: return@answers null
                 query.split("&")
                     .map { it.split("=", limit = 2) }
                     .firstOrNull { it[0] == key }
@@ -61,6 +61,17 @@ class DeepLinkIntentTest {
         val token = DeepLinkHandler.extractApprovedRequestToken(intent)
 
         assertThat(token).isEqualTo("test_tok")
+    }
+
+    @Test
+    fun valid_approved_callback_is_case_insensitive_for_scheme_and_host() {
+        val uppercaseUri = Uri.parse("MARVELAPP://TMDB-CALLBACK?request_token=upper_tok&approved=true")
+        val mixedUri = Uri.parse("MarvelApp://Tmdb-Callback?request_token=mixed_tok&approved=true")
+
+        assertThat(DeepLinkHandler.extractApprovedRequestToken(createIntent(uppercaseUri)))
+            .isEqualTo("upper_tok")
+        assertThat(DeepLinkHandler.extractApprovedRequestToken(createIntent(mixedUri)))
+            .isEqualTo("mixed_tok")
     }
 
     @Test

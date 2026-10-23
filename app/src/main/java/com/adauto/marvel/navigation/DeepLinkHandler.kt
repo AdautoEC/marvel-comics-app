@@ -17,7 +17,11 @@ object DeepLinkHandler {
 
     fun extractApprovedRequestToken(uri: Uri?): String? {
         if (uri == null) return null
-        if (uri.scheme != SCHEME || uri.host != HOST_TMDB_CALLBACK) return null
+        if (!uri.scheme.equals(SCHEME, ignoreCase = true) ||
+            !uri.host.equals(HOST_TMDB_CALLBACK, ignoreCase = true)
+        ) {
+            return null
+        }
         val approved = uri.getQueryParameter(PARAM_APPROVED)
         if (approved != "true") return null
         return uri.getQueryParameter(PARAM_REQUEST_TOKEN)?.takeIf { it.isNotBlank() }
