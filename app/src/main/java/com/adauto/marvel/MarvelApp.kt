@@ -26,7 +26,7 @@ class MarvelApp : Application(), ImageLoaderFactory {
     override fun onCreate() {
         super.onCreate()
         runCatching {
-            clientIntegrityManager.initializeAppCheck(this)
+            clientIntegrityManager.initializeAppCheck(this, isDebug = BuildConfig.DEBUG)
             firebaseTelemetryInitializer.initialize()
         }
     }

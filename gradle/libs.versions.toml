@@ -72,6 +72,7 @@ firebase-config = { group = "com.google.firebase", name = "firebase-config" }
 firebase-crashlytics = { group = "com.google.firebase", name = "firebase-crashlytics" }
 firebase-perf = { group = "com.google.firebase", name = "firebase-perf" }
 firebase-appcheck-playintegrity = { group = "com.google.firebase", name = "firebase-appcheck-playintegrity" }
+firebase-appcheck-debug = { group = "com.google.firebase", name = "firebase-appcheck-debug" }
 play-integrity = { group = "com.google.android.play", name = "integrity", version.ref = "playIntegrity" }
 
 coil-compose = { group = "io.coil-kt", name = "coil-compose", version.ref = "coil" }

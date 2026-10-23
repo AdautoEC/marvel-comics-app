@@ -46,6 +46,7 @@ dependencies {
     implementation(libs.firebase.crashlytics)
     implementation(libs.firebase.perf)
     implementation(libs.firebase.appcheck.playintegrity)
+    implementation(libs.firebase.appcheck.debug)
     implementation(libs.play.integrity)
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
