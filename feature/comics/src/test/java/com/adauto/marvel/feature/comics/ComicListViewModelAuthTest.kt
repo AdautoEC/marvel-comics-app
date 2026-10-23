@@ -28,7 +28,6 @@ import org.junit.Test
 class ComicListViewModelAuthTest {
 
     private val testDispatcher = StandardTestDispatcher()
-    private val comicsRepository: ComicsRepository = mockk(relaxed = true)
     private val moviesRepository: MoviesRepository = mockk(relaxed = true)
     private val authRepository: AuthRepository = mockk(relaxed = true)
 
@@ -37,7 +36,6 @@ class ComicListViewModelAuthTest {
     @Before
     fun setUp() {
         Dispatchers.setMain(testDispatcher)
-        every { comicsRepository.comics() } returns emptyFlow()
         every { moviesRepository.movies(any()) } returns emptyFlow()
         every { moviesRepository.observeFavorites() } returns emptyFlow()
         every { moviesRepository.observeWatched() } returns emptyFlow()
@@ -53,7 +51,7 @@ class ComicListViewModelAuthTest {
     fun clicking_connect_triggers_OpenAuthUrl_effect_with_request_token() = runTest {
         coEvery { authRepository.createRequestToken() } returns Outcome.Success("tok_456")
 
-        val viewModel = ComicListViewModel(comicsRepository, moviesRepository, authRepository)
+        val viewModel = ComicListViewModel(moviesRepository, authRepository)
 
         viewModel.effects.test {
             viewModel.onAction(ComicListAction.ConnectTmdbClicked)
@@ -70,7 +68,7 @@ class ComicListViewModelAuthTest {
 
     @Test
     fun clicking_logout_calls_authRepository_logout() = runTest {
-        val viewModel = ComicListViewModel(comicsRepository, moviesRepository, authRepository)
+        val viewModel = ComicListViewModel(moviesRepository, authRepository)
 
         viewModel.onAction(ComicListAction.LogoutClicked)
         testDispatcher.scheduler.advanceUntilIdle()
@@ -80,7 +78,7 @@ class ComicListViewModelAuthTest {
 
     @Test
     fun sessionState_updates_flow_into_uiState() = runTest {
-        val viewModel = ComicListViewModel(comicsRepository, moviesRepository, authRepository)
+        val viewModel = ComicListViewModel(moviesRepository, authRepository)
         testDispatcher.scheduler.advanceUntilIdle()
 
         assertThat(viewModel.uiState.value.sessionState).isEqualTo(SessionState.Guest)
@@ -99,7 +97,7 @@ class ComicListViewModelAuthTest {
 
     @Test
     fun watchlistToggled_calls_moviesRepository_toggleWatchlist() = runTest {
-        val viewModel = ComicListViewModel(comicsRepository, moviesRepository, authRepository)
+        val viewModel = ComicListViewModel(moviesRepository, authRepository)
         val movie = MovieSummary(id = 42, title = "Spider-Man", posterUrl = null)
 
         viewModel.onAction(ComicListAction.WatchlistToggled(movie))
@@ -115,7 +113,7 @@ class ComicListViewModelAuthTest {
             username = "spiderfan",
             sessionId = "sess_789"
         )
-        val viewModel = ComicListViewModel(comicsRepository, moviesRepository, authRepository)
+        val viewModel = ComicListViewModel(moviesRepository, authRepository)
         testDispatcher.scheduler.advanceUntilIdle()
 
         viewModel.onAction(ComicListAction.RefreshRequested)
@@ -127,7 +125,7 @@ class ComicListViewModelAuthTest {
     @Test
     fun refreshRequested_when_guest_does_not_trigger_syncCloudWithLocal() = runTest {
         sessionStateFlow.value = SessionState.Guest
-        val viewModel = ComicListViewModel(comicsRepository, moviesRepository, authRepository)
+        val viewModel = ComicListViewModel(moviesRepository, authRepository)
         testDispatcher.scheduler.advanceUntilIdle()
 
         viewModel.onAction(ComicListAction.RefreshRequested)

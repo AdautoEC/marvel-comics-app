@@ -7,9 +7,8 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
-import com.adauto.marvel.core.model.ComicDetail
+import com.adauto.marvel.core.model.MovieDetail
 import com.adauto.marvel.core.model.UiText
-import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -19,18 +18,19 @@ class ComicDetailScreenTest {
     @get:Rule
     val composeTestRule = createComposeRule()
 
-    private val sampleComic = ComicDetail(
+    private val sampleMovie = MovieDetail(
         id = 101,
-        title = "The Amazing Spider-Man #1",
-        issueNumber = "#1",
-        description = "Peter Parker takes on the world in this historic issue.",
-        pageCount = 36,
-        coverUrl = null,
-        detailUrl = "https://marvel.com/comics/101",
-        onsaleDate = "2024-01-15T00:00:00-0500",
-        price = 3.99,
-        creators = listOf("Stan Lee", "Steve Ditko"),
-        characters = listOf("Spider-Man", "J. Jonah Jameson")
+        title = "Inception",
+        overview = "Peter Parker takes on the world in this historic issue.",
+        posterUrl = null,
+        backdropUrl = null,
+        releaseDate = "2024-01-15",
+        voteAverage = 8.8,
+        runtime = 148,
+        genres = listOf("Ação", "Ficção Científica"),
+        cast = listOf("Leonardo DiCaprio", "Joseph Gordon-Levitt"),
+        isFavorite = false,
+        isWatched = false
     )
 
     @Test
@@ -51,7 +51,7 @@ class ComicDetailScreenTest {
 
         composeTestRule.setContent {
             ComicDetailScreen(
-                uiState = ComicDetailUiState(comic = sampleComic),
+                uiState = ComicDetailUiState(movie = sampleMovie),
                 onAction = { action ->
                     if (action is ComicDetailAction.BackClicked) {
                         backClicked = true
@@ -61,9 +61,9 @@ class ComicDetailScreenTest {
         }
 
         composeTestRule.onNodeWithTag("ComicDetailContent").assertIsDisplayed()
-        composeTestRule.onNodeWithText("The Amazing Spider-Man #1").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Stan Lee").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Steve Ditko").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Inception").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Leonardo DiCaprio").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Joseph Gordon-Levitt").assertIsDisplayed()
 
         composeTestRule.onNodeWithContentDescription("Voltar").performClick()
         assertTrue(backClicked)
@@ -76,7 +76,7 @@ class ComicDetailScreenTest {
         composeTestRule.setContent {
             ComicDetailScreen(
                 uiState = ComicDetailUiState(
-                    errorMessage = UiText.DynamicString("Falha ao carregar detalhes")
+                    errorMessage = UiText.Dynamic("Falha ao carregar detalhes")
                 ),
                 onAction = { action ->
                     if (action is ComicDetailAction.Retry) {
@@ -97,13 +97,13 @@ class ComicDetailScreenTest {
 
         restorationTester.setContent {
             ComicDetailScreen(
-                uiState = ComicDetailUiState(comic = sampleComic),
+                uiState = ComicDetailUiState(movie = sampleMovie),
                 onAction = {}
             )
         }
 
         restorationTester.emulateSavedInstanceStateRestore()
 
-        composeTestRule.onNodeWithText("The Amazing Spider-Man #1").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Inception").assertIsDisplayed()
     }
 }
