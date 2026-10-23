@@ -3,8 +3,6 @@ name: PR Verification
 on:
   pull_request:
     branches: [main]
-  push:
-    branches: [main]
 
 concurrency:
   group: pr-${{ github.workflow }}-${{ github.ref }}
