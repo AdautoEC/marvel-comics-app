@@ -11,18 +11,25 @@ import kotlin.coroutines.resumeWithException
 @Singleton
 class TmdbApiKeyProviderImpl @Inject constructor(
     private val remoteConfig: FirebaseRemoteConfig,
-    private val encryptedStorage: EncryptedKeyStorage
+    private val encryptedStorage: EncryptedKeyStorage,
+    private val cipher: KeystoreCipher
 ) : TmdbApiKeyProvider {
 
     companion object {
         const val KEY_TMDB_API_KEY = "tmdb_api_key"
-        const val FALLBACK_API_KEY = "a2ed008f1b8419141aaef581625e9c67"
     }
 
     override suspend fun getApiKey(): String? {
-        val cached = encryptedStorage.loadEncryptedBlob()?.toString(Charsets.UTF_8)
-        if (!cached.isNullOrBlank()) {
-            return cached
+        val cachedEncrypted = encryptedStorage.loadEncryptedBlob()
+        if (cachedEncrypted != null) {
+            val decrypted = try {
+                cipher.decrypt(cachedEncrypted).toString(Charsets.UTF_8)
+            } catch (_: Exception) {
+                null
+            }
+            if (!decrypted.isNullOrBlank()) {
+                return decrypted
+            }
         }
 
         val remoteKey = try {
@@ -38,8 +45,18 @@ class TmdbApiKeyProviderImpl @Inject constructor(
             null
         }
 
-        val resolved = remoteKey ?: FALLBACK_API_KEY
-        encryptedStorage.saveEncryptedBlob(resolved.toByteArray(Charsets.UTF_8))
-        return resolved
+        if (!remoteKey.isNullOrBlank()) {
+            val encrypted = try {
+                cipher.encrypt(remoteKey.toByteArray(Charsets.UTF_8))
+            } catch (_: Exception) {
+                null
+            }
+            if (encrypted != null) {
+                encryptedStorage.saveEncryptedBlob(encrypted)
+            }
+            return remoteKey
+        }
+
+        return null
     }
 }

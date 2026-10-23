@@ -5,9 +5,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.paging.PagingData
 import androidx.paging.cachedIn
 import com.adauto.marvel.core.data.repository.AuthRepository
-import com.adauto.marvel.core.data.repository.ComicsRepository
 import com.adauto.marvel.core.data.repository.MoviesRepository
-import com.adauto.marvel.core.model.ComicSummary
 import com.adauto.marvel.core.model.MovieCategory
 import com.adauto.marvel.core.model.MovieSummary
 import com.adauto.marvel.core.model.Outcome
@@ -32,7 +30,6 @@ private const val TMDB_REDIRECT_URI = "marvelapp://tmdb-callback"
 
 @HiltViewModel
 class ComicListViewModel @Inject constructor(
-    private val comicsRepository: ComicsRepository,
     private val moviesRepository: MoviesRepository,
     private val authRepository: AuthRepository
 ) : ViewModel() {
@@ -41,8 +38,6 @@ class ComicListViewModel @Inject constructor(
     val uiState: StateFlow<ComicListUiState> = _uiState.asStateFlow()
 
     private val _selectedCategory = MutableStateFlow(MovieCategory.POPULAR)
-
-    val comics: Flow<PagingData<ComicSummary>> = comicsRepository.comics().cachedIn(viewModelScope)
 
     @OptIn(ExperimentalCoroutinesApi::class)
     val movies: Flow<PagingData<MovieSummary>> = _selectedCategory

@@ -1,7 +1,6 @@
 package com.adauto.marvel.feature.detail.preview
 
 import androidx.compose.ui.tooling.preview.PreviewParameterProvider
-import com.adauto.marvel.core.model.ComicDetail
 import com.adauto.marvel.core.model.MovieDetail
 import com.adauto.marvel.core.model.UiText
 import com.adauto.marvel.feature.detail.ComicDetailUiState
@@ -12,44 +11,16 @@ class ComicDetailUiStatePreviewParameterProvider : PreviewParameterProvider<Comi
         ComicDetailUiState(
             isLoading = true
         ),
-        // 2. Populated Success State (Full)
+        // 2. Error State
         ComicDetailUiState(
-            comic = ComicDetail(
-                id = 1001,
-                title = "The Amazing Spider-Man #800: Go Down Swinging",
-                description = "Dan Slott's historic run reaches its climactic conclusion! Norman Osborn has bonded with the Carnage symbiote to become the Red Goblin. Can Spider-Man survive his deadliest adversary's ultimate form?",
-                issueNumber = "#800",
-                pageCount = 80,
-                printPrice = "$9.99",
-                onsaleDate = "2018-05-30",
-                coverUrl = "https://i.annihil.us/u/prod/marvel/i/mg/c/50/5b55018a1a361.jpg",
-                creators = listOf("Dan Slott (Writer)", "Stuart Immonen (Penciler)", "Nick Bradshaw (Inker)")
-            )
+            errorMessage = UiText.Dynamic("Não foi possível carregar os detalhes do filme. Verifique sua conexão.")
         ),
-        // 3. Populated Minimal (No Description, No Creators)
-        ComicDetailUiState(
-            comic = ComicDetail(
-                id = 1002,
-                title = "Daredevil: Born Again #1",
-                description = null,
-                issueNumber = "#1",
-                pageCount = 32,
-                printPrice = "$3.99",
-                onsaleDate = "1986-02-01",
-                coverUrl = null,
-                creators = emptyList()
-            )
-        ),
-        // 4. Error State
-        ComicDetailUiState(
-            errorMessage = UiText.Dynamic("Não foi possível carregar os detalhes do quadrinho. Verifique sua conexão.")
-        ),
-        // 5. Populated Movie (Active Actions: Favorito + Quero Assistir)
+        // 3. Populated Movie (Active Actions: Favorito + Quero Assistir)
         ComicDetailUiState(
             movie = MovieDetail(
                 id = 550,
-                title = "Fight Club",
-                overview = "An insomniac office worker and a devil-may-care soap maker form an underground fight club.",
+                title = "Clube da Luta",
+                overview = "Um homem deprimido que sofre de insônia conhece um vendedor estranho de sabonetes e funda um clube de luta clandestino que se transforma em algo muito mais grandioso.",
                 posterUrl = "https://image.tmdb.org/t/p/w500/pB8BM7pdSp6B6Ih7QZ4DrQ3PmJK.jpg",
                 backdropUrl = "https://image.tmdb.org/t/p/w1280/hZkgoQYus5vegHoetLkCJzb17zJ.jpg",
                 voteAverage = 8.4,
@@ -61,7 +32,7 @@ class ComicDetailUiStatePreviewParameterProvider : PreviewParameterProvider<Comi
                 isWatched = true
             )
         ),
-        // 6. Populated Movie (Inactive Actions)
+        // 4. Populated Movie (Inactive Actions)
         ComicDetailUiState(
             movie = MovieDetail(
                 id = 551,
@@ -74,6 +45,23 @@ class ComicDetailUiStatePreviewParameterProvider : PreviewParameterProvider<Comi
                 releaseDate = "2010-07-16",
                 genres = listOf("Ação", "Ficção Científica"),
                 cast = listOf("Leonardo DiCaprio", "Joseph Gordon-Levitt"),
+                isFavorite = false,
+                isWatched = false
+            )
+        ),
+        // 5. Populated Movie Minimal (No Overview, No Genres, No Cast)
+        ComicDetailUiState(
+            movie = MovieDetail(
+                id = 552,
+                title = "Filme Sem Sinopse",
+                overview = "",
+                posterUrl = null,
+                backdropUrl = null,
+                voteAverage = 6.0,
+                runtime = null,
+                releaseDate = null,
+                genres = emptyList(),
+                cast = emptyList(),
                 isFavorite = false,
                 isWatched = false
             )

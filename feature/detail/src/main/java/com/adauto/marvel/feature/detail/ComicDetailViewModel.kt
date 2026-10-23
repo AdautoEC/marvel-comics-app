@@ -3,7 +3,6 @@ package com.adauto.marvel.feature.detail
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.adauto.marvel.core.data.repository.ComicsRepository
 import com.adauto.marvel.core.data.repository.MoviesRepository
 import com.adauto.marvel.core.model.DomainError
 import com.adauto.marvel.core.model.MovieSummary
@@ -22,7 +21,6 @@ import javax.inject.Inject
 
 @HiltViewModel
 class ComicDetailViewModel @Inject constructor(
-    private val comicsRepository: ComicsRepository,
     private val moviesRepository: MoviesRepository,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
@@ -96,26 +94,12 @@ class ComicDetailViewModel @Inject constructor(
                     }
                 }
                 is Outcome.Failure -> {
-                    // Try fallback comic detail if any
-                    when (val comicOutcome = comicsRepository.getComicDetail(movieId)) {
-                        is Outcome.Success -> {
-                            _uiState.update {
-                                it.copy(
-                                    isLoading = false,
-                                    comic = comicOutcome.value,
-                                    errorMessage = null
-                                )
-                            }
-                        }
-                        is Outcome.Failure -> {
-                            val errorText = mapDomainErrorToUiText(movieOutcome.error)
-                            _uiState.update {
-                                it.copy(
-                                    isLoading = false,
-                                    errorMessage = errorText
-                                )
-                            }
-                        }
+                    val errorText = mapDomainErrorToUiText(movieOutcome.error)
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            errorMessage = errorText
+                        )
                     }
                 }
             }

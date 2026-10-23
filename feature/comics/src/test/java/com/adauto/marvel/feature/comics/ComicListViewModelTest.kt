@@ -28,14 +28,12 @@ import org.junit.Test
 @OptIn(ExperimentalCoroutinesApi::class)
 class ComicListViewModelTest {
     private val testDispatcher = StandardTestDispatcher()
-    private val comicsRepository: ComicsRepository = mockk()
     private val moviesRepository: MoviesRepository = mockk(relaxed = true)
     private val authRepository: AuthRepository = mockk(relaxed = true)
 
     @Before
     fun setUp() {
         Dispatchers.setMain(testDispatcher)
-        every { comicsRepository.comics() } returns emptyFlow()
         every { moviesRepository.movies(any()) } returns emptyFlow()
         every { moviesRepository.observeFavorites() } returns emptyFlow()
         every { moviesRepository.observeWatched() } returns emptyFlow()
@@ -49,7 +47,7 @@ class ComicListViewModelTest {
 
     @Test
     fun initialUiState_hasExpectedDefaults() = runTest {
-        val viewModel = ComicListViewModel(comicsRepository, moviesRepository, authRepository)
+        val viewModel = ComicListViewModel(moviesRepository, authRepository)
         val state = viewModel.uiState.value
         assertThat(state.isOffline).isFalse()
         assertThat(state.isRefreshing).isFalse()
@@ -58,14 +56,14 @@ class ComicListViewModelTest {
 
     @Test
     fun categorySelected_updatesUiState() = runTest {
-        val viewModel = ComicListViewModel(comicsRepository, moviesRepository, authRepository)
+        val viewModel = ComicListViewModel(moviesRepository, authRepository)
         viewModel.onAction(ComicListAction.CategorySelected(MovieCategory.TOP_RATED))
         assertThat(viewModel.uiState.value.selectedCategory).isEqualTo(MovieCategory.TOP_RATED)
     }
 
     @Test
     fun comicClickedAction_emitsOpenDetailEffect_viaBufferedChannel() = runTest {
-        val viewModel = ComicListViewModel(comicsRepository, moviesRepository, authRepository)
+        val viewModel = ComicListViewModel(moviesRepository, authRepository)
         viewModel.effects.test {
             viewModel.onAction(ComicListAction.ComicClicked(101))
             val effect = awaitItem()
@@ -75,7 +73,7 @@ class ComicListViewModelTest {
 
     @Test
     fun favoriteToggled_callsRepositoryToggleFavorite() = runTest {
-        val viewModel = ComicListViewModel(comicsRepository, moviesRepository, authRepository)
+        val viewModel = ComicListViewModel(moviesRepository, authRepository)
         val sampleMovie = MovieSummary(id = 1, title = "Iron Man", posterUrl = null, voteAverage = 8.0)
         viewModel.onAction(ComicListAction.FavoriteToggled(sampleMovie))
         testDispatcher.scheduler.advanceUntilIdle()
@@ -84,7 +82,7 @@ class ComicListViewModelTest {
 
     @Test
     fun watchedToggled_callsRepositoryToggleWatched() = runTest {
-        val viewModel = ComicListViewModel(comicsRepository, moviesRepository, authRepository)
+        val viewModel = ComicListViewModel(moviesRepository, authRepository)
         val sampleMovie = MovieSummary(id = 1, title = "Iron Man", posterUrl = null, voteAverage = 8.0)
         viewModel.onAction(ComicListAction.WatchedToggled(sampleMovie))
         testDispatcher.scheduler.advanceUntilIdle()
