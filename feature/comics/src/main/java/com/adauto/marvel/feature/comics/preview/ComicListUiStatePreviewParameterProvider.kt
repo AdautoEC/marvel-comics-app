@@ -2,6 +2,8 @@ package com.adauto.marvel.feature.comics.preview
 
 import androidx.compose.ui.tooling.preview.PreviewParameterProvider
 import com.adauto.marvel.core.model.ComicSummary
+import com.adauto.marvel.core.model.MovieCategory
+import com.adauto.marvel.core.model.SessionState
 import com.adauto.marvel.feature.comics.ComicListUiState
 
 data class ComicListPreviewState(
@@ -18,9 +20,15 @@ class ComicListUiStatePreviewParameterProvider : PreviewParameterProvider<ComicL
             uiState = ComicListUiState(),
             isLoading = true
         ),
-        // 2. Populated Success State
+        // 2. Populated Success State (Authenticated)
         ComicListPreviewState(
-            uiState = ComicListUiState(),
+            uiState = ComicListUiState(
+                sessionState = SessionState.Authenticated(
+                    accountId = 42,
+                    username = "tonystark",
+                    sessionId = "sess_42"
+                )
+            ),
             comics = listOf(
                 ComicSummary(
                     id = 1,
@@ -69,6 +77,13 @@ class ComicListUiStatePreviewParameterProvider : PreviewParameterProvider<ComicL
         ComicListPreviewState(
             uiState = ComicListUiState(),
             errorMessage = "Limite de requisições diário da Marvel atingido. Tente novamente mais tarde."
+        ),
+        // 6. Watchlist Tab (Guest)
+        ComicListPreviewState(
+            uiState = ComicListUiState(
+                selectedCategory = MovieCategory.WATCHLIST,
+                sessionState = SessionState.Guest
+            )
         )
     )
 }

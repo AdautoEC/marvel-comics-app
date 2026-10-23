@@ -44,6 +44,7 @@ import com.adauto.marvel.core.model.ComicSummary
 import com.adauto.marvel.core.model.MarvelApiException
 import com.adauto.marvel.core.model.MovieCategory
 import com.adauto.marvel.core.model.MovieSummary
+import com.adauto.marvel.core.model.SessionState
 import com.adauto.marvel.core.model.UiText
 import com.adauto.marvel.core.ui.component.AttributionFooter
 import com.adauto.marvel.core.ui.component.ComicCard
@@ -51,6 +52,8 @@ import com.adauto.marvel.core.ui.component.ErrorState
 import com.adauto.marvel.core.ui.component.MovieCard
 import com.adauto.marvel.core.ui.component.OfflineBanner
 import com.adauto.marvel.core.ui.component.ShimmerComicCard
+import com.adauto.marvel.feature.comics.component.GuestSyncBanner
+import com.adauto.marvel.feature.comics.component.UserSessionPill
 import com.adauto.marvel.feature.comics.preview.ComicListPreviewState
 import com.adauto.marvel.feature.comics.preview.ComicListUiStatePreviewParameterProvider
 
@@ -84,6 +87,14 @@ fun MovieListScreen(
                             color = MarvelColors.MarvelRed
                         )
                     },
+                    actions = {
+                        UserSessionPill(
+                            sessionState = uiState.sessionState,
+                            onConnectClicked = { onAction(ComicListAction.ConnectTmdbClicked) },
+                            onLogoutClicked = { onAction(ComicListAction.LogoutClicked) },
+                            modifier = Modifier.padding(end = 12.dp)
+                        )
+                    },
                     colors = TopAppBarDefaults.topAppBarColors(
                         containerColor = MarvelColors.DarkBackground,
                         titleContentColor = MarvelColors.MarvelRed
@@ -115,6 +126,15 @@ fun MovieListScreen(
                         )
                     }
                 }
+
+                // Guest Sync Banner when in Favorites or Watchlist and user is Guest
+                val showGuestSyncBanner = uiState.sessionState is SessionState.Guest &&
+                    (uiState.selectedCategory == MovieCategory.FAVORITES || uiState.selectedCategory == MovieCategory.WATCHLIST)
+
+                GuestSyncBanner(
+                    onConnectClicked = { onAction(ComicListAction.ConnectTmdbClicked) },
+                    visible = showGuestSyncBanner
+                )
 
                 OfflineBanner(
                     visible = uiState.isOffline,
@@ -183,7 +203,7 @@ fun MovieListScreen(
                         ) {
                             val emptyMessage = when (uiState.selectedCategory) {
                                 MovieCategory.FAVORITES -> "Nenhum filme favoritado ainda.\nToque no coração para salvar!"
-                                MovieCategory.WATCHED -> "Nenhum filme marcado como assistido."
+                                MovieCategory.WATCHLIST -> "Nenhum filme na lista de Quero Assistir."
                                 else -> "Nenhum filme encontrado."
                             }
                             Text(

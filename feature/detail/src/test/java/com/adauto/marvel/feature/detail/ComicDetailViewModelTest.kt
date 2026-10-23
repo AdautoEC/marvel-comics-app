@@ -92,7 +92,21 @@ class ComicDetailViewModelTest {
     }
 
     @Test
-    fun watchedToggled_callsRepositoryToggleWatched_andUpdatesState() = runTest {
+    fun watchlistToggled_callsRepositoryToggleWatchlist_andUpdatesState() = runTest {
+        val savedStateHandle = SavedStateHandle(mapOf("comicId" to 101))
+        val viewModel = ComicDetailViewModel(comicsRepository, moviesRepository, savedStateHandle)
+
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        viewModel.onAction(ComicDetailAction.WatchlistToggled)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        coVerify { moviesRepository.toggleWatchlist(any()) }
+        assertThat(viewModel.uiState.value.movie?.isWatched).isTrue()
+    }
+
+    @Test
+    fun watchedToggled_callsRepositoryToggleWatchlist_andUpdatesState() = runTest {
         val savedStateHandle = SavedStateHandle(mapOf("comicId" to 101))
         val viewModel = ComicDetailViewModel(comicsRepository, moviesRepository, savedStateHandle)
 
@@ -101,7 +115,7 @@ class ComicDetailViewModelTest {
         viewModel.onAction(ComicDetailAction.WatchedToggled)
         testDispatcher.scheduler.advanceUntilIdle()
 
-        coVerify { moviesRepository.toggleWatched(any()) }
+        coVerify { moviesRepository.toggleWatchlist(any()) }
         assertThat(viewModel.uiState.value.movie?.isWatched).isTrue()
     }
 }

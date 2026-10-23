@@ -17,6 +17,7 @@ sealed interface ComicDetailAction {
     data object Retry : ComicDetailAction
     data object BackClicked : ComicDetailAction
     data object FavoriteToggled : ComicDetailAction
+    data object WatchlistToggled : ComicDetailAction
     data object WatchedToggled : ComicDetailAction
 }
 

@@ -40,7 +40,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.vector.path
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
@@ -251,7 +254,7 @@ private fun MovieDetailContent(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Action Buttons Row: Favorite & Watched
+                // Action Buttons Row: Favorite (❤️) & Quero Assistir (🔖)
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -259,7 +262,9 @@ private fun MovieDetailContent(
                     // Favorite Button
                     Button(
                         onClick = { onAction(ComicDetailAction.FavoriteToggled) },
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier
+                            .weight(1f)
+                            .testTag("FavoriteButton"),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = if (movie.isFavorite) MarvelColors.MarvelRed else MarvelColors.SurfaceCard
                         ),
@@ -267,7 +272,7 @@ private fun MovieDetailContent(
                     ) {
                         Icon(
                             imageVector = if (movie.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                            contentDescription = null,
+                            contentDescription = if (movie.isFavorite) "Favoritado" else "Favoritar",
                             tint = Color.White,
                             modifier = Modifier.size(18.dp)
                         )
@@ -279,24 +284,26 @@ private fun MovieDetailContent(
                         )
                     }
 
-                    // Watched Button
+                    // Watchlist Button
                     OutlinedButton(
-                        onClick = { onAction(ComicDetailAction.WatchedToggled) },
-                        modifier = Modifier.weight(1f),
+                        onClick = { onAction(ComicDetailAction.WatchlistToggled) },
+                        modifier = Modifier
+                            .weight(1f)
+                            .testTag("WatchlistButton"),
                         colors = ButtonDefaults.outlinedButtonColors(
                             containerColor = if (movie.isWatched) Color(0xFF1B5E20) else Color.Transparent
                         ),
                         shape = RoundedCornerShape(12.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Check,
-                            contentDescription = null,
+                            imageVector = if (movie.isWatched) BookmarkIcon else BookmarkBorderIcon,
+                            contentDescription = if (movie.isWatched) "Na lista Quero Assistir" else "Quero Assistir",
                             tint = if (movie.isWatched) Color.White else MarvelColors.TextSecondary,
                             modifier = Modifier.size(18.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = if (movie.isWatched) "Assistido" else "Já assisti",
+                            text = "Quero Assistir",
                             fontWeight = FontWeight.Bold,
                             color = if (movie.isWatched) Color.White else MarvelColors.TextPrimary
                         )
@@ -698,6 +705,57 @@ internal fun formatOnsaleDate(dateStr: String?): String? {
     } catch (_: Exception) {
         dateStr
     }
+}
+
+private val BookmarkIcon: ImageVector by lazy {
+    ImageVector.Builder(
+        name = "Bookmark",
+        defaultWidth = 24.dp,
+        defaultHeight = 24.dp,
+        viewportWidth = 24f,
+        viewportHeight = 24f
+    ).apply {
+        path(fill = SolidColor(Color.White)) {
+            moveTo(17f, 3f)
+            horizontalLineTo(7f)
+            curveTo(5.9f, 3f, 5f, 3.9f, 5f, 5f)
+            verticalLineTo(21f)
+            lineTo(12f, 18f)
+            lineTo(19f, 21f)
+            verticalLineTo(5f)
+            curveTo(19f, 3.9f, 18.1f, 3f, 17f, 3f)
+            close()
+        }
+    }.build()
+}
+
+private val BookmarkBorderIcon: ImageVector by lazy {
+    ImageVector.Builder(
+        name = "BookmarkBorder",
+        defaultWidth = 24.dp,
+        defaultHeight = 24.dp,
+        viewportWidth = 24f,
+        viewportHeight = 24f
+    ).apply {
+        path(fill = SolidColor(Color.White)) {
+            moveTo(17f, 3f)
+            horizontalLineTo(7f)
+            curveTo(5.9f, 3f, 5f, 3.9f, 5f, 5f)
+            verticalLineTo(21f)
+            lineTo(12f, 18f)
+            lineTo(19f, 21f)
+            verticalLineTo(5f)
+            curveTo(19f, 3.9f, 18.1f, 3f, 17f, 3f)
+            close()
+            moveTo(17f, 18f)
+            lineTo(12f, 15.82f)
+            lineTo(7f, 18f)
+            verticalLineTo(5f)
+            horizontalLineTo(17f)
+            verticalLineTo(18f)
+            close()
+        }
+    }.build()
 }
 
 @ThemePreviews
