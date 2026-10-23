@@ -11,15 +11,15 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
 
 /**
- * Entry point route for the Comic Detail screen.
- * Collects [ComicDetailUiState] from [ComicDetailViewModel], listens for navigation effects,
+ * Entry point route for the Movie Detail screen.
+ * Collects [MovieDetailUiState] from [MovieDetailViewModel], listens for navigation effects,
  * and delegates user actions.
  */
 @Composable
-fun ComicDetailRoute(
+fun MovieDetailRoute(
     onBack: () -> Unit = {},
     modifier: Modifier = Modifier,
-    viewModel: ComicDetailViewModel = hiltViewModel(),
+    viewModel: MovieDetailViewModel = hiltViewModel(),
     onBackClick: () -> Unit = onBack
 ) {
     val effectiveOnBack = if (onBackClick !== onBack) onBackClick else onBack
@@ -30,13 +30,13 @@ fun ComicDetailRoute(
         lifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
             viewModel.effects.collect { effect ->
                 when (effect) {
-                    is ComicDetailEffect.NavigateBack -> effectiveOnBack()
+                    is MovieDetailEffect.NavigateBack -> effectiveOnBack()
                 }
             }
         }
     }
 
-    ComicDetailScreen(
+    MovieDetailScreen(
         uiState = uiState,
         onAction = viewModel::onAction,
         modifier = modifier

@@ -21,7 +21,7 @@ import org.junit.Before
 import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
-class ComicDetailViewModelTest {
+class MovieDetailViewModelTest {
     private val testDispatcher = StandardTestDispatcher()
     private val moviesRepository: MoviesRepository = mockk(relaxed = true)
 
@@ -52,8 +52,8 @@ class ComicDetailViewModelTest {
 
     @Test
     fun loadDetail_onInit_updatesUiStateWithMovie() = runTest {
-        val savedStateHandle = SavedStateHandle(mapOf("comicId" to 101))
-        val viewModel = ComicDetailViewModel(moviesRepository, savedStateHandle)
+        val savedStateHandle = SavedStateHandle(mapOf("movieId" to 101))
+        val viewModel = MovieDetailViewModel(moviesRepository, savedStateHandle)
 
         testDispatcher.scheduler.advanceUntilIdle()
 
@@ -65,24 +65,24 @@ class ComicDetailViewModelTest {
 
     @Test
     fun backClicked_emitsNavigateBackEffect() = runTest {
-        val savedStateHandle = SavedStateHandle(mapOf("comicId" to 101))
-        val viewModel = ComicDetailViewModel(moviesRepository, savedStateHandle)
+        val savedStateHandle = SavedStateHandle(mapOf("movieId" to 101))
+        val viewModel = MovieDetailViewModel(moviesRepository, savedStateHandle)
 
         viewModel.effects.test {
-            viewModel.onAction(ComicDetailAction.BackClicked)
+            viewModel.onAction(MovieDetailAction.BackClicked)
             val effect = awaitItem()
-            assertEquals(ComicDetailEffect.NavigateBack, effect)
+            assertEquals(MovieDetailEffect.NavigateBack, effect)
         }
     }
 
     @Test
     fun favoriteToggled_callsRepositoryToggleFavorite_andUpdatesState() = runTest {
-        val savedStateHandle = SavedStateHandle(mapOf("comicId" to 101))
-        val viewModel = ComicDetailViewModel(moviesRepository, savedStateHandle)
+        val savedStateHandle = SavedStateHandle(mapOf("movieId" to 101))
+        val viewModel = MovieDetailViewModel(moviesRepository, savedStateHandle)
 
         testDispatcher.scheduler.advanceUntilIdle()
 
-        viewModel.onAction(ComicDetailAction.FavoriteToggled)
+        viewModel.onAction(MovieDetailAction.FavoriteToggled)
         testDispatcher.scheduler.advanceUntilIdle()
 
         coVerify { moviesRepository.toggleFavorite(any()) }
@@ -91,12 +91,12 @@ class ComicDetailViewModelTest {
 
     @Test
     fun watchlistToggled_callsRepositoryToggleWatchlist_andUpdatesState() = runTest {
-        val savedStateHandle = SavedStateHandle(mapOf("comicId" to 101))
-        val viewModel = ComicDetailViewModel(moviesRepository, savedStateHandle)
+        val savedStateHandle = SavedStateHandle(mapOf("movieId" to 101))
+        val viewModel = MovieDetailViewModel(moviesRepository, savedStateHandle)
 
         testDispatcher.scheduler.advanceUntilIdle()
 
-        viewModel.onAction(ComicDetailAction.WatchlistToggled)
+        viewModel.onAction(MovieDetailAction.WatchlistToggled)
         testDispatcher.scheduler.advanceUntilIdle()
 
         coVerify { moviesRepository.toggleWatchlist(any()) }
@@ -105,12 +105,12 @@ class ComicDetailViewModelTest {
 
     @Test
     fun watchedToggled_callsRepositoryToggleWatchlist_andUpdatesState() = runTest {
-        val savedStateHandle = SavedStateHandle(mapOf("comicId" to 101))
-        val viewModel = ComicDetailViewModel(moviesRepository, savedStateHandle)
+        val savedStateHandle = SavedStateHandle(mapOf("movieId" to 101))
+        val viewModel = MovieDetailViewModel(moviesRepository, savedStateHandle)
 
         testDispatcher.scheduler.advanceUntilIdle()
 
-        viewModel.onAction(ComicDetailAction.WatchedToggled)
+        viewModel.onAction(MovieDetailAction.WatchedToggled)
         testDispatcher.scheduler.advanceUntilIdle()
 
         coVerify { moviesRepository.toggleWatchlist(any()) }

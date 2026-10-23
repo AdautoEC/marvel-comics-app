@@ -20,34 +20,37 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
-class ComicDetailViewModel @Inject constructor(
+class MovieDetailViewModel @Inject constructor(
     private val moviesRepository: MoviesRepository,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
     private val movieId: Int = checkNotNull(
-        savedStateHandle.get<Int>("comicId") ?: savedStateHandle.get<String>("comicId")?.toIntOrNull()
-    ) { "comicId is required" }
+        savedStateHandle.get<Int>("movieId")
+            ?: savedStateHandle.get<String>("movieId")?.toIntOrNull()
+            ?: savedStateHandle.get<Int>("comicId")
+            ?: savedStateHandle.get<String>("comicId")?.toIntOrNull()
+    ) { "movieId is required" }
 
-    private val _uiState = MutableStateFlow(ComicDetailUiState(isLoading = true))
-    val uiState: StateFlow<ComicDetailUiState> = _uiState.asStateFlow()
+    private val _uiState = MutableStateFlow(MovieDetailUiState(isLoading = true))
+    val uiState: StateFlow<MovieDetailUiState> = _uiState.asStateFlow()
 
-    private val _effects = Channel<ComicDetailEffect>(Channel.BUFFERED)
-    val effects: Flow<ComicDetailEffect> = _effects.receiveAsFlow()
+    private val _effects = Channel<MovieDetailEffect>(Channel.BUFFERED)
+    val effects: Flow<MovieDetailEffect> = _effects.receiveAsFlow()
 
     init {
         loadDetail()
     }
 
-    fun onAction(action: ComicDetailAction) {
+    fun onAction(action: MovieDetailAction) {
         when (action) {
-            is ComicDetailAction.Retry -> loadDetail()
-            is ComicDetailAction.BackClicked -> {
+            is MovieDetailAction.Retry -> loadDetail()
+            is MovieDetailAction.BackClicked -> {
                 viewModelScope.launch {
-                    _effects.send(ComicDetailEffect.NavigateBack)
+                    _effects.send(MovieDetailEffect.NavigateBack)
                 }
             }
-            is ComicDetailAction.FavoriteToggled -> {
+            is MovieDetailAction.FavoriteToggled -> {
                 val current = _uiState.value.movie ?: return
                 val summary = MovieSummary(
                     id = current.id,
@@ -62,7 +65,7 @@ class ComicDetailViewModel @Inject constructor(
                     _uiState.update { it.copy(movie = current.copy(isFavorite = !current.isFavorite)) }
                 }
             }
-            is ComicDetailAction.WatchlistToggled, is ComicDetailAction.WatchedToggled -> {
+            is MovieDetailAction.WatchlistToggled, is MovieDetailAction.WatchedToggled -> {
                 val current = _uiState.value.movie ?: return
                 val summary = MovieSummary(
                     id = current.id,

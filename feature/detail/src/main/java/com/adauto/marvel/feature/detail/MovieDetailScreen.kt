@@ -58,7 +58,7 @@ import com.adauto.marvel.core.model.MovieDetail
 import com.adauto.marvel.core.ui.component.ErrorState
 import com.adauto.marvel.core.ui.component.MovieCover
 import com.adauto.marvel.core.ui.component.shimmer
-import com.adauto.marvel.feature.detail.preview.ComicDetailUiStatePreviewParameterProvider
+import com.adauto.marvel.feature.detail.preview.MovieDetailUiStatePreviewParameterProvider
 
 /**
  * Movie / Comic Detail Screen presenting:
@@ -71,9 +71,9 @@ import com.adauto.marvel.feature.detail.preview.ComicDetailUiStatePreviewParamet
  * - Loading shimmer placeholders and error retry state
  */
 @Composable
-fun ComicDetailScreen(
-    uiState: ComicDetailUiState,
-    onAction: (ComicDetailAction) -> Unit,
+fun MovieDetailScreen(
+    uiState: MovieDetailUiState,
+    onAction: (MovieDetailAction) -> Unit,
     modifier: Modifier = Modifier
 ) {
     Box(
@@ -83,8 +83,8 @@ fun ComicDetailScreen(
     ) {
         when {
             uiState.isLoading -> {
-                ComicDetailLoadingSkeleton(
-                    modifier = Modifier.testTag("ComicDetailLoadingShimmer")
+                MovieDetailLoadingSkeleton(
+                    modifier = Modifier.testTag("MovieDetailLoadingShimmer")
                 )
             }
             uiState.errorMessage != null && uiState.movie == null -> {
@@ -96,7 +96,7 @@ fun ComicDetailScreen(
                 ) {
                     ErrorState(
                         message = uiState.errorMessage,
-                        onRetry = { onAction(ComicDetailAction.Retry) },
+                        onRetry = { onAction(MovieDetailAction.Retry) },
                         modifier = Modifier.testTag("DetailErrorState")
                     )
                 }
@@ -105,13 +105,13 @@ fun ComicDetailScreen(
                 MovieDetailContent(
                     movie = uiState.movie,
                     onAction = onAction,
-                    modifier = Modifier.testTag("ComicDetailContent")
+                    modifier = Modifier.testTag("MovieDetailContent")
                 )
             }
         }
 
         FloatingBackButton(
-            onClick = { onAction(ComicDetailAction.BackClicked) },
+            onClick = { onAction(MovieDetailAction.BackClicked) },
             modifier = Modifier.align(Alignment.TopStart)
         )
     }
@@ -121,7 +121,7 @@ fun ComicDetailScreen(
 @Composable
 private fun MovieDetailContent(
     movie: MovieDetail,
-    onAction: (ComicDetailAction) -> Unit,
+    onAction: (MovieDetailAction) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val scrollState = rememberScrollState()
@@ -252,7 +252,7 @@ private fun MovieDetailContent(
                 ) {
                     // Favorite Button
                     Button(
-                        onClick = { onAction(ComicDetailAction.FavoriteToggled) },
+                        onClick = { onAction(MovieDetailAction.FavoriteToggled) },
                         modifier = Modifier
                             .weight(1f)
                             .testTag("FavoriteButton"),
@@ -277,7 +277,7 @@ private fun MovieDetailContent(
 
                     // Watchlist Button
                     OutlinedButton(
-                        onClick = { onAction(ComicDetailAction.WatchlistToggled) },
+                        onClick = { onAction(MovieDetailAction.WatchlistToggled) },
                         modifier = Modifier
                             .weight(1f)
                             .testTag("WatchlistButton"),
@@ -431,7 +431,7 @@ private fun FloatingBackButton(
 }
 
 @Composable
-private fun ComicDetailLoadingSkeleton(
+private fun MovieDetailLoadingSkeleton(
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -554,11 +554,11 @@ private val BookmarkBorderIcon: ImageVector by lazy {
 @ThemePreviews
 @DevicePreviews
 @Composable
-private fun ComicDetailScreenPreview(
-    @PreviewParameter(ComicDetailUiStatePreviewParameterProvider::class) uiState: ComicDetailUiState
+private fun MovieDetailScreenPreview(
+    @PreviewParameter(MovieDetailUiStatePreviewParameterProvider::class) uiState: MovieDetailUiState
 ) {
     MarvelTheme {
-        ComicDetailScreen(
+        MovieDetailScreen(
             uiState = uiState,
             onAction = {}
         )

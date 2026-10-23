@@ -3,20 +3,20 @@ package com.adauto.marvel.feature.detail.preview
 import androidx.compose.ui.tooling.preview.PreviewParameterProvider
 import com.adauto.marvel.core.model.MovieDetail
 import com.adauto.marvel.core.model.UiText
-import com.adauto.marvel.feature.detail.ComicDetailUiState
+import com.adauto.marvel.feature.detail.MovieDetailUiState
 
-class ComicDetailUiStatePreviewParameterProvider : PreviewParameterProvider<ComicDetailUiState> {
-    override val values: Sequence<ComicDetailUiState> = sequenceOf(
+class MovieDetailUiStatePreviewParameterProvider : PreviewParameterProvider<MovieDetailUiState> {
+    override val values: Sequence<MovieDetailUiState> = sequenceOf(
         // 1. Loading State
-        ComicDetailUiState(
+        MovieDetailUiState(
             isLoading = true
         ),
         // 2. Error State
-        ComicDetailUiState(
+        MovieDetailUiState(
             errorMessage = UiText.Dynamic("Não foi possível carregar os detalhes do filme. Verifique sua conexão.")
         ),
         // 3. Populated Movie (Active Actions: Favorito + Quero Assistir)
-        ComicDetailUiState(
+        MovieDetailUiState(
             movie = MovieDetail(
                 id = 550,
                 title = "Clube da Luta",
@@ -33,7 +33,7 @@ class ComicDetailUiStatePreviewParameterProvider : PreviewParameterProvider<Comi
             )
         ),
         // 4. Populated Movie (Inactive Actions)
-        ComicDetailUiState(
+        MovieDetailUiState(
             movie = MovieDetail(
                 id = 551,
                 title = "Inception",
@@ -50,7 +50,7 @@ class ComicDetailUiStatePreviewParameterProvider : PreviewParameterProvider<Comi
             )
         ),
         // 5. Populated Movie Minimal (No Overview, No Genres, No Cast)
-        ComicDetailUiState(
+        MovieDetailUiState(
             movie = MovieDetail(
                 id = 552,
                 title = "Filme Sem Sinopse",

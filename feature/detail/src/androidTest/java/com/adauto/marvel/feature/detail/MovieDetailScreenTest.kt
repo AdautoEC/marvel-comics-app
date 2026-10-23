@@ -13,7 +13,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 
-class ComicDetailScreenTest {
+class MovieDetailScreenTest {
 
     @get:Rule
     val composeTestRule = createComposeRule()
@@ -36,13 +36,13 @@ class ComicDetailScreenTest {
     @Test
     fun comicDetailScreen_displaysLoadingSkeleton_whenLoading() {
         composeTestRule.setContent {
-            ComicDetailScreen(
-                uiState = ComicDetailUiState(isLoading = true),
+            MovieDetailScreen(
+                uiState = MovieDetailUiState(isLoading = true),
                 onAction = {}
             )
         }
 
-        composeTestRule.onNodeWithTag("ComicDetailLoadingShimmer").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("MovieDetailLoadingShimmer").assertIsDisplayed()
     }
 
     @Test
@@ -50,17 +50,17 @@ class ComicDetailScreenTest {
         var backClicked = false
 
         composeTestRule.setContent {
-            ComicDetailScreen(
-                uiState = ComicDetailUiState(movie = sampleMovie),
+            MovieDetailScreen(
+                uiState = MovieDetailUiState(movie = sampleMovie),
                 onAction = { action ->
-                    if (action is ComicDetailAction.BackClicked) {
+                    if (action is MovieDetailAction.BackClicked) {
                         backClicked = true
                     }
                 }
             )
         }
 
-        composeTestRule.onNodeWithTag("ComicDetailContent").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("MovieDetailContent").assertIsDisplayed()
         composeTestRule.onNodeWithText("Inception").assertIsDisplayed()
         composeTestRule.onNodeWithText("Leonardo DiCaprio").assertIsDisplayed()
         composeTestRule.onNodeWithText("Joseph Gordon-Levitt").assertIsDisplayed()
@@ -74,12 +74,12 @@ class ComicDetailScreenTest {
         var retryTriggered = false
 
         composeTestRule.setContent {
-            ComicDetailScreen(
-                uiState = ComicDetailUiState(
+            MovieDetailScreen(
+                uiState = MovieDetailUiState(
                     errorMessage = UiText.Dynamic("Falha ao carregar detalhes")
                 ),
                 onAction = { action ->
-                    if (action is ComicDetailAction.Retry) {
+                    if (action is MovieDetailAction.Retry) {
                         retryTriggered = true
                     }
                 }
@@ -96,8 +96,8 @@ class ComicDetailScreenTest {
         val restorationTester = StateRestorationTester(composeTestRule)
 
         restorationTester.setContent {
-            ComicDetailScreen(
-                uiState = ComicDetailUiState(movie = sampleMovie),
+            MovieDetailScreen(
+                uiState = MovieDetailUiState(movie = sampleMovie),
                 onAction = {}
             )
         }

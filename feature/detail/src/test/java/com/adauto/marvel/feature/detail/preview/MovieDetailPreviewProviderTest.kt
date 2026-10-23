@@ -3,11 +3,11 @@ package com.adauto.marvel.feature.detail.preview
 import com.google.common.truth.Truth.assertThat
 import org.junit.Test
 
-class ComicDetailPreviewProviderTest {
+class MovieDetailPreviewProviderTest {
 
     @Test
     fun comicDetailUiStatePreviewParameterProvider_suppliesAllCoreUiStates() {
-        val provider = ComicDetailUiStatePreviewParameterProvider()
+        val provider = MovieDetailUiStatePreviewParameterProvider()
         val values = provider.values.toList()
 
         assertThat(values).hasSize(5)
