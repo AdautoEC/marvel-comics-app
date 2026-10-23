@@ -93,34 +93,41 @@ jobs:
       - name: Build Instrumented Test APKs for Test Lab
         run: ./gradlew :app:assembleDebug :app:assembleDebugAndroidTest --stacktrace
 
+      - name: Stage Artifacts
+        run: |
+          mkdir -p stage/release stage/test-lab stage/bundle stage/mapping
+          cp app/build/outputs/apk/release/*.apk stage/release/app-release.apk
+          cp app/build/outputs/bundle/release/*.aab stage/bundle/
+          cp app/build/outputs/mapping/release/mapping.txt stage/mapping/mapping.txt
+          cp app/build/outputs/apk/debug/app-debug.apk stage/test-lab/app-debug.apk
+          cp app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk stage/test-lab/app-debug-androidTest.apk
+
       - name: Archive Release APK
         uses: actions/upload-artifact@v4
         with:
           name: app-release-apk
-          path: app/build/outputs/apk/release/*.apk
+          path: stage/release/app-release.apk
           retention-days: 7
 
       - name: Archive Release Bundle (AAB)
         uses: actions/upload-artifact@v4
         with:
           name: app-release-bundle
-          path: app/build/outputs/bundle/release/*.aab
+          path: stage/bundle/*.aab
           retention-days: 7
 
       - name: Archive ProGuard / R8 Mapping File
         uses: actions/upload-artifact@v4
         with:
           name: mapping-release
-          path: app/build/outputs/mapping/release/mapping.txt
+          path: stage/mapping/mapping.txt
           retention-days: 7
 
       - name: Archive Test APKs for Test Lab
         uses: actions/upload-artifact@v4
         with:
           name: test-lab-apks
-          path: |
-            app/build/outputs/apk/debug/app-debug.apk
-            app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+          path: stage/test-lab/*.apk
           retention-days: 7
 
   test-lab:
@@ -158,16 +165,16 @@ jobs:
           gcloud --quiet config set project marvel-comics-app-86f2a
           gcloud firebase test android run \
             --type instrumentation \
-            --app apks/app/build/outputs/apk/debug/app-debug.apk \
-            --test apks/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk \
+            --app apks/app-debug.apk \
+            --test apks/app-debug-androidTest.apk \
             --device model=oriole,version=33,locale=pt_BR,orientation=portrait \
             --timeout 15m
 
-      - name: Test Lab Fallback Notice
+      - name: Test Lab Notice
         if: env.GCP_SA_KEY == ''
         run: |
           echo "Notice: 'GCP_SA_KEY' secret not configured in repository."
-          echo "Firebase Test Lab remote execution was skipped. Configure GCP_SA_KEY with Firebase Test Lab Admin privileges to enable automated cloud device testing."
+          echo "Firebase Test Lab remote execution was skipped."
 
   deploy-and-release:
     name: Firebase App Tester & Release Tag
@@ -256,7 +263,7 @@ jobs:
             - Deployed to Firebase App Distribution (group: `testers`)
           files: |
             release-apk/app-release.apk
-            release-bundle/app-release.aab
+            release-bundle/*.aab
             release-mapping/mapping.txt
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
