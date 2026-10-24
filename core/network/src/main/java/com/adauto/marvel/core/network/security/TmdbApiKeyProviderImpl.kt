@@ -11,9 +11,12 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.atomic.AtomicReference
 import javax.inject.Inject
@@ -46,6 +49,8 @@ class TmdbApiKeyProviderImpl(
 
     private val cachedCredentials = AtomicReference<Pair<TmdbCredentials, Long>?>()
     private val lastForcedFetchMs = AtomicLong(-1L)
+    private val isRefreshing = AtomicBoolean(false)
+    private val forcedRefreshMutex = Mutex()
 
     companion object {
         const val KEY_TMDB_API_KEY = "tmdb_api_key"
@@ -68,8 +73,14 @@ class TmdbApiKeyProviderImpl(
             if (now - cachedAt < TTL_24H) {
                 return creds
             } else {
-                externalScope.launch {
-                    fetchAndStoreCredentials()
+                if (isRefreshing.compareAndSet(false, true)) {
+                    externalScope.launch {
+                        try {
+                            fetchAndStoreCredentials()
+                        } finally {
+                            isRefreshing.set(false)
+                        }
+                    }
                 }
                 return creds
             }
@@ -98,13 +109,14 @@ class TmdbApiKeyProviderImpl(
             return remoteCreds
         }
 
-        // In debug builds, fallback to BuildConfig
+        // In debug builds, fallback to BuildConfig and cache in memory
         if (BuildConfig.DEBUG) {
             val fallback = TmdbCredentials(
                 apiKey = BuildConfig.TMDB_API_KEY.takeIf { it.isNotBlank() },
                 readAccessToken = BuildConfig.TMDB_READ_ACCESS_TOKEN.takeIf { it.isNotBlank() }
             )
             if (fallback.isNotEmpty) {
+                cachedCredentials.set(fallback to timeProvider())
                 return fallback
             }
         }
@@ -112,15 +124,15 @@ class TmdbApiKeyProviderImpl(
         return null
     }
 
-    override suspend fun refreshKeyForced(): TmdbCredentials? {
+    override suspend fun refreshKeyForced(): TmdbCredentials? = forcedRefreshMutex.withLock {
         val now = timeProvider()
         val lastFetch = lastForcedFetchMs.get()
         if (lastFetch >= 0L && (now - lastFetch) < COOLDOWN_15M) {
-            return cachedCredentials.get()?.first ?: getCredentials()
+            return@withLock cachedCredentials.get()?.first ?: getCredentials()
         }
         lastForcedFetchMs.set(now)
 
-        return try {
+        try {
             withTimeout(REMOTE_CONFIG_TIMEOUT_MS) {
                 remoteConfig.fetch(0).awaitTask()
                 remoteConfig.activate().awaitTask()

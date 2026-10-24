@@ -41,7 +41,9 @@ class MarvelApp : Application(), ImageLoaderFactory {
             firebaseTelemetryInitializer.initialize()
         }
         applicationScope.launch {
-            keyProvider.getCredentials()
+            runCatching {
+                keyProvider.getCredentials()
+            }
         }
     }
 

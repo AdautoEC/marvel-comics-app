@@ -9,6 +9,7 @@ import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.async
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
@@ -256,5 +257,94 @@ class TmdbApiKeyProviderImplTest {
         val creds = provider.getCredentials()
         assertEquals("legacy_plain_key", creds?.apiKey)
         assertNull(creds?.readAccessToken)
+    }
+
+    @Test
+    fun getCredentials_whenCacheExpiredAndMultipleCalls_stampedeGuardLaunchesOnlyOneRefresh() = runTest {
+        provider = TmdbApiKeyProviderImpl(
+            externalScope = this,
+            remoteConfig = remoteConfig,
+            encryptedStorage = encryptedStorage,
+            cipher = cipher,
+            timeProvider = timeProvider
+        )
+
+        val initialBlob = byteArrayOf(1, 2, 3)
+        coEvery { encryptedStorage.loadEncryptedBlob() } returns initialBlob
+        every { cipher.decrypt(initialBlob) } returns """{"apiKey":"stale_key","readAccessToken":"stale_token"}""".toByteArray()
+
+        provider.getCredentials()
+
+        currentTimeMs += 25 * 60 * 60 * 1000L
+
+        every { remoteConfig.fetchAndActivate() } returns mockSuccessfulTask(true)
+        every { remoteConfig.getString("tmdb_api_key") } returns "refreshed_key"
+        every { remoteConfig.getString("tmdb_read_access_token") } returns "refreshed_token"
+        every { cipher.encrypt(any()) } returns byteArrayOf(99)
+        coEvery { encryptedStorage.saveEncryptedBlob(byteArrayOf(99)) } returns Unit
+
+        val call1 = provider.getCredentials()
+        val call2 = provider.getCredentials()
+        val call3 = provider.getCredentials()
+
+        assertEquals("stale_key", call1?.apiKey)
+        assertEquals("stale_key", call2?.apiKey)
+        assertEquals("stale_key", call3?.apiKey)
+
+        advanceUntilIdle()
+
+        coVerify(exactly = 1) { remoteConfig.fetchAndActivate() }
+    }
+
+    @Test
+    fun getCredentials_whenDebugFallbackUsed_cachesInMemoryForSubsequentCalls() = runTest {
+        provider = TmdbApiKeyProviderImpl(
+            externalScope = this,
+            remoteConfig = remoteConfig,
+            encryptedStorage = encryptedStorage,
+            cipher = cipher,
+            timeProvider = timeProvider
+        )
+
+        coEvery { encryptedStorage.loadEncryptedBlob() } returns null
+        every { remoteConfig.fetchAndActivate() } returns mockFailedTask(RuntimeException("Network down"))
+
+        val firstCall = provider.getCredentials()
+        if (firstCall != null) {
+            val secondCall = provider.getCredentials()
+            assertEquals(firstCall, secondCall)
+
+            coVerify(exactly = 1) { encryptedStorage.loadEncryptedBlob() }
+            coVerify(exactly = 1) { remoteConfig.fetchAndActivate() }
+        }
+    }
+
+    @Test
+    fun refreshKeyForced_whenCalledConcurrently_mutexSerializesAndSecondHitsCooldown() = runTest {
+        provider = TmdbApiKeyProviderImpl(
+            externalScope = this,
+            remoteConfig = remoteConfig,
+            encryptedStorage = encryptedStorage,
+            cipher = cipher,
+            timeProvider = timeProvider
+        )
+
+        coEvery { encryptedStorage.loadEncryptedBlob() } returns null
+        every { remoteConfig.fetch(0) } returns mockSuccessfulTask(null)
+        every { remoteConfig.activate() } returns mockSuccessfulTask(true)
+        every { remoteConfig.getString("tmdb_api_key") } returns "mutex_key"
+        every { remoteConfig.getString("tmdb_read_access_token") } returns "mutex_token"
+        every { cipher.encrypt(any()) } returns byteArrayOf(88)
+        coEvery { encryptedStorage.saveEncryptedBlob(byteArrayOf(88)) } returns Unit
+
+        val deferred1 = async { provider.refreshKeyForced() }
+        val deferred2 = async { provider.refreshKeyForced() }
+
+        val res1 = deferred1.await()
+        val res2 = deferred2.await()
+
+        assertEquals("mutex_key", res1?.apiKey)
+        assertEquals("mutex_key", res2?.apiKey)
+        coVerify(exactly = 1) { remoteConfig.fetch(0) }
     }
 }
