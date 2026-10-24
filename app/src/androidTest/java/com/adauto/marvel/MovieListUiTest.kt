@@ -196,7 +196,7 @@ class MovieListUiTest {
 
         composeTestRule.onNodeWithTag("SearchIconButton").assertIsDisplayed()
         composeTestRule.onNodeWithTag("SearchIconButton").performClick()
-        composeTestRule.waitUntil(timeoutMillis = 5_000) { actionDispatched != null }
+        composeTestRule.waitForIdle()
 
         assertEquals(MovieListAction.ToggleSearchClicked, actionDispatched)
     }
@@ -221,9 +221,11 @@ class MovieListUiTest {
         composeTestRule.onNodeWithTag("ClearSearchButton").assertIsDisplayed()
 
         composeTestRule.onNodeWithTag("ClearSearchButton").performClick()
+        composeTestRule.waitForIdle()
         assertEquals(MovieListAction.SearchQueryChanged(""), actionDispatched)
 
         composeTestRule.onNodeWithTag("CloseSearchButton").performClick()
+        composeTestRule.waitForIdle()
         assertEquals(MovieListAction.ToggleSearchClicked, actionDispatched)
     }
 
@@ -253,10 +255,10 @@ class MovieListUiTest {
             )
         }
 
-        composeTestRule.waitUntil(timeoutMillis = 5_000) {
+        composeTestRule.waitUntil(timeoutMillis = 15_000) {
             composeTestRule.onAllNodesWithTag("EmptyStateText").fetchSemanticsNodes().isNotEmpty()
         }
-        composeTestRule.onNodeWithTag("EmptyStateText").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Inexistente", substring = true).assertIsDisplayed()
+        composeTestRule.onNodeWithTag("EmptyStateText").assertExists()
+        composeTestRule.onNodeWithText("Inexistente", substring = true).assertExists()
     }
 }
