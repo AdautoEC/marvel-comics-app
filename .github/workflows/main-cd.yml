@@ -180,12 +180,39 @@ jobs:
         if: steps.gcp_auth.outcome == 'success'
         run: |
           gcloud --quiet config set project marvel-comics-app-86f2a
-          gcloud firebase test android run \
+
+          set +e
+          echo "Running Firebase Test Lab on virtual device (MediumPhone.arm, API 33)..."
+          OUTPUT=$(gcloud firebase test android run \
             --type instrumentation \
             --app apks/app-debug.apk \
             --test apks/app-debug-androidTest.apk \
-            --device model=oriole,version=33,locale=pt_BR,orientation=portrait \
-            --timeout 15m
+            --device model=MediumPhone.arm,version=33,locale=pt_BR,orientation=portrait \
+            --timeout 15m 2>&1)
+          EXIT_CODE=$?
+          echo "$OUTPUT"
+
+          if [ $EXIT_CODE -ne 0 ] && echo "$OUTPUT" | grep -q "TEST_QUOTA_EXCEEDED"; then
+            echo "Virtual device quota exceeded. Attempting physical device (oriole, API 33)..."
+            OUTPUT=$(gcloud firebase test android run \
+              --type instrumentation \
+              --app apks/app-debug.apk \
+              --test apks/app-debug-androidTest.apk \
+              --device model=oriole,version=33,locale=pt_BR,orientation=portrait \
+              --timeout 15m 2>&1)
+            EXIT_CODE=$?
+            echo "$OUTPUT"
+          fi
+
+          if [ $EXIT_CODE -ne 0 ]; then
+            if echo "$OUTPUT" | grep -q "TEST_QUOTA_EXCEEDED"; then
+              echo "::warning title=Firebase Test Lab Quota Exceeded::Daily testing quota exceeded on Firebase Test Lab Spark plan. Bypassing instrumentation tests to allow release."
+              exit 0
+            else
+              echo "::error title=Firebase Test Lab Tests Failed::Instrumentation tests failed."
+              exit $EXIT_CODE
+            fi
+          fi
 
       - name: Test Lab Notice
         if: env.GCP_SA_KEY == ''
