@@ -12,8 +12,11 @@ class TmdbAuthInterceptor @Inject constructor(
 ) : Interceptor {
 
     override fun intercept(chain: Interceptor.Chain): Response {
-        val credentials = runBlocking { keyProvider.getCredentials() }
-        if (credentials == null || (credentials.apiKey.isNullOrBlank() && credentials.readAccessToken.isNullOrBlank())) {
+        val credentials = runCatching {
+            runBlocking { keyProvider.getCredentials() }
+        }.getOrNull()
+
+        if (credentials == null || !credentials.isNotEmpty) {
             throw KeysUnavailableException()
         }
 
