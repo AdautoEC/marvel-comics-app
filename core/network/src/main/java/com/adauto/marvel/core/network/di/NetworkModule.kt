@@ -1,6 +1,7 @@
 package com.adauto.marvel.core.network.di
 
 import com.adauto.marvel.core.network.api.TmdbApi
+import com.adauto.marvel.core.network.authenticator.TmdbAuthenticator
 import com.adauto.marvel.core.network.interceptor.TmdbAuthInterceptor
 import com.adauto.marvel.core.network.telemetry.RedactingHttpLoggingInterceptor
 import com.skydoves.sandwich.retrofit.adapters.ApiResponseCallAdapterFactory
@@ -40,13 +41,15 @@ object NetworkModule {
     @Singleton
     @TmdbOkHttpClient
     fun provideTmdbOkHttpClient(
-        authInterceptor: TmdbAuthInterceptor
+        authInterceptor: TmdbAuthInterceptor,
+        authenticator: TmdbAuthenticator
     ): OkHttpClient {
         return OkHttpClient.Builder()
             .connectTimeout(15, TimeUnit.SECONDS)
             .readTimeout(20, TimeUnit.SECONDS)
             .addInterceptor(authInterceptor)
             .addInterceptor(RedactingHttpLoggingInterceptor())
+            .authenticator(authenticator)
             .build()
     }
 
