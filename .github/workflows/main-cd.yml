@@ -82,24 +82,13 @@ jobs:
             echo "::error::GOOGLE_SERVICES_JSON_B64 secret is missing in production CD pipeline!"
             exit 1
           fi
+          if [ -z "$FIREBASE_APP_ID" ]; then
+            echo "::error::FIREBASE_APP_ID secret is missing in production CD pipeline!"
+            exit 1
+          fi
           mkdir -p app
           echo "$GOOGLE_SERVICES_JSON_B64" | base64 -d > app/google-services.json
-          python3 -c '
-          import json, sys, os
-          with open("app/google-services.json") as f:
-              data = json.load(f)
-          clients = data.get("client", [])
-          matching = [c for c in clients if c.get("client_info", {}).get("android_client_info", {}).get("package_name") == "com.adauto.cinemahub"]
-          if not matching:
-              print("::error::app/google-services.json does not contain package com.adauto.cinemahub!", file=sys.stderr)
-              sys.exit(1)
-          app_id = matching[0].get("client_info", {}).get("mobilesdk_app_id")
-          expected_app_id = os.environ.get("FIREBASE_APP_ID")
-          if expected_app_id and app_id != expected_app_id:
-              print(f"::error::mobilesdk_app_id mismatch! Expected {expected_app_id}, found {app_id}", file=sys.stderr)
-              sys.exit(1)
-          print(f"Validated google-services.json: package com.adauto.cinemahub matched app_id {app_id}")
-          '
+          python3 ci/validate_google_services.py app/google-services.json
 
       - name: Setup local.properties with TMDB Secrets
         env:
@@ -206,6 +195,8 @@ jobs:
     needs: [build]
     runs-on: ubuntu-latest
     timeout-minutes: 25
+    env:
+      GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
 
     steps:
       - name: Checkout repository
@@ -220,8 +211,6 @@ jobs:
       - name: Authenticate to Google Cloud
         id: gcp_auth
         if: env.GCP_SA_KEY != ''
-        env:
-          GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
         uses: google-github-actions/auth@v2
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
@@ -290,6 +279,9 @@ jobs:
     needs: [build, test-lab]
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    env:
+      FIREBASE_APP_ID: ${{ secrets.FIREBASE_APP_ID }}
+      FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
 
     steps:
       - name: Checkout repository
@@ -318,9 +310,6 @@ jobs:
       - name: Deploy to Firebase App Distribution (App Tester)
         id: firebase_dist
         if: env.FIREBASE_APP_ID != '' && env.FIREBASE_SERVICE_ACCOUNT != ''
-        env:
-          FIREBASE_APP_ID: ${{ secrets.FIREBASE_APP_ID }}
-          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
         uses: wzieba/Firebase-Distribution-Github-Action@v1
         with:
           appId: ${{ secrets.FIREBASE_APP_ID }}

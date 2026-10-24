@@ -13,8 +13,16 @@ def validate_google_services(file_path: str, expected_app_id: str | None = None)
 
     Exits with code 1 if invalid.
     """
-    with open(file_path, "r", encoding="utf-8") as f:
-        data = json.load(f)
+    if not os.path.exists(file_path):
+        print(f"::error::{file_path} not found!", file=sys.stderr)
+        sys.exit(1)
+
+    try:
+        with open(file_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+    except json.JSONDecodeError as e:
+        print(f"::error::{file_path} is not valid JSON: {e}", file=sys.stderr)
+        sys.exit(1)
 
     clients = data.get("client", [])
     matching = [
@@ -27,7 +35,7 @@ def validate_google_services(file_path: str, expected_app_id: str | None = None)
     ]
     if not matching:
         print(
-            "::error::app/google-services.json does not contain package com.adauto.cinemahub!",
+            f"::error::{file_path} does not contain package com.adauto.cinemahub!",
             file=sys.stderr,
         )
         sys.exit(1)
@@ -35,7 +43,7 @@ def validate_google_services(file_path: str, expected_app_id: str | None = None)
     app_id = matching[0].get("client_info", {}).get("mobilesdk_app_id")
     if expected_app_id and app_id != expected_app_id:
         print(
-            f"::error::mobilesdk_app_id mismatch! Expected {expected_app_id}, found {app_id}",
+            f"::error::{file_path}: mobilesdk_app_id mismatch! Expected {expected_app_id}, found {app_id}",
             file=sys.stderr,
         )
         sys.exit(1)
@@ -112,6 +120,7 @@ def run_self_tests() -> None:
         )
         assert proc.returncode == 1, f"Expected exit 1, got {proc.returncode}"
         assert "mobilesdk_app_id mismatch" in proc.stderr
+        assert mismatch_path in proc.stderr
         print("Assertion 2 (mismatched mobilesdk_app_id exits 1 with error): PASS")
     finally:
         os.remove(mismatch_path)
@@ -144,6 +153,7 @@ def run_self_tests() -> None:
         )
         assert proc.returncode == 1, f"Expected exit 1, got {proc.returncode}"
         assert "does not contain package com.adauto.cinemahub" in proc.stderr
+        assert missing_pkg_path in proc.stderr
         print("Assertion 3 (missing package name exits 1 with error): PASS")
     finally:
         os.remove(missing_pkg_path)
