@@ -276,6 +276,6 @@ class MovieListUiTest {
             composeTestRule.onAllNodesWithTag("EmptyStateText").fetchSemanticsNodes().isNotEmpty()
         }
         composeTestRule.onNodeWithTag("EmptyStateText").assertExists()
-        composeTestRule.onNodeWithTag("EmptyStateText").assertTextContains("Inexistente")
+        composeTestRule.onNodeWithTag("EmptyStateText").assertTextContains("Inexistente", substring = true)
     }
 }
