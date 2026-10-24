@@ -77,6 +77,24 @@ jobs:
           fi
           mkdir -p app
           echo "$GOOGLE_SERVICES_JSON_B64" | base64 -d > app/google-services.json
+          python3 -c '
+          import json, copy
+          try:
+              with open("app/google-services.json", "r") as f:
+                  data = json.load(f)
+              clients = data.get("client", [])
+              pkg_names = [c.get("client_info", {}).get("android_client_info", {}).get("package_name") for c in clients]
+              if "com.adauto.cinemahub" not in pkg_names and len(clients) > 0:
+                  new_client = copy.deepcopy(clients[0])
+                  new_client["client_info"]["android_client_info"]["package_name"] = "com.adauto.cinemahub"
+                  clients.append(new_client)
+                  data["client"] = clients
+                  with open("app/google-services.json", "w") as f:
+                      json.dump(data, f, indent=2)
+                  print("Injected com.adauto.cinemahub client into app/google-services.json")
+          except Exception as e:
+              print(f"Warning: failed to patch google-services.json: {e}")
+          '
 
       - name: Setup local.properties with TMDB Secrets
         env:
