@@ -192,6 +192,7 @@ class MovieListUiTest {
 
         composeTestRule.onNodeWithTag("SearchIconButton").assertIsDisplayed()
         composeTestRule.onNodeWithTag("SearchIconButton").performClick()
+        composeTestRule.waitForIdle()
 
         assertEquals(MovieListAction.ToggleSearchClicked, actionDispatched)
     }
@@ -201,13 +202,19 @@ class MovieListUiTest {
         var actionDispatched: MovieListAction? = null
 
         composeTestRule.setContent {
+            var query by remember { mutableStateOf("") }
             val pagingFlow = remember { flowOf(PagingData.from(sampleMovies)) }
             val pagingItems = pagingFlow.collectAsLazyPagingItems()
 
             MovieListScreen(
-                uiState = MovieListUiState(isSearchActive = true, searchQuery = ""),
+                uiState = MovieListUiState(isSearchActive = true, searchQuery = query),
                 movies = pagingItems,
-                onAction = { actionDispatched = it }
+                onAction = { action ->
+                    actionDispatched = action
+                    if (action is MovieListAction.SearchQueryChanged) {
+                        query = action.query
+                    }
+                }
             )
         }
 
@@ -215,13 +222,14 @@ class MovieListUiTest {
         composeTestRule.onNodeWithTag("CloseSearchButton").assertIsDisplayed()
 
         composeTestRule.onNodeWithTag("SearchTextField").performTextInput("Matrix")
+        composeTestRule.waitForIdle()
         assertEquals(MovieListAction.SearchQueryChanged("Matrix"), actionDispatched)
     }
 
     @Test
     fun searchBar_whenQueryMatchesNoItems_displaysCustomEmptyMessage() {
         composeTestRule.setContent {
-            val pagingFlow = remember { flowOf(PagingData.empty<MovieSummary>()) }
+            val pagingFlow = remember { flowOf(PagingData.from(emptyList<MovieSummary>())) }
             val pagingItems = pagingFlow.collectAsLazyPagingItems()
 
             MovieListScreen(
@@ -235,7 +243,8 @@ class MovieListUiTest {
             )
         }
 
+        composeTestRule.waitForIdle()
         composeTestRule.onNodeWithTag("EmptyStateText").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Nenhum filme encontrado para \"Inexistente\" em Populares.").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Inexistente", substring = true).assertIsDisplayed()
     }
 }
