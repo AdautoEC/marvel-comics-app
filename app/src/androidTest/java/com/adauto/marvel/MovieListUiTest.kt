@@ -7,12 +7,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performTextReplacement
 import androidx.paging.PagingData
 import androidx.paging.compose.collectAsLazyPagingItems
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -192,7 +194,7 @@ class MovieListUiTest {
 
         composeTestRule.onNodeWithTag("SearchIconButton").assertIsDisplayed()
         composeTestRule.onNodeWithTag("SearchIconButton").performClick()
-        composeTestRule.waitForIdle()
+        composeTestRule.waitUntil(timeoutMillis = 5_000) { actionDispatched != null }
 
         assertEquals(MovieListAction.ToggleSearchClicked, actionDispatched)
     }
@@ -221,8 +223,9 @@ class MovieListUiTest {
         composeTestRule.onNodeWithTag("SearchTextField").assertIsDisplayed()
         composeTestRule.onNodeWithTag("CloseSearchButton").assertIsDisplayed()
 
-        composeTestRule.onNodeWithTag("SearchTextField").performTextInput("Matrix")
-        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithTag("SearchTextField").performClick()
+        composeTestRule.onNodeWithTag("SearchTextField").performTextReplacement("Matrix")
+        composeTestRule.waitUntil(timeoutMillis = 5_000) { actionDispatched != null }
         assertEquals(MovieListAction.SearchQueryChanged("Matrix"), actionDispatched)
     }
 
@@ -243,7 +246,9 @@ class MovieListUiTest {
             )
         }
 
-        composeTestRule.waitForIdle()
+        composeTestRule.waitUntil(timeoutMillis = 10_000) {
+            composeTestRule.onAllNodesWithTag("EmptyStateText").fetchSemanticsNodes().isNotEmpty()
+        }
         composeTestRule.onNodeWithTag("EmptyStateText").assertIsDisplayed()
         composeTestRule.onNodeWithText("Inexistente", substring = true).assertIsDisplayed()
     }
