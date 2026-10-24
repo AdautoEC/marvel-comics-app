@@ -106,7 +106,7 @@ class MovieListViewModelTest {
             val refreshing = awaitItem()
             assertThat(refreshing.isRefreshing).isTrue()
 
-            // Advance virtual time (400ms delay + finish)
+            // Advance scheduler until coroutine completes
             testDispatcher.scheduler.advanceUntilIdle()
 
             // Should reset to refreshing false
@@ -128,6 +128,34 @@ class MovieListViewModelTest {
         testDispatcher.scheduler.advanceUntilIdle()
 
         coVerify { moviesRepository.syncCloudWithLocal() }
+    }
+
+    @Test
+    fun refreshRequested_whenAuthenticated_triggersSyncAndResetsIsRefreshingWithoutDelay() = runTest {
+        val authState = MutableStateFlow<SessionState>(
+            SessionState.Authenticated(accountId = 42, username = "adauto", sessionId = "sess_123")
+        )
+        every { authRepository.sessionState } returns authState
+        val viewModel = MovieListViewModel(moviesRepository, authRepository)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        viewModel.uiState.test {
+            val initial = awaitItem()
+            assertThat(initial.isRefreshing).isFalse()
+
+            viewModel.onAction(MovieListAction.RefreshRequested)
+
+            val refreshing = awaitItem()
+            assertThat(refreshing.isRefreshing).isTrue()
+
+            testDispatcher.scheduler.advanceUntilIdle()
+
+            val finished = awaitItem()
+            assertThat(finished.isRefreshing).isFalse()
+        }
+
+        coVerify(exactly = 1) { moviesRepository.syncCloudWithLocal() }
+        assertThat(testScheduler.currentTime).isEqualTo(0L)
     }
 
     @Test
