@@ -4,6 +4,12 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      override_test_lab:
+        description: "Bypass Firebase Test Lab failure (e.g. quota exhausted)"
+        required: false
+        type: boolean
+        default: false
 
 concurrency:
   group: cd-main-${{ github.ref }}
@@ -70,31 +76,19 @@ jobs:
       - name: Setup google-services.json
         env:
           GOOGLE_SERVICES_JSON_B64: ${{ secrets.GOOGLE_SERVICES_JSON_B64 }}
+          FIREBASE_APP_ID: ${{ secrets.FIREBASE_APP_ID }}
         run: |
           if [ -z "$GOOGLE_SERVICES_JSON_B64" ]; then
             echo "::error::GOOGLE_SERVICES_JSON_B64 secret is missing in production CD pipeline!"
             exit 1
           fi
+          if [ -z "$FIREBASE_APP_ID" ]; then
+            echo "::error::FIREBASE_APP_ID secret is missing in production CD pipeline!"
+            exit 1
+          fi
           mkdir -p app
           echo "$GOOGLE_SERVICES_JSON_B64" | base64 -d > app/google-services.json
-          python3 -c '
-          import json, copy
-          try:
-              with open("app/google-services.json", "r") as f:
-                  data = json.load(f)
-              clients = data.get("client", [])
-              pkg_names = [c.get("client_info", {}).get("android_client_info", {}).get("package_name") for c in clients]
-              if "com.adauto.cinemahub" not in pkg_names and len(clients) > 0:
-                  new_client = copy.deepcopy(clients[0])
-                  new_client["client_info"]["android_client_info"]["package_name"] = "com.adauto.cinemahub"
-                  clients.append(new_client)
-                  data["client"] = clients
-                  with open("app/google-services.json", "w") as f:
-                      json.dump(data, f, indent=2)
-                  print("Injected com.adauto.cinemahub client into app/google-services.json")
-          except Exception as e:
-              print(f"Warning: failed to patch google-services.json: {e}")
-          '
+          python3 ci/validate_google_services.py app/google-services.json
 
       - name: Setup local.properties with TMDB Secrets
         env:
@@ -130,6 +124,34 @@ jobs:
 
       - name: Build Instrumented Test APKs for Test Lab
         run: ./gradlew :app:assembleDebug :app:assembleDebugAndroidTest --stacktrace
+
+      - name: Scan Release Artifacts for Secret Leaks
+        env:
+          TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
+          TMDB_READ_ACCESS_TOKEN: ${{ secrets.TMDB_READ_ACCESS_TOKEN }}
+        run: |
+          mkdir -p /tmp/apk_inspect /tmp/aab_inspect
+          unzip -q app/build/outputs/apk/release/*.apk -d /tmp/apk_inspect
+          unzip -q app/build/outputs/bundle/release/*.aab -d /tmp/aab_inspect
+
+          LEAK_FOUND=0
+          for secret in "$TMDB_API_KEY" "$TMDB_READ_ACCESS_TOKEN"; do
+            if [ -n "$secret" ]; then
+              if grep -r -F "$secret" /tmp/apk_inspect/ >/dev/null 2>&1; then
+                echo "::error::Plaintext secret leaked inside release APK!"
+                LEAK_FOUND=1
+              fi
+              if grep -r -F "$secret" /tmp/aab_inspect/ >/dev/null 2>&1; then
+                echo "::error::Plaintext secret leaked inside release AAB!"
+                LEAK_FOUND=1
+              fi
+            fi
+          done
+          rm -rf /tmp/apk_inspect /tmp/aab_inspect
+          if [ $LEAK_FOUND -ne 0 ]; then
+            exit 1
+          fi
+          echo "Release artifact leak scan passed: 0 raw secrets found."
 
       - name: Stage Artifacts
         run: |
@@ -173,6 +195,8 @@ jobs:
     needs: [build]
     runs-on: ubuntu-latest
     timeout-minutes: 25
+    env:
+      GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
 
     steps:
       - name: Checkout repository
@@ -187,8 +211,6 @@ jobs:
       - name: Authenticate to Google Cloud
         id: gcp_auth
         if: env.GCP_SA_KEY != ''
-        env:
-          GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
         uses: google-github-actions/auth@v2
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
@@ -238,11 +260,10 @@ jobs:
           fi
 
           if [ $EXIT_CODE -ne 0 ]; then
-            if echo "$OUTPUT" | grep -q "TEST_QUOTA_EXCEEDED"; then
-              echo "::warning title=Firebase Test Lab Quota Exceeded::Daily testing quota exceeded on Firebase Test Lab Spark plan. Bypassing instrumentation tests to allow release."
-              exit 0
+            if [ "${{ inputs.override_test_lab }}" == "true" ]; then
+              echo "::warning title=Test Lab Override::Bypassing Test Lab failure due to explicit workflow_dispatch override."
             else
-              echo "::error title=Firebase Test Lab Tests Failed::Instrumentation tests failed."
+              echo "::error title=Firebase Test Lab Failed::Instrumentation tests failed (exit code $EXIT_CODE)."
               exit $EXIT_CODE
             fi
           fi
@@ -258,6 +279,9 @@ jobs:
     needs: [build, test-lab]
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    env:
+      FIREBASE_APP_ID: ${{ secrets.FIREBASE_APP_ID }}
+      FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
 
     steps:
       - name: Checkout repository
@@ -285,11 +309,7 @@ jobs:
 
       - name: Deploy to Firebase App Distribution (App Tester)
         id: firebase_dist
-        continue-on-error: true
         if: env.FIREBASE_APP_ID != '' && env.FIREBASE_SERVICE_ACCOUNT != ''
-        env:
-          FIREBASE_APP_ID: ${{ secrets.FIREBASE_APP_ID }}
-          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
         uses: wzieba/Firebase-Distribution-Github-Action@v1
         with:
           appId: ${{ secrets.FIREBASE_APP_ID }}
@@ -299,11 +319,6 @@ jobs:
           releaseNotes: |
             Release automated from main (commit ${{ github.sha }})
             Commit: ${{ github.event.head_commit.message }}
-
-      - name: Notify on Firebase App Distribution Mismatch
-        if: steps.firebase_dist.outcome == 'failure'
-        run: |
-          echo "::warning title=Firebase App Distribution Upload Failed::Could not upload APK to Firebase App Distribution. Verify that FIREBASE_APP_ID secret in GitHub repository settings matches the package name 'com.adauto.cinemahub' registered in Firebase Console."
 
       - name: Calculate Release Tag
         id: tag_calc
@@ -346,6 +361,5 @@ jobs:
           files: |
             release-apk/app-release.apk
             release-bundle/*.aab
-            release-mapping/mapping.txt
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
