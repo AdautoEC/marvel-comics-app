@@ -43,6 +43,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.PreviewParameter
@@ -50,6 +51,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.paging.LoadState
 import androidx.paging.compose.LazyPagingItems
+import androidx.paging.compose.itemContentType
 import androidx.paging.compose.itemKey
 import com.adauto.marvel.core.designsystem.preview.DevicePreviews
 import com.adauto.marvel.core.designsystem.preview.ThemePreviews
@@ -60,11 +62,13 @@ import com.adauto.marvel.core.model.MovieSummary
 import com.adauto.marvel.core.model.SessionState
 import com.adauto.marvel.core.model.TmdbApiException
 import com.adauto.marvel.core.model.UiText
+import com.adauto.marvel.core.ui.R
 import com.adauto.marvel.core.ui.component.AttributionFooter
 import com.adauto.marvel.core.ui.component.ErrorState
 import com.adauto.marvel.core.ui.component.MovieCard
 import com.adauto.marvel.core.ui.component.OfflineBanner
 import com.adauto.marvel.core.ui.component.ShimmerMovieCard
+import com.adauto.marvel.core.ui.util.titleRes
 import com.adauto.marvel.feature.movies.component.GuestSyncBanner
 import com.adauto.marvel.feature.movies.component.UserSessionPill
 import com.adauto.marvel.feature.movies.preview.MovieListPreviewState
@@ -109,7 +113,7 @@ fun MovieListScreen(
                             onClick = { onAction(MovieListAction.CategorySelected(category)) },
                             text = {
                                 Text(
-                                    text = category.displayName,
+                                    text = stringResource(category.titleRes),
                                     style = MaterialTheme.typography.labelLarge.copy(
                                         fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium
                                     ),
@@ -121,9 +125,7 @@ fun MovieListScreen(
                 }
 
                 // Offline Notice
-                if (uiState.isOffline) {
-                    OfflineBanner()
-                }
+                OfflineBanner(visible = uiState.isOffline)
 
                 // Guest Sync Banner for offline saved libraries
                 if (uiState.selectedCategory in setOf(MovieCategory.FAVORITES, MovieCategory.WATCHLIST)) {
@@ -197,12 +199,16 @@ fun MovieListScreen(
                         ) {
                             val emptyMessage = when {
                                 uiState.searchQuery.isNotBlank() ->
-                                    "Nenhum filme encontrado para \"${uiState.searchQuery}\" em ${uiState.selectedCategory.displayName}."
+                                    stringResource(
+                                        R.string.search_empty_message,
+                                        uiState.searchQuery,
+                                        stringResource(uiState.selectedCategory.titleRes)
+                                    )
                                 uiState.selectedCategory == MovieCategory.FAVORITES ->
-                                    "Nenhum filme favoritado ainda.\nToque no coração para salvar!"
+                                    stringResource(R.string.empty_favorites_message)
                                 uiState.selectedCategory == MovieCategory.WATCHLIST ->
-                                    "Nenhum filme na lista de Quero Assistir."
-                                else -> "Nenhum filme encontrado."
+                                    stringResource(R.string.empty_watchlist_message)
+                                else -> stringResource(R.string.empty_movies_message)
                             }
                             Text(
                                 text = emptyMessage,
@@ -225,7 +231,8 @@ fun MovieListScreen(
                         ) {
                             items(
                                 count = movies.itemCount,
-                                key = movies.itemKey { it.id }
+                                key = movies.itemKey { it.id },
+                                contentType = movies.itemContentType { "MovieCard" }
                             ) { index ->
                                 val movie = movies[index]
                                 if (movie != null) {
@@ -311,7 +318,10 @@ private fun MovieListTopBar(
                     onValueChange = { onAction(MovieListAction.SearchQueryChanged(it)) },
                     placeholder = {
                         Text(
-                            text = "Buscar em ${uiState.selectedCategory.displayName}...",
+                            text = stringResource(
+                                R.string.search_placeholder,
+                                stringResource(uiState.selectedCategory.titleRes)
+                            ),
                             color = MarvelColors.TextSecondary,
                             style = MaterialTheme.typography.bodyMedium
                         )

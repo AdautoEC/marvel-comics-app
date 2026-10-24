@@ -26,6 +26,7 @@ data class TmdbAccountDto(
     @SerialName("id") val id: Int,
     @SerialName("username") val username: String,
     @SerialName("name") val name: String? = null,
+    @SerialName("include_adult") val includeAdult: Boolean = false,
     @SerialName("avatar") val avatar: TmdbAvatarDto? = null
 )
 

@@ -5,6 +5,7 @@ import androidx.paging.testing.asSnapshot
 import app.cash.turbine.test
 import com.adauto.marvel.core.data.repository.AuthRepository
 import com.adauto.marvel.core.data.repository.MoviesRepository
+import com.adauto.marvel.core.data.util.NetworkMonitor
 import com.adauto.marvel.core.model.MovieCategory
 import com.adauto.marvel.core.model.MovieSummary
 import com.adauto.marvel.core.model.SessionState
@@ -32,10 +33,17 @@ class MovieListViewModelTest {
     private val testDispatcher = StandardTestDispatcher()
     private val moviesRepository: MoviesRepository = mockk(relaxed = true)
     private val authRepository: AuthRepository = mockk(relaxed = true)
+    private val isOnlineFlow = MutableStateFlow(true)
+    private val networkMonitor: NetworkMonitor = mockk {
+        every { isOnline } returns isOnlineFlow
+    }
+
+    private fun createViewModel() = MovieListViewModel(moviesRepository, authRepository, networkMonitor)
 
     @Before
     fun setUp() {
         Dispatchers.setMain(testDispatcher)
+        isOnlineFlow.value = true
         every { moviesRepository.movies(any()) } returns emptyFlow()
         every { moviesRepository.observeFavorites() } returns emptyFlow()
         every { moviesRepository.observeWatched() } returns emptyFlow()
@@ -49,7 +57,7 @@ class MovieListViewModelTest {
 
     @Test
     fun initialUiState_hasExpectedDefaults() = runTest {
-        val viewModel = MovieListViewModel(moviesRepository, authRepository)
+        val viewModel = createViewModel()
         val state = viewModel.uiState.value
         assertThat(state.isOffline).isFalse()
         assertThat(state.isRefreshing).isFalse()
@@ -58,14 +66,14 @@ class MovieListViewModelTest {
 
     @Test
     fun categorySelected_updatesUiState() = runTest {
-        val viewModel = MovieListViewModel(moviesRepository, authRepository)
+        val viewModel = createViewModel()
         viewModel.onAction(MovieListAction.CategorySelected(MovieCategory.TOP_RATED))
         assertThat(viewModel.uiState.value.selectedCategory).isEqualTo(MovieCategory.TOP_RATED)
     }
 
     @Test
     fun movieClickedAction_emitsOpenDetailEffect_viaBufferedChannel() = runTest {
-        val viewModel = MovieListViewModel(moviesRepository, authRepository)
+        val viewModel = createViewModel()
         viewModel.effects.test {
             viewModel.onAction(MovieListAction.MovieClicked(101))
             val effect = awaitItem()
@@ -75,7 +83,7 @@ class MovieListViewModelTest {
 
     @Test
     fun favoriteToggled_callsRepositoryToggleFavorite() = runTest {
-        val viewModel = MovieListViewModel(moviesRepository, authRepository)
+        val viewModel = createViewModel()
         val sampleMovie = MovieSummary(id = 1, title = "Iron Man", posterUrl = null, voteAverage = 8.0)
         viewModel.onAction(MovieListAction.FavoriteToggled(sampleMovie))
         testDispatcher.scheduler.advanceUntilIdle()
@@ -84,7 +92,7 @@ class MovieListViewModelTest {
 
     @Test
     fun watchedToggled_callsRepositoryToggleWatched() = runTest {
-        val viewModel = MovieListViewModel(moviesRepository, authRepository)
+        val viewModel = createViewModel()
         val sampleMovie = MovieSummary(id = 1, title = "Iron Man", posterUrl = null, voteAverage = 8.0)
         viewModel.onAction(MovieListAction.WatchedToggled(sampleMovie))
         testDispatcher.scheduler.advanceUntilIdle()
@@ -93,7 +101,7 @@ class MovieListViewModelTest {
 
     @Test
     fun refreshRequested_togglesIsRefreshingState() = runTest {
-        val viewModel = MovieListViewModel(moviesRepository, authRepository)
+        val viewModel = createViewModel()
         viewModel.uiState.test {
             // Initial state: not refreshing
             val initial = awaitItem()
@@ -121,7 +129,7 @@ class MovieListViewModelTest {
             SessionState.Authenticated(accountId = 42, username = "adauto", sessionId = "sess_123")
         )
         every { authRepository.sessionState } returns authState
-        val viewModel = MovieListViewModel(moviesRepository, authRepository)
+        val viewModel = createViewModel()
         testDispatcher.scheduler.advanceUntilIdle()
 
         viewModel.onAction(MovieListAction.RefreshRequested)
@@ -136,7 +144,7 @@ class MovieListViewModelTest {
             SessionState.Authenticated(accountId = 42, username = "adauto", sessionId = "sess_123")
         )
         every { authRepository.sessionState } returns authState
-        val viewModel = MovieListViewModel(moviesRepository, authRepository)
+        val viewModel = createViewModel()
         testDispatcher.scheduler.advanceUntilIdle()
 
         viewModel.uiState.test {
@@ -160,14 +168,14 @@ class MovieListViewModelTest {
 
     @Test
     fun searchQueryChanged_updatesUiStateSearchQuery() = runTest {
-        val viewModel = MovieListViewModel(moviesRepository, authRepository)
+        val viewModel = createViewModel()
         viewModel.onAction(MovieListAction.SearchQueryChanged("Duna"))
         assertThat(viewModel.uiState.value.searchQuery).isEqualTo("Duna")
     }
 
     @Test
     fun toggleSearchClicked_togglesSearchActiveStateAndClearsQueryWhenDeactivating() = runTest {
-        val viewModel = MovieListViewModel(moviesRepository, authRepository)
+        val viewModel = createViewModel()
 
         // Initial: inactive
         assertThat(viewModel.uiState.value.isSearchActive).isFalse()
@@ -188,7 +196,7 @@ class MovieListViewModelTest {
 
     @Test
     fun categorySelected_resetsSearchQueryAndActiveState() = runTest {
-        val viewModel = MovieListViewModel(moviesRepository, authRepository)
+        val viewModel = createViewModel()
 
         viewModel.onAction(MovieListAction.ToggleSearchClicked)
         viewModel.onAction(MovieListAction.SearchQueryChanged("Duna"))
@@ -210,7 +218,7 @@ class MovieListViewModelTest {
             PagingData.from(listOf(movie1, movie2, movie3))
         )
 
-        val viewModel = MovieListViewModel(moviesRepository, authRepository)
+        val viewModel = createViewModel()
 
         // Search for "clube" (lowercase, partial)
         viewModel.onAction(MovieListAction.SearchQueryChanged("clube"))
@@ -218,5 +226,23 @@ class MovieListViewModelTest {
         val filteredMovies = viewModel.moviesFlow.take(1).asSnapshot()
         assertThat(filteredMovies).hasSize(2)
         assertThat(filteredMovies.map { it.title }).containsExactly("Clube da Luta", "Clube dos Cinco")
+    }
+
+    @Test
+    fun networkDisconnect_updatesIsOfflineState() = runTest {
+        val viewModel = createViewModel()
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertThat(viewModel.uiState.value.isOffline).isFalse()
+
+        isOnlineFlow.value = false
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertThat(viewModel.uiState.value.isOffline).isTrue()
+
+        isOnlineFlow.value = true
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        assertThat(viewModel.uiState.value.isOffline).isFalse()
     }
 }

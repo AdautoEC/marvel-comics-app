@@ -26,7 +26,7 @@ class BaselineProfileGenerator {
     @Test
     fun generateBaselineProfile() {
         baselineProfileRule.collect(
-            packageName = "com.marvel.comics",
+            packageName = "com.adauto.cinemahub",
             includeInStartupProfile = true,
         ) {
             // Cold start journey

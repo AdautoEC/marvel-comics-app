@@ -3,6 +3,7 @@ package com.adauto.marvel.feature.movies
 import app.cash.turbine.test
 import com.adauto.marvel.core.data.repository.AuthRepository
 import com.adauto.marvel.core.data.repository.MoviesRepository
+import com.adauto.marvel.core.data.util.NetworkMonitor
 import com.adauto.marvel.core.model.MovieSummary
 import com.adauto.marvel.core.model.Outcome
 import com.adauto.marvel.core.model.SessionState
@@ -29,8 +30,13 @@ class MovieListViewModelAuthTest {
     private val testDispatcher = StandardTestDispatcher()
     private val moviesRepository: MoviesRepository = mockk(relaxed = true)
     private val authRepository: AuthRepository = mockk(relaxed = true)
+    private val networkMonitor: NetworkMonitor = mockk {
+        every { isOnline } returns MutableStateFlow(true)
+    }
 
     private val sessionStateFlow = MutableStateFlow<SessionState>(SessionState.Guest)
+
+    private fun createViewModel() = MovieListViewModel(moviesRepository, authRepository, networkMonitor)
 
     @Before
     fun setUp() {
@@ -50,7 +56,7 @@ class MovieListViewModelAuthTest {
     fun clicking_connect_triggers_OpenAuthUrl_effect_with_request_token() = runTest {
         coEvery { authRepository.createRequestToken() } returns Outcome.Success("tok_456")
 
-        val viewModel = MovieListViewModel(moviesRepository, authRepository)
+        val viewModel = createViewModel()
 
         viewModel.effects.test {
             viewModel.onAction(MovieListAction.ConnectTmdbClicked)
@@ -61,13 +67,13 @@ class MovieListViewModelAuthTest {
             assertThat((effect as MovieListEffect.LaunchTmdbAuth).authUrl)
                 .contains("themoviedb.org/authenticate/tok_456")
             assertThat(effect.authUrl)
-                .contains("redirect_to=marvelapp://tmdb-callback")
+                .contains("redirect_to=cinemahub://tmdb-callback")
         }
     }
 
     @Test
     fun clicking_logout_calls_authRepository_logout() = runTest {
-        val viewModel = MovieListViewModel(moviesRepository, authRepository)
+        val viewModel = createViewModel()
 
         viewModel.onAction(MovieListAction.LogoutClicked)
         testDispatcher.scheduler.advanceUntilIdle()
@@ -77,7 +83,7 @@ class MovieListViewModelAuthTest {
 
     @Test
     fun sessionState_updates_flow_into_uiState() = runTest {
-        val viewModel = MovieListViewModel(moviesRepository, authRepository)
+        val viewModel = createViewModel()
         testDispatcher.scheduler.advanceUntilIdle()
 
         assertThat(viewModel.uiState.value.sessionState).isEqualTo(SessionState.Guest)
@@ -96,7 +102,7 @@ class MovieListViewModelAuthTest {
 
     @Test
     fun watchlistToggled_calls_moviesRepository_toggleWatchlist() = runTest {
-        val viewModel = MovieListViewModel(moviesRepository, authRepository)
+        val viewModel = createViewModel()
         val movie = MovieSummary(id = 42, title = "Spider-Man", posterUrl = null)
 
         viewModel.onAction(MovieListAction.WatchlistToggled(movie))
@@ -112,7 +118,7 @@ class MovieListViewModelAuthTest {
             username = "spiderfan",
             sessionId = "sess_789"
         )
-        val viewModel = MovieListViewModel(moviesRepository, authRepository)
+        val viewModel = createViewModel()
         testDispatcher.scheduler.advanceUntilIdle()
 
         viewModel.onAction(MovieListAction.RefreshRequested)
@@ -124,7 +130,7 @@ class MovieListViewModelAuthTest {
     @Test
     fun refreshRequested_when_guest_does_not_trigger_syncCloudWithLocal() = runTest {
         sessionStateFlow.value = SessionState.Guest
-        val viewModel = MovieListViewModel(moviesRepository, authRepository)
+        val viewModel = createViewModel()
         testDispatcher.scheduler.advanceUntilIdle()
 
         viewModel.onAction(MovieListAction.RefreshRequested)

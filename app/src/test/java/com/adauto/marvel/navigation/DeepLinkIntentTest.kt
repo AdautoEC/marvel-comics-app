@@ -47,7 +47,7 @@ class DeepLinkIntentTest {
 
     @Test
     fun intent_with_tmdb_callback_extracts_token_and_approved_flag() {
-        val uri = Uri.parse("marvelapp://tmdb-callback?request_token=abc_123&approved=true")
+        val uri = Uri.parse("cinemahub://tmdb-callback?request_token=abc_123&approved=true")
         val intent = createIntent(uri)
         assertThat(intent.data?.getQueryParameter("request_token")).isEqualTo("abc_123")
         assertThat(intent.data?.getQueryParameter("approved")).isEqualTo("true")
@@ -55,7 +55,7 @@ class DeepLinkIntentTest {
 
     @Test
     fun valid_approved_callback_extracts_request_token() {
-        val uri = Uri.parse("marvelapp://tmdb-callback?request_token=test_tok&approved=true")
+        val uri = Uri.parse("cinemahub://tmdb-callback?request_token=test_tok&approved=true")
         val intent = createIntent(uri)
 
         val token = DeepLinkHandler.extractApprovedRequestToken(intent)
@@ -65,8 +65,8 @@ class DeepLinkIntentTest {
 
     @Test
     fun valid_approved_callback_is_case_insensitive_for_scheme_and_host() {
-        val uppercaseUri = Uri.parse("MARVELAPP://TMDB-CALLBACK?request_token=upper_tok&approved=true")
-        val mixedUri = Uri.parse("MarvelApp://Tmdb-Callback?request_token=mixed_tok&approved=true")
+        val uppercaseUri = Uri.parse("CINEMAHUB://TMDB-CALLBACK?request_token=upper_tok&approved=true")
+        val mixedUri = Uri.parse("CinemaHub://Tmdb-Callback?request_token=mixed_tok&approved=true")
 
         assertThat(DeepLinkHandler.extractApprovedRequestToken(createIntent(uppercaseUri)))
             .isEqualTo("upper_tok")
@@ -75,8 +75,18 @@ class DeepLinkIntentTest {
     }
 
     @Test
+    fun legacy_marvelapp_scheme_is_rejected() {
+        val uri = Uri.parse("marvelapp://tmdb-callback?request_token=legacy_tok&approved=true")
+        val intent = createIntent(uri)
+
+        val token = DeepLinkHandler.extractApprovedRequestToken(intent)
+
+        assertThat(token).isNull()
+    }
+
+    @Test
     fun unapproved_callback_returns_null() {
-        val uri = Uri.parse("marvelapp://tmdb-callback?request_token=test_tok&approved=false")
+        val uri = Uri.parse("cinemahub://tmdb-callback?request_token=test_tok&approved=false")
         val intent = createIntent(uri)
 
         val token = DeepLinkHandler.extractApprovedRequestToken(intent)
@@ -86,7 +96,7 @@ class DeepLinkIntentTest {
 
     @Test
     fun missing_approved_parameter_returns_null() {
-        val uri = Uri.parse("marvelapp://tmdb-callback?request_token=test_tok")
+        val uri = Uri.parse("cinemahub://tmdb-callback?request_token=test_tok")
         val intent = createIntent(uri)
 
         val token = DeepLinkHandler.extractApprovedRequestToken(intent)
@@ -106,7 +116,7 @@ class DeepLinkIntentTest {
 
     @Test
     fun invalid_host_returns_null() {
-        val uri = Uri.parse("marvelapp://other-host?request_token=test_tok&approved=true")
+        val uri = Uri.parse("cinemahub://other-host?request_token=test_tok&approved=true")
         val intent = createIntent(uri)
 
         val token = DeepLinkHandler.extractApprovedRequestToken(intent)
@@ -116,7 +126,7 @@ class DeepLinkIntentTest {
 
     @Test
     fun empty_request_token_returns_null() {
-        val uri = Uri.parse("marvelapp://tmdb-callback?request_token=&approved=true")
+        val uri = Uri.parse("cinemahub://tmdb-callback?request_token=&approved=true")
         val intent = createIntent(uri)
 
         val token = DeepLinkHandler.extractApprovedRequestToken(intent)

@@ -23,7 +23,7 @@ android {
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.marvel.comics"
+        applicationId = "com.adauto.cinemahub"
         minSdk = 26
         targetSdk = 35
         versionCode = (project.findProperty("android.injected.version.code") as? String)?.toIntOrNull()

@@ -33,6 +33,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -40,6 +41,22 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.adauto.marvel.core.designsystem.theme.MarvelColors
 import com.adauto.marvel.core.model.MovieSummary
+import com.adauto.marvel.core.ui.R
+
+internal val StarYellowColor = Color(0xFFFFD700)
+internal val WatchedGreenColor = Color(0xFF2E7D32)
+internal val RatingPillBackground = Color.Black.copy(alpha = 0.7f)
+internal val FavoritePillBackground = Color.Black.copy(alpha = 0.5f)
+
+internal val MovieCardGradientColors = listOf(
+    Color.Transparent,
+    MarvelColors.DarkBackground.copy(alpha = 0.75f),
+    MarvelColors.DarkBackground.copy(alpha = 0.98f)
+)
+
+internal val MovieCardBottomGradient = Brush.verticalGradient(
+    colors = MovieCardGradientColors
+)
 
 @Composable
 fun MovieCard(
@@ -55,7 +72,7 @@ fun MovieCard(
             .clip(RoundedCornerShape(16.dp))
             .clickable(
                 role = Role.Button,
-                onClickLabel = "Ver detalhes de ${movie.title}",
+                onClickLabel = stringResource(R.string.card_view_details, movie.title),
                 onClick = onClick
             ),
         elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
@@ -76,7 +93,7 @@ fun MovieCard(
             ) {
                 Surface(
                     shape = RoundedCornerShape(8.dp),
-                    color = Color.Black.copy(alpha = 0.7f)
+                    color = RatingPillBackground
                 ) {
                     Row(
                         modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
@@ -84,8 +101,8 @@ fun MovieCard(
                     ) {
                         Icon(
                             imageVector = Icons.Default.Star,
-                            contentDescription = "Nota",
-                            tint = Color(0xFFFFD700),
+                            contentDescription = stringResource(R.string.movie_rating_desc),
+                            tint = StarYellowColor,
                             modifier = Modifier.size(12.dp)
                         )
                         Spacer(modifier = Modifier.width(4.dp))
@@ -106,11 +123,13 @@ fun MovieCard(
                         modifier = Modifier
                             .size(32.dp)
                             .clip(CircleShape)
-                            .background(Color.Black.copy(alpha = 0.5f))
+                            .background(FavoritePillBackground)
                     ) {
                         Icon(
                             imageVector = if (movie.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                            contentDescription = if (movie.isFavorite) "Remover dos favoritos" else "Favoritar",
+                            contentDescription = stringResource(
+                                if (movie.isFavorite) R.string.movie_favorite_remove else R.string.movie_favorite_add
+                            ),
                             tint = if (movie.isFavorite) MarvelColors.MarvelRed else Color.White,
                             modifier = Modifier.size(16.dp)
                         )
@@ -123,15 +142,7 @@ fun MovieCard(
                     .fillMaxWidth()
                     .height(110.dp)
                     .align(Alignment.BottomCenter)
-                    .background(
-                        Brush.verticalGradient(
-                            colors = listOf(
-                                Color.Transparent,
-                                MarvelColors.DarkBackground.copy(alpha = 0.75f),
-                                MarvelColors.DarkBackground.copy(alpha = 0.98f)
-                            )
-                        )
-                    )
+                    .background(MovieCardBottomGradient)
             )
 
             Column(
@@ -156,7 +167,7 @@ fun MovieCard(
                         Spacer(modifier = Modifier.width(6.dp))
                         Surface(
                             shape = RoundedCornerShape(4.dp),
-                            color = Color(0xFF2E7D32)
+                            color = WatchedGreenColor
                         ) {
                             Row(
                                 modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp),
@@ -164,13 +175,13 @@ fun MovieCard(
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.Check,
-                                    contentDescription = "Assistido",
+                                    contentDescription = stringResource(R.string.movie_watched_desc),
                                     tint = Color.White,
                                     modifier = Modifier.size(10.dp)
                                 )
                                 Spacer(modifier = Modifier.width(2.dp))
                                 Text(
-                                    text = "Visto",
+                                    text = stringResource(R.string.movie_watched_badge),
                                     color = Color.White,
                                     fontSize = 9.sp,
                                     fontWeight = FontWeight.Bold
