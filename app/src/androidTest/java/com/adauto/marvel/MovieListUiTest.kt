@@ -6,6 +6,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertTextContains
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithTag
 import androidx.compose.ui.test.onAllNodesWithText
@@ -275,6 +276,6 @@ class MovieListUiTest {
             composeTestRule.onAllNodesWithTag("EmptyStateText").fetchSemanticsNodes().isNotEmpty()
         }
         composeTestRule.onNodeWithTag("EmptyStateText").assertExists()
-        composeTestRule.onNodeWithText("Inexistente", substring = true).assertExists()
+        composeTestRule.onNodeWithTag("EmptyStateText").assertTextContains("Inexistente")
     }
 }
