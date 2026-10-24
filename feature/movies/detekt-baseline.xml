@@ -1,0 +1,22 @@
+<?xml version="1.0" ?>
+<SmellBaseline>
+  <ManuallySuppressedIssues></ManuallySuppressedIssues>
+  <CurrentIssues>
+    <ID>CyclomaticComplexMethod:MovieListScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun MovieListScreen( uiState: MovieListUiState, movies: LazyPagingItems&lt;MovieSummary&gt;, onAction: (MovieListAction) -&gt; Unit, modifier: Modifier = Modifier, gridState: LazyGridState = rememberLazyGridState(), snackbarHostState: SnackbarHostState = remember { SnackbarHostState() } )</ID>
+    <ID>CyclomaticComplexMethod:MovieListViewModel.kt$MovieListViewModel$fun onAction(action: MovieListAction)</ID>
+    <ID>LongMethod:GuestSyncBanner.kt$@Composable fun GuestSyncBanner( onConnectClicked: () -&gt; Unit, modifier: Modifier = Modifier, visible: Boolean = true )</ID>
+    <ID>LongMethod:MovieListScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable fun MovieListScreen( uiState: MovieListUiState, movies: LazyPagingItems&lt;MovieSummary&gt;, onAction: (MovieListAction) -&gt; Unit, modifier: Modifier = Modifier, gridState: LazyGridState = rememberLazyGridState(), snackbarHostState: SnackbarHostState = remember { SnackbarHostState() } )</ID>
+    <ID>LongMethod:MovieListScreen.kt$@OptIn(ExperimentalMaterial3Api::class) @Composable private fun MovieListTopBar( uiState: MovieListUiState, onAction: (MovieListAction) -&gt; Unit )</ID>
+    <ID>LongMethod:MovieListViewModel.kt$MovieListViewModel$fun onAction(action: MovieListAction)</ID>
+    <ID>LongMethod:UserSessionPill.kt$@Composable fun UserSessionPill( sessionState: SessionState, onConnectClicked: () -&gt; Unit, onLogoutClicked: () -&gt; Unit, modifier: Modifier = Modifier )</ID>
+    <ID>LongParameterList:MovieListScreen.kt$( uiState: MovieListUiState, movies: LazyPagingItems&lt;MovieSummary&gt;, onAction: (MovieListAction) -&gt; Unit, modifier: Modifier = Modifier, gridState: LazyGridState = rememberLazyGridState(), snackbarHostState: SnackbarHostState = remember { SnackbarHostState() } )</ID>
+    <ID>MagicNumber:MovieListScreen.kt$401</ID>
+    <ID>MagicNumber:MovieListScreen.kt$429</ID>
+    <ID>MaxLineLength:GuestSyncBanner.kt$text = "Seus filmes estão salvos apenas neste aparelho. Conecte sua conta TMDB para sincronizar na nuvem."</ID>
+    <ID>MaxLineLength:MovieListScreen.kt$val isRefreshing = uiState.isRefreshing || (movies.loadState.refresh is LoadState.Loading &amp;&amp; movies.itemCount &gt; 0)</ID>
+    <ID>UnusedPrivateMember:GuestSyncBanner.kt$@ThemePreviews @DevicePreviews @Composable private fun GuestSyncBannerPreview()</ID>
+    <ID>UnusedPrivateMember:MovieListScreen.kt$@ThemePreviews @DevicePreviews @Composable private fun MovieListScreenPreview( @PreviewParameter(MovieListUiStatePreviewParameterProvider::class) previewState: MovieListPreviewState )</ID>
+    <ID>UnusedPrivateMember:UserSessionPill.kt$@ThemePreviews @DevicePreviews @Composable private fun UserSessionPillAuthenticatedPreview()</ID>
+    <ID>UnusedPrivateMember:UserSessionPill.kt$@ThemePreviews @DevicePreviews @Composable private fun UserSessionPillGuestPreview()</ID>
+  </CurrentIssues>
+</SmellBaseline>

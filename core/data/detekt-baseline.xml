@@ -1,0 +1,27 @@
+<?xml version="1.0" ?>
+<SmellBaseline>
+  <ManuallySuppressedIssues></ManuallySuppressedIssues>
+  <CurrentIssues>
+    <ID>CyclomaticComplexMethod:MoviesRepositoryImpl.kt$MoviesRepositoryImpl$override suspend fun syncCloudWithLocal(): Outcome&lt;Unit&gt;</ID>
+    <ID>LongMethod:MoviesRepositoryImpl.kt$MoviesRepositoryImpl$override suspend fun syncCloudWithLocal(): Outcome&lt;Unit&gt;</ID>
+    <ID>LongMethod:MoviesRepositorySyncTest.kt$MoviesRepositorySyncTest$@Test fun syncCloudWithLocal_when_authenticated_pushes_local_items_and_pulls_multi_page_remote_items()</ID>
+    <ID>MagicNumber:ErrorMapper.kt$401</ID>
+    <ID>MagicNumber:ErrorMapper.kt$403</ID>
+    <ID>MagicNumber:ErrorMapper.kt$404</ID>
+    <ID>MagicNumber:ErrorMapper.kt$429</ID>
+    <ID>MagicNumber:ErrorMapper.kt$500</ID>
+    <ID>MagicNumber:ErrorMapper.kt$599</ID>
+    <ID>MagicNumber:MoviesRepositoryImpl.kt$MoviesRepositoryImpl$401</ID>
+    <ID>MaxLineLength:ConnectivityManagerNetworkMonitorTest.kt$ConnectivityManagerNetworkMonitorTest$every { connectivityManager.unregisterNetworkCallback(any&lt;ConnectivityManager.NetworkCallback&gt;()) } answers { nothing }</ID>
+    <ID>MaxLineLength:MoviesRepositoryImpl.kt$MoviesRepositoryImpl$val watchResponse = api.getWatchlistMovies(accountId = accountId, sessionId = sessionId, page = watchPage)</ID>
+    <ID>MaxLineLength:MoviesRepositorySyncTest.kt$MoviesRepositorySyncTest$fun</ID>
+    <ID>NestedBlockDepth:MoviesRepositoryImpl.kt$MoviesRepositoryImpl$override suspend fun syncCloudWithLocal(): Outcome&lt;Unit&gt;</ID>
+    <ID>ReturnCount:AuthRepositoryImpl.kt$AuthRepositoryImpl$override suspend fun completeAuthentication(requestToken: String): Outcome&lt;AccountProfile&gt;</ID>
+    <ID>ReturnCount:ConnectivityManagerNetworkMonitor.kt$ConnectivityManagerNetworkMonitor$private fun ConnectivityManager.isCurrentlyConnected(): Boolean</ID>
+    <ID>ReturnCount:MoviesRemoteMediator.kt$MoviesRemoteMediator$override suspend fun load(loadType: LoadType, state: PagingState&lt;Int, MovieWithUserData&gt;): MediatorResult</ID>
+    <ID>ReturnCount:MoviesRepositoryImpl.kt$MoviesRepositoryImpl$override suspend fun syncCloudWithLocal(): Outcome&lt;Unit&gt;</ID>
+    <ID>SwallowedException:MoviesRepositoryImpl.kt$MoviesRepositoryImpl$e: Exception</ID>
+    <ID>SwallowedException:MoviesRepositorySyncTest.kt$MoviesRepositorySyncTest$e: CancellationException</ID>
+    <ID>TooGenericExceptionCaught:MoviesRepositoryImpl.kt$MoviesRepositoryImpl$e: Exception</ID>
+  </CurrentIssues>
+</SmellBaseline>

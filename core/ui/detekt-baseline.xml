@@ -1,0 +1,14 @@
+<?xml version="1.0" ?>
+<SmellBaseline>
+  <ManuallySuppressedIssues></ManuallySuppressedIssues>
+  <CurrentIssues>
+    <ID>LongMethod:MovieCard.kt$@Composable fun MovieCard( movie: MovieSummary, onClick: () -&gt; Unit, modifier: Modifier = Modifier, onFavoriteToggle: (() -&gt; Unit)? = null )</ID>
+    <ID>MaxLineLength:MovieCard.kt$imageVector = if (movie.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder</ID>
+    <ID>SpreadOperator:UiTextExtensions.kt$(resId, *args.toTypedArray())</ID>
+    <ID>UnusedPrivateMember:AttributionFooter.kt$@ThemePreviews @Composable private fun AttributionFooterPreview()</ID>
+    <ID>UnusedPrivateMember:ErrorState.kt$@ThemePreviews @Composable private fun ErrorStatePreview( @PreviewParameter(ErrorStatePreviewParameterProvider::class) message: UiText )</ID>
+    <ID>UnusedPrivateMember:MovieCover.kt$@ThemePreviews @Composable private fun MovieCoverPreview()</ID>
+    <ID>UnusedPrivateMember:OfflineBanner.kt$@ThemePreviews @Composable private fun OfflineBannerPreview()</ID>
+    <ID>UnusedPrivateMember:Shimmer.kt$@ThemePreviews @Composable private fun ShimmerMovieCardPreview()</ID>
+  </CurrentIssues>
+</SmellBaseline>

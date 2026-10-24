@@ -1,0 +1,10 @@
+<?xml version="1.0" ?>
+<SmellBaseline>
+  <ManuallySuppressedIssues></ManuallySuppressedIssues>
+  <CurrentIssues>
+    <ID>LongMethod:Migration2To3Test.kt$Migration2To3Test$@Test fun migration2To3_createsCompositePrimaryKeyAndRetainsData()</ID>
+    <ID>MaxLineLength:DatabaseMigrations.kt$&lt;no name provided&gt;$db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_movies_category_position` ON `movies` (`category`, `position`)")</ID>
+    <ID>MaxLineLength:Migration2To3Test.kt$Migration2To3Test$assertThat(cursor.getString(cursor.getColumnIndexOrThrow("genresJson"))).isEqualTo("[\"Action\",\"Sci-Fi\"]")</ID>
+    <ID>MaxLineLength:Migration2To3Test.kt$Migration2To3Test$assertThat(cursor.getString(cursor.getColumnIndexOrThrow("overview"))).isEqualTo("Tony Stark builds an armored suit.")</ID>
+  </CurrentIssues>
+</SmellBaseline>

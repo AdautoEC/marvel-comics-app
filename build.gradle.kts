@@ -16,7 +16,18 @@ subprojects {
     apply(plugin = "io.gitlab.arturbosch.detekt")
 
     tasks.withType<io.gitlab.arturbosch.detekt.Detekt>().configureEach {
+        buildUponDefaultConfig = true
         config.setFrom(files("$rootDir/config/detekt/detekt.yml"))
         parallel = true
+        val baselineFile = file("$projectDir/detekt-baseline.xml")
+        if (baselineFile.exists()) {
+            baseline.set(baselineFile)
+        }
+    }
+
+    tasks.withType<io.gitlab.arturbosch.detekt.DetektCreateBaselineTask>().configureEach {
+        buildUponDefaultConfig = true
+        config.setFrom(files("$rootDir/config/detekt/detekt.yml"))
+        baseline.set(file("$projectDir/detekt-baseline.xml"))
     }
 }
