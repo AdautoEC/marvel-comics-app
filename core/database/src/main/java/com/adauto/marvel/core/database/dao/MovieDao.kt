@@ -5,6 +5,7 @@ import androidx.room.Dao
 import androidx.room.Query
 import androidx.room.Upsert
 import com.adauto.marvel.core.database.entity.MovieEntity
+import com.adauto.marvel.core.database.model.MovieWithUserData
 
 @Dao
 interface MovieDao {
@@ -12,8 +13,17 @@ interface MovieDao {
     @Upsert
     suspend fun upsertAll(movies: List<MovieEntity>)
 
-    @Query("SELECT * FROM movies WHERE category = :category ORDER BY position ASC")
-    fun pagingSource(category: String): PagingSource<Int, MovieEntity>
+    @Query("""
+        SELECT m.*, 
+               (f.movieId IS NOT NULL) AS isFavorite, 
+               (w.movieId IS NOT NULL) AS isWatched
+        FROM movies m
+        LEFT JOIN favorite_movies f ON m.id = f.movieId
+        LEFT JOIN watched_movies w ON m.id = w.movieId
+        WHERE m.category = :category
+        ORDER BY m.position ASC
+    """)
+    fun pagingSource(category: String): PagingSource<Int, MovieWithUserData>
 
     @Query("SELECT * FROM movies WHERE id = :id LIMIT 1")
     suspend fun getMovieById(id: Int): MovieEntity?

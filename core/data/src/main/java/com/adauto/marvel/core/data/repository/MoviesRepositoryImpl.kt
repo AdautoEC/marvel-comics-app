@@ -60,10 +60,8 @@ class MoviesRepositoryImpl @Inject constructor(
         )
 
         return pager.flow.map { pagingData ->
-            pagingData.map { entity ->
-                val isFav = database.favoriteDao().isFavorite(entity.id).first()
-                val isWatch = database.watchedDao().isWatched(entity.id).first()
-                entity.toMovieSummary(isFavorite = isFav, isWatched = isWatch)
+            pagingData.map { item ->
+                item.movie.toMovieSummary(isFavorite = item.isFavorite, isWatched = item.isWatched)
             }
         }
     }

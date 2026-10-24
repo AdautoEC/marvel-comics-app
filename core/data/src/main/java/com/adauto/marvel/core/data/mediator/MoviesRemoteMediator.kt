@@ -8,6 +8,7 @@ import androidx.room.withTransaction
 import com.adauto.marvel.core.data.mapper.toMovieEntity
 import com.adauto.marvel.core.database.MarvelDatabase
 import com.adauto.marvel.core.database.entity.MovieEntity
+import com.adauto.marvel.core.database.model.MovieWithUserData
 import com.adauto.marvel.core.model.TmdbApiException
 import com.adauto.marvel.core.network.api.TmdbApi
 import com.skydoves.sandwich.ApiResponse
@@ -22,7 +23,7 @@ class MoviesRemoteMediator(
     private val category: String,
     private val clock: Clock = Clock.systemUTC(),
     private val cacheTtlHours: Long = 6L
-) : RemoteMediator<Int, MovieEntity>() {
+) : RemoteMediator<Int, MovieWithUserData>() {
 
     override suspend fun initialize(): InitializeAction {
         val lastFetched = database.movieDao().lastFetchedAt(category) ?: return InitializeAction.LAUNCH_INITIAL_REFRESH
@@ -34,14 +35,14 @@ class MoviesRemoteMediator(
         }
     }
 
-    override suspend fun load(loadType: LoadType, state: PagingState<Int, MovieEntity>): MediatorResult {
+    override suspend fun load(loadType: LoadType, state: PagingState<Int, MovieWithUserData>): MediatorResult {
         val page = when (loadType) {
             LoadType.REFRESH -> 1
             LoadType.PREPEND -> return MediatorResult.Success(endOfPaginationReached = true)
             LoadType.APPEND -> {
                 val lastItem = state.lastItemOrNull()
                     ?: return MediatorResult.Success(endOfPaginationReached = true)
-                (lastItem.position / state.config.pageSize) + 2
+                (lastItem.movie.position / state.config.pageSize) + 2
             }
         }
 
