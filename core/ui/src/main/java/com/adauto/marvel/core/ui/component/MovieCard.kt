@@ -41,6 +41,21 @@ import androidx.compose.ui.unit.sp
 import com.adauto.marvel.core.designsystem.theme.MarvelColors
 import com.adauto.marvel.core.model.MovieSummary
 
+internal val StarYellowColor = Color(0xFFFFD700)
+internal val WatchedGreenColor = Color(0xFF2E7D32)
+internal val RatingPillBackground = Color.Black.copy(alpha = 0.7f)
+internal val FavoritePillBackground = Color.Black.copy(alpha = 0.5f)
+
+internal val MovieCardGradientColors = listOf(
+    Color.Transparent,
+    MarvelColors.DarkBackground.copy(alpha = 0.75f),
+    MarvelColors.DarkBackground.copy(alpha = 0.98f)
+)
+
+internal val MovieCardBottomGradient = Brush.verticalGradient(
+    colors = MovieCardGradientColors
+)
+
 @Composable
 fun MovieCard(
     movie: MovieSummary,
@@ -76,7 +91,7 @@ fun MovieCard(
             ) {
                 Surface(
                     shape = RoundedCornerShape(8.dp),
-                    color = Color.Black.copy(alpha = 0.7f)
+                    color = RatingPillBackground
                 ) {
                     Row(
                         modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
@@ -85,7 +100,7 @@ fun MovieCard(
                         Icon(
                             imageVector = Icons.Default.Star,
                             contentDescription = "Nota",
-                            tint = Color(0xFFFFD700),
+                            tint = StarYellowColor,
                             modifier = Modifier.size(12.dp)
                         )
                         Spacer(modifier = Modifier.width(4.dp))
@@ -106,7 +121,7 @@ fun MovieCard(
                         modifier = Modifier
                             .size(32.dp)
                             .clip(CircleShape)
-                            .background(Color.Black.copy(alpha = 0.5f))
+                            .background(FavoritePillBackground)
                     ) {
                         Icon(
                             imageVector = if (movie.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
@@ -123,15 +138,7 @@ fun MovieCard(
                     .fillMaxWidth()
                     .height(110.dp)
                     .align(Alignment.BottomCenter)
-                    .background(
-                        Brush.verticalGradient(
-                            colors = listOf(
-                                Color.Transparent,
-                                MarvelColors.DarkBackground.copy(alpha = 0.75f),
-                                MarvelColors.DarkBackground.copy(alpha = 0.98f)
-                            )
-                        )
-                    )
+                    .background(MovieCardBottomGradient)
             )
 
             Column(
@@ -156,7 +163,7 @@ fun MovieCard(
                         Spacer(modifier = Modifier.width(6.dp))
                         Surface(
                             shape = RoundedCornerShape(4.dp),
-                            color = Color(0xFF2E7D32)
+                            color = WatchedGreenColor
                         ) {
                             Row(
                                 modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp),

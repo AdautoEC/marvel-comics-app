@@ -50,6 +50,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.paging.LoadState
 import androidx.paging.compose.LazyPagingItems
+import androidx.paging.compose.itemContentType
 import androidx.paging.compose.itemKey
 import com.adauto.marvel.core.designsystem.preview.DevicePreviews
 import com.adauto.marvel.core.designsystem.preview.ThemePreviews
@@ -225,7 +226,8 @@ fun MovieListScreen(
                         ) {
                             items(
                                 count = movies.itemCount,
-                                key = movies.itemKey { it.id }
+                                key = movies.itemKey { it.id },
+                                contentType = movies.itemContentType { "MovieCard" }
                             ) { index ->
                                 val movie = movies[index]
                                 if (movie != null) {
