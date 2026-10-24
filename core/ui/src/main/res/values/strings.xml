@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="category_popular">Populares</string>
+    <string name="category_top_rated">Mais Votados</string>
+    <string name="category_favorites">Favoritos</string>
+    <string name="category_watchlist">Quero Assistir</string>
+
+    <string name="offline_banner_message">Você está offline. Exibindo dados em cache.</string>
+    <string name="movie_rating_desc">Nota</string>
+    <string name="movie_favorite_add">Favoritar</string>
+    <string name="movie_favorite_remove">Remover dos favoritos</string>
+    <string name="movie_watched_badge">Visto</string>
+    <string name="movie_watched_desc">Assistido</string>
+    <string name="card_view_details">Ver detalhes de %1$s</string>
+    <string name="search_placeholder">Buscar em %1$s…</string>
+    <string name="search_empty_message">Nenhum filme encontrado para \"%1$s\" em %2$s.</string>
+</resources>

@@ -33,6 +33,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -40,6 +41,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.adauto.marvel.core.designsystem.theme.MarvelColors
 import com.adauto.marvel.core.model.MovieSummary
+import com.adauto.marvel.core.ui.R
 
 internal val StarYellowColor = Color(0xFFFFD700)
 internal val WatchedGreenColor = Color(0xFF2E7D32)
@@ -70,7 +72,7 @@ fun MovieCard(
             .clip(RoundedCornerShape(16.dp))
             .clickable(
                 role = Role.Button,
-                onClickLabel = "Ver detalhes de ${movie.title}",
+                onClickLabel = stringResource(R.string.card_view_details, movie.title),
                 onClick = onClick
             ),
         elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
@@ -99,7 +101,7 @@ fun MovieCard(
                     ) {
                         Icon(
                             imageVector = Icons.Default.Star,
-                            contentDescription = "Nota",
+                            contentDescription = stringResource(R.string.movie_rating_desc),
                             tint = StarYellowColor,
                             modifier = Modifier.size(12.dp)
                         )
@@ -125,7 +127,9 @@ fun MovieCard(
                     ) {
                         Icon(
                             imageVector = if (movie.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                            contentDescription = if (movie.isFavorite) "Remover dos favoritos" else "Favoritar",
+                            contentDescription = stringResource(
+                                if (movie.isFavorite) R.string.movie_favorite_remove else R.string.movie_favorite_add
+                            ),
                             tint = if (movie.isFavorite) MarvelColors.MarvelRed else Color.White,
                             modifier = Modifier.size(16.dp)
                         )
@@ -171,13 +175,13 @@ fun MovieCard(
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.Check,
-                                    contentDescription = "Assistido",
+                                    contentDescription = stringResource(R.string.movie_watched_desc),
                                     tint = Color.White,
                                     modifier = Modifier.size(10.dp)
                                 )
                                 Spacer(modifier = Modifier.width(2.dp))
                                 Text(
-                                    text = "Visto",
+                                    text = stringResource(R.string.movie_watched_badge),
                                     color = Color.White,
                                     fontSize = 9.sp,
                                     fontWeight = FontWeight.Bold

@@ -43,6 +43,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.PreviewParameter
@@ -61,11 +62,13 @@ import com.adauto.marvel.core.model.MovieSummary
 import com.adauto.marvel.core.model.SessionState
 import com.adauto.marvel.core.model.TmdbApiException
 import com.adauto.marvel.core.model.UiText
+import com.adauto.marvel.core.ui.R
 import com.adauto.marvel.core.ui.component.AttributionFooter
 import com.adauto.marvel.core.ui.component.ErrorState
 import com.adauto.marvel.core.ui.component.MovieCard
 import com.adauto.marvel.core.ui.component.OfflineBanner
 import com.adauto.marvel.core.ui.component.ShimmerMovieCard
+import com.adauto.marvel.core.ui.util.titleRes
 import com.adauto.marvel.feature.movies.component.GuestSyncBanner
 import com.adauto.marvel.feature.movies.component.UserSessionPill
 import com.adauto.marvel.feature.movies.preview.MovieListPreviewState
@@ -110,7 +113,7 @@ fun MovieListScreen(
                             onClick = { onAction(MovieListAction.CategorySelected(category)) },
                             text = {
                                 Text(
-                                    text = category.displayName,
+                                    text = stringResource(category.titleRes),
                                     style = MaterialTheme.typography.labelLarge.copy(
                                         fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium
                                     ),
@@ -198,7 +201,11 @@ fun MovieListScreen(
                         ) {
                             val emptyMessage = when {
                                 uiState.searchQuery.isNotBlank() ->
-                                    "Nenhum filme encontrado para \"${uiState.searchQuery}\" em ${uiState.selectedCategory.displayName}."
+                                    stringResource(
+                                        R.string.search_empty_message,
+                                        uiState.searchQuery,
+                                        stringResource(uiState.selectedCategory.titleRes)
+                                    )
                                 uiState.selectedCategory == MovieCategory.FAVORITES ->
                                     "Nenhum filme favoritado ainda.\nToque no coração para salvar!"
                                 uiState.selectedCategory == MovieCategory.WATCHLIST ->
@@ -313,7 +320,10 @@ private fun MovieListTopBar(
                     onValueChange = { onAction(MovieListAction.SearchQueryChanged(it)) },
                     placeholder = {
                         Text(
-                            text = "Buscar em ${uiState.selectedCategory.displayName}...",
+                            text = stringResource(
+                                R.string.search_placeholder,
+                                stringResource(uiState.selectedCategory.titleRes)
+                            ),
                             color = MarvelColors.TextSecondary,
                             style = MaterialTheme.typography.bodyMedium
                         )

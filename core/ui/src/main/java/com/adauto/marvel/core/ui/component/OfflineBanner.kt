@@ -18,12 +18,14 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.adauto.marvel.core.designsystem.preview.ThemePreviews
 import com.adauto.marvel.core.designsystem.theme.MarvelColors
 import com.adauto.marvel.core.designsystem.theme.MarvelTheme
+import com.adauto.marvel.core.ui.R
 
 /**
  * Reusable banner indicating offline status and cached data state.
@@ -31,7 +33,7 @@ import com.adauto.marvel.core.designsystem.theme.MarvelTheme
 @Composable
 fun OfflineBanner(
     visible: Boolean = true,
-    message: String = "Você está offline. Exibindo dados em cache.",
+    message: String = stringResource(R.string.offline_banner_message),
     modifier: Modifier = Modifier
 ) {
     AnimatedVisibility(
