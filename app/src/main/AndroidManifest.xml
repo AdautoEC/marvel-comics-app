@@ -27,7 +27,7 @@
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="marvelapp" android:host="tmdb-callback" />
+                <data android:scheme="cinemahub" android:host="tmdb-callback" />
             </intent-filter>
         </activity>
     </application>

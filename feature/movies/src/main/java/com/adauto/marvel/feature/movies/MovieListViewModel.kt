@@ -29,7 +29,7 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 private const val TMDB_AUTH_BASE_URL = "https://www.themoviedb.org/authenticate"
-private const val TMDB_REDIRECT_URI = "marvelapp://tmdb-callback"
+private const val TMDB_REDIRECT_URI = "cinemahub://tmdb-callback"
 
 @HiltViewModel
 class MovieListViewModel @Inject constructor(

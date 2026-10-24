@@ -5,7 +5,7 @@ import android.net.Uri
 
 object DeepLinkHandler {
 
-    const val SCHEME = "marvelapp"
+    const val SCHEME = "cinemahub"
     const val HOST_TMDB_CALLBACK = "tmdb-callback"
     const val PARAM_REQUEST_TOKEN = "request_token"
     const val PARAM_APPROVED = "approved"

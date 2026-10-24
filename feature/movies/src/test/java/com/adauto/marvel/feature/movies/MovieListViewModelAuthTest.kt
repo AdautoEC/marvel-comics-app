@@ -61,7 +61,7 @@ class MovieListViewModelAuthTest {
             assertThat((effect as MovieListEffect.LaunchTmdbAuth).authUrl)
                 .contains("themoviedb.org/authenticate/tok_456")
             assertThat(effect.authUrl)
-                .contains("redirect_to=marvelapp://tmdb-callback")
+                .contains("redirect_to=cinemahub://tmdb-callback")
         }
     }
 
