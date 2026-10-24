@@ -173,4 +173,121 @@ class TmdbAuthenticatorTest {
         coVerify(exactly = 0) { keyProvider.getCredentials() }
         coVerify(exactly = 0) { keyProvider.refreshKeyForced() }
     }
+
+    @Test
+    fun authenticate_whenBothCredentialsExist_andRequestIsBearer_refetchesAndRetries() {
+        val response = createResponse(
+            url = "https://api.themoviedb.org/3/movie/popular",
+            headers = mapOf("Authorization" to "Bearer old_token"),
+            bodyJson = """{"status_code":7,"status_message":"Invalid API key","success":false}"""
+        )
+
+        // Both apiKey and readAccessToken are present in currentCredentials
+        coEvery { keyProvider.getCredentials() } returns TmdbCredentials(
+            apiKey = "current_api_key",
+            readAccessToken = "old_token"
+        )
+        coEvery { keyProvider.refreshKeyForced() } returns TmdbCredentials(
+            apiKey = "current_api_key",
+            readAccessToken = "new_token"
+        )
+
+        val resultRequest = authenticator.authenticate(null, response)
+
+        assertThat(resultRequest).isNotNull()
+        assertThat(resultRequest?.header("Authorization")).isEqualTo("Bearer new_token")
+        // Must have called refreshKeyForced instead of falsely considering apiKey != null as rotated
+        coVerify(exactly = 1) { keyProvider.refreshKeyForced() }
+    }
+
+    @Test
+    fun authenticate_whenBothCredentialsExist_andRequestIsApiKey_refetchesAndRetries() {
+        val response = createResponse(
+            url = "https://api.themoviedb.org/3/movie/popular?api_key=old_key",
+            bodyJson = """{"status_code":7,"status_message":"Invalid API key","success":false}"""
+        )
+
+        coEvery { keyProvider.getCredentials() } returns TmdbCredentials(
+            apiKey = "old_key",
+            readAccessToken = "current_token"
+        )
+        coEvery { keyProvider.refreshKeyForced() } returns TmdbCredentials(
+            apiKey = "new_key",
+            readAccessToken = "current_token"
+        )
+
+        val resultRequest = authenticator.authenticate(null, response)
+
+        assertThat(resultRequest).isNotNull()
+        // Prioritizes readAccessToken if present, stripping api_key query param
+        assertThat(resultRequest?.header("Authorization")).isEqualTo("Bearer current_token")
+        assertThat(resultRequest?.url?.queryParameter("api_key")).isNull()
+        coVerify(exactly = 1) { keyProvider.refreshKeyForced() }
+    }
+
+    @Test
+    fun authenticate_whenSwitchedToBearer_removesApiKeyQueryParam() {
+        val response = createResponse(
+            url = "https://api.themoviedb.org/3/movie/popular?api_key=old_key",
+            bodyJson = """{"status_code":7,"status_message":"Invalid API key","success":false}"""
+        )
+
+        coEvery { keyProvider.getCredentials() } returns TmdbCredentials(apiKey = "old_key")
+        coEvery { keyProvider.refreshKeyForced() } returns TmdbCredentials(
+            readAccessToken = "new_bearer_token"
+        )
+
+        val resultRequest = authenticator.authenticate(null, response)
+
+        assertThat(resultRequest).isNotNull()
+        assertThat(resultRequest?.header("Authorization")).isEqualTo("Bearer new_bearer_token")
+        assertThat(resultRequest?.url?.queryParameter("api_key")).isNull()
+    }
+
+    @Test
+    fun authenticate_whenSwitchedToApiKey_removesAuthorizationHeader() {
+        val response = createResponse(
+            url = "https://api.themoviedb.org/3/movie/popular",
+            headers = mapOf("Authorization" to "Bearer old_bearer_token"),
+            bodyJson = """{"status_code":7,"status_message":"Invalid API key","success":false}"""
+        )
+
+        coEvery { keyProvider.getCredentials() } returns TmdbCredentials(readAccessToken = "old_bearer_token")
+        coEvery { keyProvider.refreshKeyForced() } returns TmdbCredentials(apiKey = "new_key_only")
+
+        val resultRequest = authenticator.authenticate(null, response)
+
+        assertThat(resultRequest).isNotNull()
+        assertThat(resultRequest?.url?.queryParameter("api_key")).isEqualTo("new_key_only")
+        assertThat(resultRequest?.header("Authorization")).isNull()
+    }
+
+    @Test
+    fun authenticate_whenGetCredentialsThrows_returnsNullWithoutCrashing() {
+        val response = createResponse(
+            url = "https://api.themoviedb.org/3/movie/popular?api_key=old_key",
+            bodyJson = """{"status_code":7,"status_message":"Invalid API key","success":false}"""
+        )
+
+        coEvery { keyProvider.getCredentials() } throws RuntimeException("Remote config error")
+
+        val resultRequest = authenticator.authenticate(null, response)
+
+        assertThat(resultRequest).isNull()
+    }
+
+    @Test
+    fun authenticate_whenRefreshKeyForcedThrows_returnsNullWithoutCrashing() {
+        val response = createResponse(
+            url = "https://api.themoviedb.org/3/movie/popular?api_key=old_key",
+            bodyJson = """{"status_code":7,"status_message":"Invalid API key","success":false}"""
+        )
+
+        coEvery { keyProvider.getCredentials() } returns TmdbCredentials(apiKey = "old_key")
+        coEvery { keyProvider.refreshKeyForced() } throws RuntimeException("Network error on refresh")
+
+        val resultRequest = authenticator.authenticate(null, response)
+
+        assertThat(resultRequest).isNull()
+    }
 }

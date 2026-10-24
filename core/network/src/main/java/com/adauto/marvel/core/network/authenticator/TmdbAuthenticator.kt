@@ -51,29 +51,47 @@ class TmdbAuthenticator @Inject constructor(
         }
 
         synchronized(this) {
-            val currentCredentials = runBlocking { keyProvider.getCredentials() }
+            val currentCredentials = try {
+                runBlocking { keyProvider.getCredentials() }
+            } catch (_: Exception) {
+                null
+            }
             val requestKey = response.request.url.queryParameter("api_key")
             val requestBearer = response.request.header("Authorization")?.removePrefix("Bearer ")
 
-            val hasRotated = (currentCredentials?.apiKey != null && currentCredentials.apiKey != requestKey) ||
-                (currentCredentials?.readAccessToken != null && currentCredentials.readAccessToken != requestBearer)
+            val hasRotated = when {
+                requestBearer != null -> currentCredentials?.readAccessToken != requestBearer
+                requestKey != null -> currentCredentials?.apiKey != requestKey
+                else -> currentCredentials != null && currentCredentials.isNotEmpty
+            }
 
             val newCredentials = if (hasRotated) {
                 currentCredentials
             } else {
-                runBlocking { keyProvider.refreshKeyForced() }
+                try {
+                    runBlocking { keyProvider.refreshKeyForced() }
+                } catch (_: Exception) {
+                    null
+                }
             }
 
             if (newCredentials == null || !newCredentials.isNotEmpty) return null
 
             val requestBuilder = response.request.newBuilder()
             if (!newCredentials.readAccessToken.isNullOrBlank()) {
-                requestBuilder.header("Authorization", "Bearer ${newCredentials.readAccessToken}")
+                val newUrl = response.request.url.newBuilder()
+                    .removeAllQueryParameters("api_key")
+                    .build()
+                requestBuilder
+                    .url(newUrl)
+                    .header("Authorization", "Bearer ${newCredentials.readAccessToken}")
             } else if (!newCredentials.apiKey.isNullOrBlank()) {
                 val newUrl = response.request.url.newBuilder()
                     .setQueryParameter("api_key", newCredentials.apiKey)
                     .build()
-                requestBuilder.url(newUrl)
+                requestBuilder
+                    .url(newUrl)
+                    .removeHeader("Authorization")
             }
             return requestBuilder.build()
         }
