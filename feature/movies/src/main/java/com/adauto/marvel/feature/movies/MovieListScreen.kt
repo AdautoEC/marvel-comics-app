@@ -125,9 +125,7 @@ fun MovieListScreen(
                 }
 
                 // Offline Notice
-                if (uiState.isOffline) {
-                    OfflineBanner()
-                }
+                OfflineBanner(visible = uiState.isOffline)
 
                 // Guest Sync Banner for offline saved libraries
                 if (uiState.selectedCategory in setOf(MovieCategory.FAVORITES, MovieCategory.WATCHLIST)) {

@@ -28,7 +28,7 @@ class ConnectivityManagerNetworkMonitor @Inject constructor(
         }
 
         val callback = object : ConnectivityManager.NetworkCallback() {
-            private val networks = mutableSetOf<Network>()
+            private val networks = java.util.concurrent.ConcurrentHashMap.newKeySet<Network>()
 
             override fun onAvailable(network: Network) {
                 networks += network
