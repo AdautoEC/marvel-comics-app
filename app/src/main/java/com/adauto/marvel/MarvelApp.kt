@@ -3,10 +3,14 @@ package com.adauto.marvel
 import android.app.Application
 import coil.ImageLoader
 import coil.ImageLoaderFactory
+import com.adauto.marvel.core.network.di.ApplicationScope
 import com.adauto.marvel.core.network.di.ImageOkHttpClient
 import com.adauto.marvel.core.network.integrity.ClientIntegrityManager
+import com.adauto.marvel.core.network.security.TmdbApiKeyProvider
 import com.adauto.marvel.core.network.telemetry.FirebaseTelemetryInitializer
 import dagger.hilt.android.HiltAndroidApp
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 import okhttp3.OkHttpClient
 import javax.inject.Inject
 
@@ -23,11 +27,23 @@ class MarvelApp : Application(), ImageLoaderFactory {
     @Inject
     lateinit var firebaseTelemetryInitializer: FirebaseTelemetryInitializer
 
+    @Inject
+    lateinit var keyProvider: TmdbApiKeyProvider
+
+    @Inject
+    @ApplicationScope
+    lateinit var applicationScope: CoroutineScope
+
     override fun onCreate() {
         super.onCreate()
         runCatching {
             clientIntegrityManager.initializeAppCheck(this, isDebug = BuildConfig.DEBUG)
             firebaseTelemetryInitializer.initialize()
+        }
+        applicationScope.launch {
+            runCatching {
+                keyProvider.getCredentials()
+            }
         }
     }
 

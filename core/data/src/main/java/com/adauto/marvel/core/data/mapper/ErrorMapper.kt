@@ -1,6 +1,7 @@
 package com.adauto.marvel.core.data.mapper
 
 import com.adauto.marvel.core.model.DomainError
+import com.adauto.marvel.core.network.security.KeysUnavailableException
 import com.skydoves.sandwich.ApiResponse
 import com.skydoves.sandwich.retrofit.statusCode
 import java.io.IOException
@@ -15,6 +16,7 @@ fun ApiResponse.Failure<*>.toDomainError(): DomainError = when (this) {
         else -> DomainError.Server(code)
     }
     is ApiResponse.Failure.Exception -> when (throwable) {
+        is KeysUnavailableException -> DomainError.KeysUnavailable
         is SocketTimeoutException -> DomainError.Timeout
         is IOException -> DomainError.NoConnection
         else -> DomainError.Unknown(throwable)

@@ -1,5 +1,6 @@
 package com.adauto.marvel.core.network.di
 
+import com.adauto.marvel.core.network.authenticator.TmdbAuthenticator
 import com.adauto.marvel.core.network.interceptor.TmdbAuthInterceptor
 import com.adauto.marvel.core.network.telemetry.RedactingHttpLoggingInterceptor
 import io.mockk.mockk
@@ -19,20 +20,23 @@ class NetworkModuleTest {
     @Test
     fun provideTmdbOkHttpClient_configuresInterceptors() {
         val authInterceptor = mockk<TmdbAuthInterceptor>(relaxed = true)
+        val authenticator = mockk<TmdbAuthenticator>(relaxed = true)
 
-        val client = NetworkModule.provideTmdbOkHttpClient(authInterceptor)
+        val client = NetworkModule.provideTmdbOkHttpClient(authInterceptor, authenticator)
 
         assertEquals(15000, client.connectTimeoutMillis)
         assertEquals(20000, client.readTimeoutMillis)
         assertTrue(client.interceptors.contains(authInterceptor))
         assertTrue(client.interceptors.any { it is RedactingHttpLoggingInterceptor })
+        assertEquals(authenticator, client.authenticator)
     }
 
     @Test
     fun provideRetrofit_and_provideTmdbApi_createProperlyConfiguredInstances() {
         val authInterceptor = mockk<TmdbAuthInterceptor>(relaxed = true)
+        val authenticator = mockk<TmdbAuthenticator>(relaxed = true)
         val json = NetworkModule.provideJson()
-        val client = NetworkModule.provideTmdbOkHttpClient(authInterceptor)
+        val client = NetworkModule.provideTmdbOkHttpClient(authInterceptor, authenticator)
 
         val retrofit = NetworkModule.provideRetrofit(client, json)
         assertEquals(NetworkModule.TMDB_BASE_URL, retrofit.baseUrl().toString())

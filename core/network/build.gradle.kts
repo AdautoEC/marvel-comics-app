@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.android)
@@ -13,6 +15,29 @@ android {
     defaultConfig {
         minSdk = 26
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    buildFeatures {
+        buildConfig = true
+    }
+
+    buildTypes {
+        debug {
+            val localProps = Properties().apply {
+                val file = rootProject.file("local.properties")
+                if (file.exists()) {
+                    file.inputStream().use { stream -> load(stream) }
+                }
+            }
+            val debugApiKey = localProps.getProperty("tmdb.api.key") ?: System.getenv("TMDB_API_KEY") ?: ""
+            val debugAccessToken = localProps.getProperty("tmdb.read.access.token") ?: System.getenv("TMDB_READ_ACCESS_TOKEN") ?: ""
+            buildConfigField("String", "TMDB_API_KEY", "\"$debugApiKey\"")
+            buildConfigField("String", "TMDB_READ_ACCESS_TOKEN", "\"$debugAccessToken\"")
+        }
+        release {
+            buildConfigField("String", "TMDB_API_KEY", "\"\"")
+            buildConfigField("String", "TMDB_READ_ACCESS_TOKEN", "\"\"")
+        }
     }
 
     compileOptions {

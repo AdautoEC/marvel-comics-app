@@ -14,6 +14,7 @@ import com.adauto.marvel.core.network.security.session.SessionManager
 import com.adauto.marvel.core.network.security.session.SessionManagerImpl
 import com.adauto.marvel.core.network.security.session.SessionStorage
 import com.google.firebase.remoteconfig.FirebaseRemoteConfig
+import com.google.firebase.remoteconfig.FirebaseRemoteConfigSettings
 import dagger.Binds
 import dagger.Module
 import dagger.Provides
@@ -42,7 +43,12 @@ abstract class SecurityModule {
         @Provides
         @Singleton
         fun provideFirebaseRemoteConfig(): FirebaseRemoteConfig {
-            return FirebaseRemoteConfig.getInstance()
+            val remoteConfig = FirebaseRemoteConfig.getInstance()
+            val configSettings = FirebaseRemoteConfigSettings.Builder()
+                .setMinimumFetchIntervalInSeconds(3600L * 12)
+                .build()
+            remoteConfig.setConfigSettingsAsync(configSettings)
+            return remoteConfig
         }
 
         @Provides
