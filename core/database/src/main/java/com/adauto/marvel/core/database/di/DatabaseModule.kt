@@ -29,6 +29,7 @@ object DatabaseModule {
             "marvel.db"
         )
             .addMigrations(MIGRATION_2_3)
+            .fallbackToDestructiveMigrationFrom(1)
             .build()
     }
 

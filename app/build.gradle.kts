@@ -41,7 +41,9 @@ android {
             val isPublishingOrCD = System.getenv("CI_RELEASE_BUILD") == "true" ||
                 gradle.startParameter.taskNames.any { it.contains("bundleRelease", ignoreCase = true) }
 
-            if (!keystorePath.isNullOrBlank() && file(keystorePath).exists() && !storePasswordEnv.isNullOrBlank()) {
+            if (!keystorePath.isNullOrBlank() && file(keystorePath).exists() &&
+                !storePasswordEnv.isNullOrBlank() && !keyAliasEnv.isNullOrBlank() && !keyPasswordEnv.isNullOrBlank()
+            ) {
                 storeFile = file(keystorePath)
                 storePassword = storePasswordEnv
                 keyAlias = keyAliasEnv
