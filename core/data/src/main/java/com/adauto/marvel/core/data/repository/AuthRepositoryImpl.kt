@@ -2,6 +2,7 @@ package com.adauto.marvel.core.data.repository
 
 import com.adauto.marvel.core.data.mapper.toDomainError
 import com.adauto.marvel.core.database.MarvelDatabase
+import com.adauto.marvel.core.model.DomainError
 import com.adauto.marvel.core.model.Outcome
 import com.adauto.marvel.core.model.SessionState
 import com.adauto.marvel.core.network.api.TmdbApi
@@ -10,29 +11,64 @@ import com.adauto.marvel.core.network.model.TmdbCreateSessionRequestDto
 import com.adauto.marvel.core.network.security.session.SessionManager
 import com.skydoves.sandwich.ApiResponse
 import kotlinx.coroutines.flow.StateFlow
+import java.util.concurrent.atomic.AtomicReference
 import javax.inject.Inject
 import javax.inject.Singleton
 
 private const val TMDB_AVATAR_BASE_URL = "https://image.tmdb.org/t/p/w200"
+private const val TOKEN_TTL_MS = 10 * 60 * 1000L // 10 minutes
+
+private data class PendingAuthToken(
+    val token: String,
+    val createdAtMs: Long
+)
 
 @Singleton
-class AuthRepositoryImpl @Inject constructor(
+class AuthRepositoryImpl(
     private val api: TmdbApi,
     private val sessionManager: SessionManager,
     private val database: MarvelDatabase,
-    private val moviesRepository: MoviesRepository
+    private val moviesRepository: MoviesRepository,
+    private val timeProvider: () -> Long = { System.currentTimeMillis() }
 ) : AuthRepository {
+
+    @Inject
+    constructor(
+        api: TmdbApi,
+        sessionManager: SessionManager,
+        database: MarvelDatabase,
+        moviesRepository: MoviesRepository
+    ) : this(
+        api = api,
+        sessionManager = sessionManager,
+        database = database,
+        moviesRepository = moviesRepository,
+        timeProvider = { System.currentTimeMillis() }
+    )
+
+    private val pendingToken = AtomicReference<PendingAuthToken?>()
 
     override val sessionState: StateFlow<SessionState> = sessionManager.sessionState
 
     override suspend fun createRequestToken(): Outcome<String> {
         return when (val response = api.createRequestToken()) {
-            is ApiResponse.Success -> Outcome.Success(response.data.request_token)
+            is ApiResponse.Success -> {
+                val token = response.data.request_token
+                pendingToken.set(PendingAuthToken(token, timeProvider()))
+                Outcome.Success(token)
+            }
             is ApiResponse.Failure -> Outcome.Failure(response.toDomainError())
         }
     }
 
     override suspend fun completeAuthentication(requestToken: String): Outcome<TmdbAccountDto> {
+        val pending = pendingToken.getAndSet(null) // Atomic check-and-consume
+        val now = timeProvider()
+
+        if (pending == null || pending.token != requestToken || (now - pending.createdAtMs) > TOKEN_TTL_MS) {
+            return Outcome.Failure(DomainError.InvalidKey)
+        }
+
         val sessionResponse = api.createSession(TmdbCreateSessionRequestDto(requestToken))
         val sessionId = when (sessionResponse) {
             is ApiResponse.Success -> sessionResponse.data.session_id
@@ -59,6 +95,7 @@ class AuthRepositoryImpl @Inject constructor(
     }
 
     override suspend fun logout() {
+        pendingToken.set(null)
         sessionManager.clearSession()
         database.favoriteDao().clearAll()
         database.watchedDao().clearAll()

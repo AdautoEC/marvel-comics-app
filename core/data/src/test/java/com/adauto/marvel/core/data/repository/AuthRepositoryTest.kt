@@ -36,17 +36,20 @@ class AuthRepositoryTest {
     private val watchedDao: WatchedDao = mockk(relaxed = true)
     private val moviesRepository: MoviesRepository = mockk(relaxed = true)
 
+    private var currentTimeMs: Long = 1_000_000L
     private lateinit var authRepository: AuthRepository
 
     @Before
     fun setUp() {
+        currentTimeMs = 1_000_000L
         every { database.favoriteDao() } returns favoriteDao
         every { database.watchedDao() } returns watchedDao
         authRepository = AuthRepositoryImpl(
             api = api,
             sessionManager = sessionManager,
             database = database,
-            moviesRepository = moviesRepository
+            moviesRepository = moviesRepository,
+            timeProvider = { currentTimeMs }
         )
     }
 
@@ -96,6 +99,13 @@ class AuthRepositoryTest {
 
     @Test
     fun completeAuthentication_exchanges_token_fetches_account_and_saves_session() = runTest {
+        coEvery { api.createRequestToken() } returns ApiResponse.Success(
+            TmdbRequestTokenDto(
+                success = true,
+                request_token = "req_tok",
+                expires_at = "2026-10-23"
+            )
+        )
         coEvery {
             api.createSession(TmdbCreateSessionRequestDto("req_tok"))
         } returns ApiResponse.Success(TmdbSessionResponseDto(success = true, session_id = "sess_123"))
@@ -112,6 +122,7 @@ class AuthRepositoryTest {
         )
         coEvery { moviesRepository.syncCloudWithLocal() } returns Outcome.Success(Unit)
 
+        authRepository.createRequestToken()
         val result = authRepository.completeAuthentication("req_tok")
 
         assertThat(result).isInstanceOf(Outcome.Success::class.java)
@@ -132,6 +143,13 @@ class AuthRepositoryTest {
 
     @Test
     fun completeAuthentication_returns_failure_when_createSession_fails() = runTest {
+        coEvery { api.createRequestToken() } returns ApiResponse.Success(
+            TmdbRequestTokenDto(
+                success = true,
+                request_token = "req_tok",
+                expires_at = "2026-10-23"
+            )
+        )
         val errorResponse = Response.error<TmdbSessionResponseDto>(
             401,
             "Invalid token".toResponseBody()
@@ -140,6 +158,7 @@ class AuthRepositoryTest {
             api.createSession(any())
         } returns ApiResponse.Failure.Error(errorResponse)
 
+        authRepository.createRequestToken()
         val result = authRepository.completeAuthentication("req_tok")
 
         assertThat(result).isInstanceOf(Outcome.Failure::class.java)
@@ -151,6 +170,13 @@ class AuthRepositoryTest {
 
     @Test
     fun completeAuthentication_returns_failure_when_getAccountDetails_fails() = runTest {
+        coEvery { api.createRequestToken() } returns ApiResponse.Success(
+            TmdbRequestTokenDto(
+                success = true,
+                request_token = "req_tok",
+                expires_at = "2026-10-23"
+            )
+        )
         coEvery {
             api.createSession(any())
         } returns ApiResponse.Success(TmdbSessionResponseDto(success = true, session_id = "sess_123"))
@@ -163,6 +189,7 @@ class AuthRepositoryTest {
             api.getAccountDetails("sess_123")
         } returns ApiResponse.Failure.Error(errorResponse)
 
+        authRepository.createRequestToken()
         val result = authRepository.completeAuthentication("req_tok")
 
         assertThat(result).isInstanceOf(Outcome.Failure::class.java)
@@ -170,6 +197,124 @@ class AuthRepositoryTest {
 
         coVerify(exactly = 0) { sessionManager.saveSession(any(), any(), any(), any()) }
         coVerify(exactly = 0) { moviesRepository.syncCloudWithLocal() }
+    }
+
+    @Test
+    fun completeAuthentication_withForgedToken_failsWithInvalidKeyAndDoesNotCallApi() = runTest {
+        coEvery { api.createRequestToken() } returns ApiResponse.Success(
+            TmdbRequestTokenDto(
+                success = true,
+                request_token = "legitimate_token",
+                expires_at = "2026-10-23"
+            )
+        )
+        coEvery {
+            api.createSession(any())
+        } returns ApiResponse.Success(TmdbSessionResponseDto(success = true, session_id = "sess_123"))
+
+        authRepository.createRequestToken()
+        val result = authRepository.completeAuthentication("attacker_forged_token")
+
+        assertThat(result).isInstanceOf(Outcome.Failure::class.java)
+        assertThat((result as Outcome.Failure).error).isEqualTo(DomainError.InvalidKey)
+        coVerify(exactly = 0) { api.createSession(any()) }
+    }
+
+    @Test
+    fun completeAuthentication_withoutPriorRequestToken_failsWithInvalidKey() = runTest {
+        coEvery {
+            api.createSession(any())
+        } returns ApiResponse.Success(TmdbSessionResponseDto(success = true, session_id = "sess_123"))
+
+        val result = authRepository.completeAuthentication("any_token")
+
+        assertThat(result).isInstanceOf(Outcome.Failure::class.java)
+        assertThat((result as Outcome.Failure).error).isEqualTo(DomainError.InvalidKey)
+        coVerify(exactly = 0) { api.createSession(any()) }
+    }
+
+    @Test
+    fun completeAuthentication_withExpiredToken_failsWithInvalidKey() = runTest {
+        coEvery { api.createRequestToken() } returns ApiResponse.Success(
+            TmdbRequestTokenDto(
+                success = true,
+                request_token = "valid_token",
+                expires_at = "2026-10-23"
+            )
+        )
+        coEvery {
+            api.createSession(any())
+        } returns ApiResponse.Success(TmdbSessionResponseDto(success = true, session_id = "sess_123"))
+
+        authRepository.createRequestToken()
+
+        // Advance clock past 10-minute TTL (10 * 60 * 1000 = 600,000 ms)
+        currentTimeMs += 10 * 60 * 1000L + 1L
+
+        val result = authRepository.completeAuthentication("valid_token")
+
+        assertThat(result).isInstanceOf(Outcome.Failure::class.java)
+        assertThat((result as Outcome.Failure).error).isEqualTo(DomainError.InvalidKey)
+        coVerify(exactly = 0) { api.createSession(any()) }
+    }
+
+    @Test
+    fun completeAuthentication_tokenReplay_failsOnSecondAttempt() = runTest {
+        coEvery { api.createRequestToken() } returns ApiResponse.Success(
+            TmdbRequestTokenDto(
+                success = true,
+                request_token = "valid_token",
+                expires_at = "2026-10-23"
+            )
+        )
+        coEvery {
+            api.createSession(TmdbCreateSessionRequestDto("valid_token"))
+        } returns ApiResponse.Success(TmdbSessionResponseDto(success = true, session_id = "sess_123"))
+        coEvery {
+            api.getAccountDetails("sess_123")
+        } returns ApiResponse.Success(
+            TmdbAccountDto(
+                id = 42,
+                username = "user_marvel",
+                name = "Stan",
+                avatar = null
+            )
+        )
+        coEvery { moviesRepository.syncCloudWithLocal() } returns Outcome.Success(Unit)
+
+        authRepository.createRequestToken()
+
+        val firstAttempt = authRepository.completeAuthentication("valid_token")
+        assertThat(firstAttempt).isInstanceOf(Outcome.Success::class.java)
+
+        val secondAttempt = authRepository.completeAuthentication("valid_token")
+        assertThat(secondAttempt).isInstanceOf(Outcome.Failure::class.java)
+        assertThat((secondAttempt as Outcome.Failure).error).isEqualTo(DomainError.InvalidKey)
+
+        coVerify(exactly = 1) { api.createSession(any()) }
+    }
+
+    @Test
+    fun completeAuthentication_afterLogout_failsWithInvalidKey() = runTest {
+        coEvery { api.createRequestToken() } returns ApiResponse.Success(
+            TmdbRequestTokenDto(
+                success = true,
+                request_token = "valid_token",
+                expires_at = "2026-10-23"
+            )
+        )
+        coEvery {
+            api.createSession(any())
+        } returns ApiResponse.Success(TmdbSessionResponseDto(success = true, session_id = "sess_123"))
+
+        authRepository.createRequestToken()
+        authRepository.logout()
+
+        val result = authRepository.completeAuthentication("valid_token")
+
+        assertThat(result).isInstanceOf(Outcome.Failure::class.java)
+        assertThat((result as Outcome.Failure).error).isEqualTo(DomainError.InvalidKey)
+        coVerify(exactly = 0) { api.createSession(any()) }
     }
 
     @Test

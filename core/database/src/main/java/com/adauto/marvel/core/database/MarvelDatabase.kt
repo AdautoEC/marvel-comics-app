@@ -15,8 +15,8 @@ import com.adauto.marvel.core.database.entity.WatchedMovieEntity
         FavoriteMovieEntity::class,
         WatchedMovieEntity::class
     ],
-    version = 2,
-    exportSchema = false
+    version = 3,
+    exportSchema = true
 )
 abstract class MarvelDatabase : RoomDatabase() {
     abstract fun movieDao(): MovieDao
