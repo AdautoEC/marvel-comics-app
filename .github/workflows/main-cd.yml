@@ -284,6 +284,8 @@ jobs:
           path: release-mapping
 
       - name: Deploy to Firebase App Distribution (App Tester)
+        id: firebase_dist
+        continue-on-error: true
         if: env.FIREBASE_APP_ID != '' && env.FIREBASE_SERVICE_ACCOUNT != ''
         env:
           FIREBASE_APP_ID: ${{ secrets.FIREBASE_APP_ID }}
@@ -297,6 +299,11 @@ jobs:
           releaseNotes: |
             Release automated from main (commit ${{ github.sha }})
             Commit: ${{ github.event.head_commit.message }}
+
+      - name: Notify on Firebase App Distribution Mismatch
+        if: steps.firebase_dist.outcome == 'failure'
+        run: |
+          echo "::warning title=Firebase App Distribution Upload Failed::Could not upload APK to Firebase App Distribution. Verify that FIREBASE_APP_ID secret in GitHub repository settings matches the package name 'com.adauto.cinemahub' registered in Firebase Console."
 
       - name: Calculate Release Tag
         id: tag_calc
