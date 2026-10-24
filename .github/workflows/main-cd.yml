@@ -71,13 +71,12 @@ jobs:
         env:
           GOOGLE_SERVICES_JSON_B64: ${{ secrets.GOOGLE_SERVICES_JSON_B64 }}
         run: |
-          mkdir -p app
-          if [ -n "$GOOGLE_SERVICES_JSON_B64" ]; then
-            echo "$GOOGLE_SERVICES_JSON_B64" | base64 -d > app/google-services.json
-          else
-            echo "Secrets not found; using ci/google-services.fake.json as fallback"
-            cp ci/google-services.fake.json app/google-services.json
+          if [ -z "$GOOGLE_SERVICES_JSON_B64" ]; then
+            echo "::error::GOOGLE_SERVICES_JSON_B64 secret is missing in production CD pipeline!"
+            exit 1
           fi
+          mkdir -p app
+          echo "$GOOGLE_SERVICES_JSON_B64" | base64 -d > app/google-services.json
 
       - name: Setup local.properties with TMDB Secrets
         env:
@@ -91,13 +90,16 @@ jobs:
         env:
           RELEASE_KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
         run: |
-          if [ -n "$RELEASE_KEYSTORE_BASE64" ]; then
-            echo "$RELEASE_KEYSTORE_BASE64" | base64 -d > release.keystore
-            echo "KEYSTORE_FILE=$(pwd)/release.keystore" >> $GITHUB_ENV
+          if [ -z "$RELEASE_KEYSTORE_BASE64" ]; then
+            echo "::error::RELEASE_KEYSTORE_BASE64 secret is missing in production CD pipeline!"
+            exit 1
           fi
+          echo "$RELEASE_KEYSTORE_BASE64" | base64 -d > release.keystore
+          echo "KEYSTORE_FILE=$(pwd)/release.keystore" >> $GITHUB_ENV
 
       - name: Build Minified Release APK & Bundle
         env:
+          CI_RELEASE_BUILD: "true"
           KEYSTORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}

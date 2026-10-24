@@ -38,13 +38,18 @@ android {
             val storePasswordEnv = System.getenv("KEYSTORE_PASSWORD") ?: project.findProperty("KEYSTORE_PASSWORD") as? String
             val keyAliasEnv = System.getenv("KEY_ALIAS") ?: project.findProperty("KEY_ALIAS") as? String
             val keyPasswordEnv = System.getenv("KEY_PASSWORD") ?: project.findProperty("KEY_PASSWORD") as? String
+            val isPublishingOrCD = System.getenv("CI_RELEASE_BUILD") == "true" ||
+                gradle.startParameter.taskNames.any { it.contains("bundleRelease", ignoreCase = true) }
 
             if (!keystorePath.isNullOrBlank() && file(keystorePath).exists() && !storePasswordEnv.isNullOrBlank()) {
                 storeFile = file(keystorePath)
                 storePassword = storePasswordEnv
                 keyAlias = keyAliasEnv
                 keyPassword = keyPasswordEnv
+            } else if (isPublishingOrCD) {
+                throw GradleException("Production release signing configuration (KEYSTORE_FILE/PASSWORD/ALIAS) is missing or invalid.")
             } else {
+                // Local dev / PR verification with assembleRelease falls back to debug signing to verify R8 minification
                 initWith(getByName("debug"))
             }
         }
