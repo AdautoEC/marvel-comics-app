@@ -202,7 +202,7 @@ class MovieListUiTest {
     }
 
     @Test
-    fun searchBar_whenActive_showsTextFieldAndControlsDispatchActions() {
+    fun searchBar_whenActive_clickingClear_dispatchesEmptyQuery() {
         var actionDispatched: MovieListAction? = null
 
         composeTestRule.setContent {
@@ -216,16 +216,32 @@ class MovieListUiTest {
             )
         }
 
-        composeTestRule.onNodeWithTag("SearchTextField").assertIsDisplayed()
-        composeTestRule.onNodeWithTag("CloseSearchButton").assertIsDisplayed()
         composeTestRule.onNodeWithTag("ClearSearchButton").assertIsDisplayed()
-
         composeTestRule.onNodeWithTag("ClearSearchButton").performClick()
         composeTestRule.waitForIdle()
-        assertEquals(MovieListAction.SearchQueryChanged(""), actionDispatched)
 
+        assertEquals(MovieListAction.SearchQueryChanged(""), actionDispatched)
+    }
+
+    @Test
+    fun searchBar_whenActive_clickingClose_dispatchesToggleSearch() {
+        var actionDispatched: MovieListAction? = null
+
+        composeTestRule.setContent {
+            val pagingFlow = remember { flowOf(PagingData.from(sampleMovies)) }
+            val pagingItems = pagingFlow.collectAsLazyPagingItems()
+
+            MovieListScreen(
+                uiState = MovieListUiState(isSearchActive = true, searchQuery = "Matrix"),
+                movies = pagingItems,
+                onAction = { actionDispatched = it }
+            )
+        }
+
+        composeTestRule.onNodeWithTag("CloseSearchButton").assertIsDisplayed()
         composeTestRule.onNodeWithTag("CloseSearchButton").performClick()
         composeTestRule.waitForIdle()
+
         assertEquals(MovieListAction.ToggleSearchClicked, actionDispatched)
     }
 

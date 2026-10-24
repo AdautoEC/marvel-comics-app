@@ -205,11 +205,12 @@ jobs:
           fi
 
           # Print test result XML from GCS if available
-          GCS_URL=$(echo "$OUTPUT" | grep -o 'https://console.developers.google.com/storage/browser/[^ ]*' | head -1)
+          GCS_URL=$(echo "$OUTPUT" | grep -o 'https://console.developers.google.com/storage/browser/[^ ]*' | head -1 | tr -d ']')
           if [ -n "$GCS_URL" ]; then
             GCS_PATH=$(echo "$GCS_URL" | sed 's|https://console.developers.google.com/storage/browser/|gs://|')
             echo "Fetching test execution results from $GCS_PATH..."
-            for file in $(gcloud storage ls "${GCS_PATH}**/*.xml" 2>/dev/null); do
+            gcloud storage ls --recursive "$GCS_PATH" || true
+            for file in $(gcloud storage ls --recursive "${GCS_PATH}" 2>/dev/null | grep '\.xml$'); do
               echo "=== Test Result: $file ==="
               gcloud storage cat "$file" || true
             done
