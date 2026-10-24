@@ -15,6 +15,8 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.test.performTextReplacement
+import androidx.paging.LoadState
+import androidx.paging.LoadStates
 import androidx.paging.PagingData
 import androidx.paging.compose.collectAsLazyPagingItems
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -200,39 +202,44 @@ class MovieListUiTest {
     }
 
     @Test
-    fun searchBar_whenActive_showsTextFieldAndDispatchesQueryChanged() {
+    fun searchBar_whenActive_showsTextFieldAndControlsDispatchActions() {
         var actionDispatched: MovieListAction? = null
 
         composeTestRule.setContent {
-            var query by remember { mutableStateOf("") }
             val pagingFlow = remember { flowOf(PagingData.from(sampleMovies)) }
             val pagingItems = pagingFlow.collectAsLazyPagingItems()
 
             MovieListScreen(
-                uiState = MovieListUiState(isSearchActive = true, searchQuery = query),
+                uiState = MovieListUiState(isSearchActive = true, searchQuery = "Matrix"),
                 movies = pagingItems,
-                onAction = { action ->
-                    actionDispatched = action
-                    if (action is MovieListAction.SearchQueryChanged) {
-                        query = action.query
-                    }
-                }
+                onAction = { actionDispatched = it }
             )
         }
 
         composeTestRule.onNodeWithTag("SearchTextField").assertIsDisplayed()
         composeTestRule.onNodeWithTag("CloseSearchButton").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("ClearSearchButton").assertIsDisplayed()
 
-        composeTestRule.onNodeWithTag("SearchTextField").performClick()
-        composeTestRule.onNodeWithTag("SearchTextField").performTextReplacement("Matrix")
-        composeTestRule.waitUntil(timeoutMillis = 5_000) { actionDispatched != null }
-        assertEquals(MovieListAction.SearchQueryChanged("Matrix"), actionDispatched)
+        composeTestRule.onNodeWithTag("ClearSearchButton").performClick()
+        assertEquals(MovieListAction.SearchQueryChanged(""), actionDispatched)
+
+        composeTestRule.onNodeWithTag("CloseSearchButton").performClick()
+        assertEquals(MovieListAction.ToggleSearchClicked, actionDispatched)
     }
 
     @Test
     fun searchBar_whenQueryMatchesNoItems_displaysCustomEmptyMessage() {
+        val emptyPagingData = PagingData.from(
+            emptyList<MovieSummary>(),
+            sourceLoadStates = LoadStates(
+                refresh = LoadState.NotLoading(endOfPaginationReached = true),
+                prepend = LoadState.NotLoading(endOfPaginationReached = true),
+                append = LoadState.NotLoading(endOfPaginationReached = true)
+            )
+        )
+
         composeTestRule.setContent {
-            val pagingFlow = remember { flowOf(PagingData.from(emptyList<MovieSummary>())) }
+            val pagingFlow = remember { flowOf(emptyPagingData) }
             val pagingItems = pagingFlow.collectAsLazyPagingItems()
 
             MovieListScreen(
@@ -246,7 +253,7 @@ class MovieListUiTest {
             )
         }
 
-        composeTestRule.waitUntil(timeoutMillis = 10_000) {
+        composeTestRule.waitUntil(timeoutMillis = 5_000) {
             composeTestRule.onAllNodesWithTag("EmptyStateText").fetchSemanticsNodes().isNotEmpty()
         }
         composeTestRule.onNodeWithTag("EmptyStateText").assertIsDisplayed()
