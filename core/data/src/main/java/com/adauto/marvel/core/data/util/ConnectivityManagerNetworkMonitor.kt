@@ -49,7 +49,9 @@ class ConnectivityManagerNetworkMonitor @Inject constructor(
         channel.trySend(connectivityManager.isCurrentlyConnected())
 
         awaitClose {
-            connectivityManager.unregisterNetworkCallback(callback)
+            runCatching {
+                connectivityManager.unregisterNetworkCallback(callback)
+            }
         }
     }.conflate()
 
