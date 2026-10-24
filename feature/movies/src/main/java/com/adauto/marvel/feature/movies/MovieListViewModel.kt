@@ -7,6 +7,7 @@ import androidx.paging.cachedIn
 import androidx.paging.filter
 import com.adauto.marvel.core.data.repository.AuthRepository
 import com.adauto.marvel.core.data.repository.MoviesRepository
+import com.adauto.marvel.core.data.util.NetworkMonitor
 import com.adauto.marvel.core.model.MovieCategory
 import com.adauto.marvel.core.model.MovieSummary
 import com.adauto.marvel.core.model.Outcome
@@ -34,7 +35,8 @@ private const val TMDB_REDIRECT_URI = "cinemahub://tmdb-callback"
 @HiltViewModel
 class MovieListViewModel @Inject constructor(
     private val moviesRepository: MoviesRepository,
-    private val authRepository: AuthRepository
+    private val authRepository: AuthRepository,
+    private val networkMonitor: NetworkMonitor
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(MovieListUiState())
@@ -76,6 +78,11 @@ class MovieListViewModel @Inject constructor(
         viewModelScope.launch {
             authRepository.sessionState.collect { state ->
                 _uiState.update { it.copy(sessionState = state) }
+            }
+        }
+        viewModelScope.launch {
+            networkMonitor.isOnline.collect { isOnline ->
+                _uiState.update { it.copy(isOffline = !isOnline) }
             }
         }
     }

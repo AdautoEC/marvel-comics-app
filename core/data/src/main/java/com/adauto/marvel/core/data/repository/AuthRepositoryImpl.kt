@@ -2,11 +2,11 @@ package com.adauto.marvel.core.data.repository
 
 import com.adauto.marvel.core.data.mapper.toDomainError
 import com.adauto.marvel.core.database.MarvelDatabase
+import com.adauto.marvel.core.model.AccountProfile
 import com.adauto.marvel.core.model.DomainError
 import com.adauto.marvel.core.model.Outcome
 import com.adauto.marvel.core.model.SessionState
 import com.adauto.marvel.core.network.api.TmdbApi
-import com.adauto.marvel.core.network.model.TmdbAccountDto
 import com.adauto.marvel.core.network.model.TmdbCreateSessionRequestDto
 import com.adauto.marvel.core.network.security.session.SessionManager
 import com.skydoves.sandwich.ApiResponse
@@ -61,7 +61,7 @@ class AuthRepositoryImpl(
         }
     }
 
-    override suspend fun completeAuthentication(requestToken: String): Outcome<TmdbAccountDto> {
+    override suspend fun completeAuthentication(requestToken: String): Outcome<AccountProfile> {
         val pending = pendingToken.getAndSet(null) // Atomic check-and-consume
         val now = timeProvider()
 
@@ -91,7 +91,14 @@ class AuthRepositoryImpl(
 
         moviesRepository.syncCloudWithLocal()
 
-        return Outcome.Success(account)
+        return Outcome.Success(
+            AccountProfile(
+                id = account.id,
+                username = account.username,
+                name = account.name,
+                includeAdult = account.includeAdult
+            )
+        )
     }
 
     override suspend fun logout() {

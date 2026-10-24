@@ -3,6 +3,7 @@ package com.adauto.marvel.core.data.repository
 import com.adauto.marvel.core.database.MarvelDatabase
 import com.adauto.marvel.core.database.dao.FavoriteDao
 import com.adauto.marvel.core.database.dao.WatchedDao
+import com.adauto.marvel.core.model.AccountProfile
 import com.adauto.marvel.core.model.DomainError
 import com.adauto.marvel.core.model.Outcome
 import com.adauto.marvel.core.model.SessionState
@@ -126,9 +127,11 @@ class AuthRepositoryTest {
         val result = authRepository.completeAuthentication("req_tok")
 
         assertThat(result).isInstanceOf(Outcome.Success::class.java)
-        val account = (result as Outcome.Success).value
+        val account: AccountProfile = (result as Outcome.Success).value
         assertThat(account.id).isEqualTo(42)
         assertThat(account.username).isEqualTo("user_marvel")
+        assertThat(account.name).isEqualTo("Stan")
+        assertThat(account.includeAdult).isFalse()
 
         coVerify {
             sessionManager.saveSession(
