@@ -2,14 +2,14 @@ package com.adauto.marvel.core.database.entity
 
 import androidx.room.Entity
 import androidx.room.Index
-import androidx.room.PrimaryKey
 
 @Entity(
     tableName = "movies",
+    primaryKeys = ["id", "category"],
     indices = [Index(value = ["category", "position"], unique = true)]
 )
 data class MovieEntity(
-    @PrimaryKey val id: Int,
+    val id: Int,
     val category: String,
     val position: Int,
     val title: String,
