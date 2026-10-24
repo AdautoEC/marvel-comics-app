@@ -14,4 +14,7 @@
     <string name="card_view_details">Ver detalhes de %1$s</string>
     <string name="search_placeholder">Buscar em %1$s…</string>
     <string name="search_empty_message">Nenhum filme encontrado para \"%1$s\" em %2$s.</string>
+    <string name="empty_favorites_message">Nenhum filme favoritado ainda.\nToque no coração para salvar!</string>
+    <string name="empty_watchlist_message">Nenhum filme na lista de Quero Assistir.</string>
+    <string name="empty_movies_message">Nenhum filme encontrado.</string>
 </resources>

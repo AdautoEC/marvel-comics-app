@@ -207,10 +207,10 @@ fun MovieListScreen(
                                         stringResource(uiState.selectedCategory.titleRes)
                                     )
                                 uiState.selectedCategory == MovieCategory.FAVORITES ->
-                                    "Nenhum filme favoritado ainda.\nToque no coração para salvar!"
+                                    stringResource(R.string.empty_favorites_message)
                                 uiState.selectedCategory == MovieCategory.WATCHLIST ->
-                                    "Nenhum filme na lista de Quero Assistir."
-                                else -> "Nenhum filme encontrado."
+                                    stringResource(R.string.empty_watchlist_message)
+                                else -> stringResource(R.string.empty_movies_message)
                             }
                             Text(
                                 text = emptyMessage,
