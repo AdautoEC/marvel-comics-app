@@ -1,5 +1,6 @@
 package com.adauto.marvel.core.network.interceptor
 
+import com.adauto.marvel.core.network.security.KeysUnavailableException
 import com.adauto.marvel.core.network.security.TmdbApiKeyProvider
 import kotlinx.coroutines.runBlocking
 import okhttp3.Interceptor
@@ -11,17 +12,31 @@ class TmdbAuthInterceptor @Inject constructor(
 ) : Interceptor {
 
     override fun intercept(chain: Interceptor.Chain): Response {
-        val request = chain.request()
-        val apiKey = runBlocking { keyProvider.getApiKey() }
-
-        val newUrl = if (!apiKey.isNullOrBlank() && request.url.queryParameter("api_key") == null) {
-            request.url.newBuilder()
-                .addQueryParameter("api_key", apiKey)
-                .build()
-        } else {
-            request.url
+        val credentials = runBlocking { keyProvider.getCredentials() }
+        if (credentials == null || (credentials.apiKey.isNullOrBlank() && credentials.readAccessToken.isNullOrBlank())) {
+            throw KeysUnavailableException()
         }
 
-        return chain.proceed(request.newBuilder().url(newUrl).build())
+        val request = chain.request()
+        val requestBuilder = request.newBuilder()
+
+        if (!credentials.readAccessToken.isNullOrBlank()) {
+            val newUrl = request.url.newBuilder()
+                .removeAllQueryParameters("api_key")
+                .build()
+            requestBuilder
+                .url(newUrl)
+                .header("Authorization", "Bearer ${credentials.readAccessToken}")
+        } else if (!credentials.apiKey.isNullOrBlank()) {
+            val newUrl = request.url.newBuilder()
+                .setQueryParameter("api_key", credentials.apiKey)
+                .build()
+            requestBuilder
+                .url(newUrl)
+                .removeHeader("Authorization")
+        }
+
+        return chain.proceed(requestBuilder.build())
     }
 }
+
