@@ -6,7 +6,6 @@
 [![Min SDK](https://img.shields.io/badge/Min%20SDK-26-orange.svg?style=flat)](https://developer.android.com)
 [![Compose](https://img.shields.io/badge/Jetpack%20Compose-BOM%202024.10.00-4285F4.svg?style=flat&logo=jetpackcompose)](https://developer.android.com/jetpack/compose)
 [![Clean Architecture](https://img.shields.io/badge/Architecture-Clean%20%2B%20MVI%2FUDF-brightgreen.svg?style=flat)](https://developer.android.com/topic/architecture)
-[![Code Quality](https://img.shields.io/badge/Detekt-0%20Code%20Smells-success.svg?style=flat)](https://detekt.dev)
 [![CI/CD](https://img.shields.io/badge/CI%2FCD-GitHub%20Actions%20%2B%20Test%20Lab-2088FF.svg?style=flat&logo=githubactions)](https://github.com/AdautoEC/marvel-comics-app/actions)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
@@ -91,16 +90,16 @@ graph TD
 
 | Módulo | Tipo | Responsabilidade Principal |
 |---|---|---|
-| [`:app`](file:///Users/adautosouza/repos/estudos/app) | Android App | Ponto de entrada (`CinemaApp`), Grafo de Injeção de Dependência Hilt raiz, roteamento (`CinemaNavHost`), interceptação de Deep Links (`cinemahub://tmdb-callback`), políticas de assinatura e minificação R8. |
-| [`:core:model`](file:///Users/adautosouza/repos/estudos/core/model) | Pure Kotlin/Android | Modelos puros de domínio (`MovieSummary`, `MovieDetail`, `AccountProfile`, `SessionState`, `Outcome<T>`, `DomainError`). Zero dependências de UI ou bancos de dados para máxima portabilidade. |
-| [`:core:database`](file:///Users/adautosouza/repos/estudos/core/database) | Android Library | Camada de persistência local com Room SQLite. Entidades (`MovieEntity`, `FavoriteMovieEntity`, `WatchedMovieEntity`), DAOs com projeções `MovieWithUserData`, migrações determinísticas (`MIGRATION_2_3`) com exportação de schema. |
-| [`:core:network`](file:///Users/adautosouza/repos/estudos/core/network) | Android Library | Camada de comunicação remota. Retrofit 2, Sandwich `ApiResponse`, interceptadores (`TmdbAuthInterceptor`, `RedactingHttpLoggingInterceptor`), Android Keystore com AES-256-GCM para tokens de sessão, e isolamento de clientes HTTP para imagens. |
-| [`:core:data`](file:///Users/adautosouza/repos/estudos/core/data) | Android Library | Repositórios (`MoviesRepositoryImpl`, `AuthRepositoryImpl`), Paging 3 `RemoteMediator`, monitoramento de conectividade em tempo real (`ConnectivityManagerNetworkMonitor`), sincronização bidirecional aditiva ($Local \cup Remote$). |
-| [`:core:ui`](file:///Users/adautosouza/repos/estudos/core/ui) | Android Library | Componentes Compose reutilizáveis (`MovieCard`, `OfflineBanner`, `ErrorState`, `MovieCover`, `Shimmer`), otimizações de recomposição, utilitários de Custom Tabs e extensões de internacionalização (`MovieCategoryExtensions`). |
-| [`:core:designsystem`](file:///Users/adautosouza/repos/estudos/core/designsystem) | Android Library | Fundações visuais: Material 3 Theme, paleta de cores temática escura, tipografia, espaçamentos, formas e anotações customizadas de preview Compose (`@ThemePreviews`, `@DevicePreviews`). |
-| [`:feature:movies`](file:///Users/adautosouza/repos/estudos/feature/movies) | Android Library | Tela de listagem em grade, tabs de categorias, busca in-tab reativa com debounce (`flatMapLatest`), PullToRefresh orientado a `LoadState`, User Session Pill (Guest vs Authenticated) e banners de sincronização. |
-| [`:feature:detail`](file:///Users/adautosouza/repos/estudos/feature/detail) | Android Library | Tela de detalhes do filme com sinopse, poster em alta resolução, avaliação, data de lançamento e toggles otimistas imediatos de favoritos e watchlist. |
-| [`:benchmark`](file:///Users/adautosouza/repos/estudos/benchmark) | Test / Benchmark | Macrobenchmark do Jetpack para geração de Baseline Profiles visando startup a frio em menos de 1 segundo e renderização a 60/120 FPS. |
+| [`:app`](app) | Android App | Ponto de entrada (`CinemaApp`), Grafo de Injeção de Dependência Hilt raiz, roteamento (`CinemaNavHost`), interceptação de Deep Links (`cinemahub://tmdb-callback`), políticas de assinatura e minificação R8. |
+| [`:core:model`](core/model) | Pure Kotlin/Android | Modelos puros de domínio (`MovieSummary`, `MovieDetail`, `AccountProfile`, `SessionState`, `Outcome<T>`, `DomainError`). Zero dependências de UI ou bancos de dados para máxima portabilidade. |
+| [`:core:database`](core/database) | Android Library | Camada de persistência local com Room SQLite. Entidades (`MovieEntity`, `FavoriteMovieEntity`, `WatchedMovieEntity`), DAOs com projeções `MovieWithUserData`, migrações determinísticas (`MIGRATION_2_3`) com exportação de schema. |
+| [`:core:network`](core/network) | Android Library | Camada de comunicação remota. Retrofit 2, Sandwich `ApiResponse`, interceptadores (`TmdbAuthInterceptor`, `RedactingHttpLoggingInterceptor`), Android Keystore com AES-256-GCM para tokens de sessão, e isolamento de clientes HTTP para imagens. |
+| [`:core:data`](core/data) | Android Library | Repositórios (`MoviesRepositoryImpl`, `AuthRepositoryImpl`), Paging 3 `RemoteMediator`, monitoramento de conectividade em tempo real (`ConnectivityManagerNetworkMonitor`), sincronização bidirecional aditiva ($Local \cup Remote$). |
+| [`:core:ui`](core/ui) | Android Library | Componentes Compose reutilizáveis (`MovieCard`, `OfflineBanner`, `ErrorState`, `MovieCover`, `Shimmer`), otimizações de recomposição, utilitários de Custom Tabs e extensões de internacionalização (`MovieCategoryExtensions`). |
+| [`:core:designsystem`](core/designsystem) | Android Library | Fundações visuais: Material 3 Theme, paleta de cores temática escura, tipografia, espaçamentos, formas e anotações customizadas de preview Compose (`@ThemePreviews`, `@DevicePreviews`). |
+| [`:feature:movies`](feature/movies) | Android Library | Tela de listagem em grade, tabs de categorias, busca in-tab reativa com debounce (`flatMapLatest`), PullToRefresh orientado a `LoadState`, User Session Pill (Guest vs Authenticated) e banners de sincronização. |
+| [`:feature:detail`](feature/detail) | Android Library | Tela de detalhes do filme com sinopse, poster em alta resolução, avaliação, data de lançamento e toggles otimistas imediatos de favoritos e watchlist. |
+| [`:benchmark`](benchmark) | Test / Benchmark | Macrobenchmark do Jetpack para geração de Baseline Profiles visando startup a frio em menos de 1 segundo e renderização a 60/120 FPS. |
 
 ---
 
@@ -108,7 +107,7 @@ graph TD
 
 ### 1. Eliminação do Problema de Consulta N+1 via SQL `LEFT JOIN`
 - **Problema Anterior:** Para cada página carregada via Paging 3 (20 itens), o mapeamento chamava `favoriteDao.isFavorite(id).first()` e `watchedDao.isWatched(id).first()`, disparando **40 consultas SQLite adicionais por emissão de página**. Além disso, favoritar um item não invalidava a fonte de dados, exigindo que o usuário alternasse de aba para ver o coração atualizado.
-- **Solução Implementada:** Criação da projeção [`MovieWithUserData`](file:///Users/adautosouza/repos/estudos/core/database/src/main/java/com/adauto/marvel/core/database/model/MovieWithUserData.kt) e consulta SQL agregada no [`MovieDao`](file:///Users/adautosouza/repos/estudos/core/database/src/main/java/com/adauto/marvel/core/database/dao/MovieDao.kt):
+- **Solução Implementada:** Criação da projeção [`MovieWithUserData`](core/database/src/main/java/com/adauto/marvel/core/database/model/MovieWithUserData.kt) e consulta SQL agregada no [`MovieDao`](core/database/src/main/java/com/adauto/marvel/core/database/dao/MovieDao.kt):
   ```sql
   SELECT m.*, 
          (f.movieId IS NOT NULL) AS isFavorite, 
@@ -132,11 +131,11 @@ graph TD
   )
   data class MovieEntity(...)
   ```
-  Evolução do schema para a versão 3 via [`MIGRATION_2_3`](file:///Users/adautosouza/repos/estudos/core/database/src/main/java/com/adauto/marvel/core/database/migrations/DatabaseMigrations.kt) sem uso de `fallbackToDestructiveMigration()`, garantindo preservação de 100% dos dados do usuário.
+  Evolução do schema para a versão 3 via [`MIGRATION_2_3`](core/database/src/main/java/com/adauto/marvel/core/database/migrations/DatabaseMigrations.kt) sem uso de `fallbackToDestructiveMigration()`, garantindo preservação de 100% dos dados do usuário.
 
 ### 3. Sincronização Bidirecional Aditiva ($Local \cup Remote$)
 - **Modo Visitante (Guest):** O usuário pode favoritar e adicionar filmes à sua lista de "Quero Assistir" sem login, persistidos no Room SQLite local.
-- **Login com Conta TMDB:** Ao autenticar via OAuth, o [`MoviesRepositoryImpl`](file:///Users/adautosouza/repos/estudos/core/data/src/main/java/com/adauto/marvel/core/data/repository/MoviesRepositoryImpl.kt) executa a união aditiva ($Local \cup Remote$):
+- **Login com Conta TMDB:** Ao autenticar via OAuth, o [`MoviesRepositoryImpl`](core/data/src/main/java/com/adauto/marvel/core/data/repository/MoviesRepositoryImpl.kt) executa a união aditiva ($Local \cup Remote$):
   1. Baixa os favoritos remotos da nuvem TMDB e insere no Room.
   2. Identifica os favoritos criados localmente em modo offline/visitante e os envia via API para a nuvem TMDB.
   3. Ao deslogar (`logout()`), as credenciais de sessão são revogadas e o cache local do Room é expurgado para proteção de privacidade multi-usuário.
@@ -162,22 +161,22 @@ O projeto implementa padrões defensivos alinhados aos requisitos do **OWASP Mob
   - O token é consumido e invalidado imediatamente (`single-use`), rejeitando tentativas de replay ou callbacks forjados por apps maliciosos com `DomainError.InvalidKey`.
 
 ### 2. Criptografia no Android Keystore com AES-256-GCM
-- Tokens de sessão (`session_id`) são criptografados pelo [`KeystoreCipher`](file:///Users/adautosouza/repos/estudos/core/network/src/main/java/com/adauto/marvel/core/network/security/KeystoreCipher.kt) usando uma chave mestra gerada dentro do hardware seguro do dispositivo (**Android Keystore Provider**):
+- Tokens de sessão (`session_id`) são criptografados pelo [`KeystoreCipher`](core/network/src/main/java/com/adauto/marvel/core/network/security/KeystoreCipher.kt) usando uma chave mestra gerada dentro do hardware seguro do dispositivo (**Android Keystore Provider**):
   - Algoritmo: `AES/GCM/NoPadding` com autenticação de integridade de 128 bits.
   - Os bytes cifrados e o vetor de inicialização (IV) são armazenados no `DataStoreSessionStorage`.
   - Em caso de adulteração ou perda da chave, a recuperação é segura (fail-safe), invalidando a sessão sem causar crash no app.
 
 ### 3. Isolamento do Cliente HTTP de Imagens (Coil)
 - O cliente de rede principal do TMDB anexa automaticamente `api_key` e cabeçalhos de autenticação.
-- Para evitar que esses segredos vazem ao carregar posters de CDNs públicas ou servidores externos, o módulo [`ImageClientModule`](file:///Users/adautosouza/repos/estudos/core/network/src/main/java/com/adauto/marvel/core/network/di/ImageClientModule.kt) fornece uma instância isolada de `OkHttpClient` para o Coil:
+- Para evitar que esses segredos vazem ao carregar posters de CDNs públicas ou servidores externos, o módulo [`ImageClientModule`](core/network/src/main/java/com/adauto/marvel/core/network/di/ImageClientModule.kt) fornece uma instância isolada de `OkHttpClient` para o Coil:
   - Cache em disco dedicado de 100 MB.
   - **Zero interceptadores de autenticação** anexados à requisição de imagens.
 
 ### 4. Mascaramento em Logs de Telemetria (`RedactingHttpLoggingInterceptor`)
-- Em builds de desenvolvimento ou testes, os logs de requisições HTTP utilizam o [`RedactingHttpLoggingInterceptor`](file:///Users/adautosouza/repos/estudos/core/network/src/main/java/com/adauto/marvel/core/network/telemetry/RedactingHttpLoggingInterceptor.kt), que substitui automaticamente query parameters e headers sensíveis (`api_key`, `session_id`, `apikey`, `hash`, `Authorization`) por `[REDACTED]`.
+- Em builds de desenvolvimento ou testes, os logs de requisições HTTP utilizam o [`RedactingHttpLoggingInterceptor`](core/network/src/main/java/com/adauto/marvel/core/network/telemetry/RedactingHttpLoggingInterceptor.kt), que substitui automaticamente query parameters e headers sensíveis (`api_key`, `session_id`, `apikey`, `hash`, `Authorization`) por `[REDACTED]`.
 
 ### 5. Fail-Closed Release Signing no Gradle & CI
-- O script [`app/build.gradle.kts`](file:///Users/adautosouza/repos/estudos/app/build.gradle.kts) e o workflow de CD adotam a política **fail-closed**:
+- O script [`app/build.gradle.kts`](app/build.gradle.kts) e o workflow de CD adotam a política **fail-closed**:
   - Em pipelines de CD (`CI_RELEASE_BUILD=true` ou tarefas com `bundleRelease`), a ausência do arquivo de keystore ou de senhas lança imediatamente uma `GradleException`, impedindo que artefatos de release sejam publicados acidentalmente assinados com chaves de debug.
 
 ---
@@ -185,7 +184,7 @@ O projeto implementa padrões defensivos alinhados aos requisitos do **OWASP Mob
 ## ⚡ Otimizações de Performance em Jetpack Compose
 
 ### 1. Eliminação de Alocações em Recomposição
-No [`MovieCard.kt`](file:///Users/adautosouza/repos/estudos/core/ui/src/main/java/com/adauto/marvel/core/ui/component/MovieCard.kt), instâncias de `Brush.verticalGradient(...)` e coleções de `Color` foram promovidas a constantes estáticas de nível superior:
+No [`MovieCard.kt`](core/ui/src/main/java/com/adauto/marvel/core/ui/component/MovieCard.kt), instâncias de `Brush.verticalGradient(...)` e coleções de `Color` foram promovidas a constantes estáticas de nível superior:
 ```kotlin
 private val MovieCardGradientColors = listOf(
     Color.Transparent,
@@ -197,7 +196,7 @@ internal val MovieCardBottomGradient = Brush.verticalGradient(MovieCardGradientC
 Isso impede que milhares de objetos temporários sejam instanciados e descartados pelo Garbage Collector durante a rolagem rápida da grade.
 
 ### 2. Reciclagem Otimizada de Slots de Composição (`contentType`)
-No [`MovieListScreen.kt`](file:///Users/adautosouza/repos/estudos/feature/movies/src/main/java/com/adauto/marvel/feature/movies/MovieListScreen.kt), o `LazyVerticalGrid` utiliza `contentType`:
+No [`MovieListScreen.kt`](feature/movies/src/main/java/com/adauto/marvel/feature/movies/MovieListScreen.kt), o `LazyVerticalGrid` utiliza `contentType`:
 ```kotlin
 items(
     count = movies.itemCount,
@@ -211,7 +210,7 @@ Permite que o Compose reutilize os slots estruturais de layout dos cartões dura
 
 ## 🧪 Estratégia Abrangente de Testes
 
-O projeto adota uma pirâmide de testes rigorosa com **100% de cobertura nos fluxos críticos**:
+O projeto adota uma pirâmide de testes abrangente cobrindo camadas de domínio, dados, persistência local e UI com suítes ativas de testes unitários e de integração. As métricas e gates formais de cobertura de código são estabelecidos via Kover na Fase 3 do projeto:
 
 ```mermaid
 flowchart TD
@@ -231,11 +230,11 @@ flowchart TD
 2. **Testes de Banco de Dados & Migração (Robolectric + Room Testing):**
    - Validação da `MIGRATION_2_3`: cria um banco de dados SQLite na versão 2 em memória, migra para a versão 3 e valida que nenhuma linha de favoritos ou histórico é perdida.
    - Validação da chave composta `(id, category)` garantindo que o mesmo ID de filme coexiste em categorias diferentes.
-   - Validação do SQL `LEFT JOIN` e emissão reativa em [`MovieDaoReactiveJoinTest.kt`](file:///Users/adautosouza/repos/estudos/core/database/src/test/java/com/adauto/marvel/core/database/dao/MovieDaoReactiveJoinTest.kt).
+   - Validação do SQL `LEFT JOIN` e emissão reativa em [`MovieDaoReactiveJoinTest.kt`](core/database/src/test/java/com/adauto/marvel/core/database/dao/MovieDaoReactiveJoinTest.kt).
 3. **Testes de Rede & Segurança (MockWebServer & Android Keystore):**
-   - [`KeystoreCipherTest.kt`](file:///Users/adautosouza/repos/estudos/core/network/src/androidTest/java/com/adauto/marvel/core/network/security/KeystoreCipherTest.kt): criptografia e decriptografia AES-256-GCM.
-   - [`RedactingHttpLoggingInterceptorTest.kt`](file:///Users/adautosouza/repos/estudos/core/network/src/test/java/com/adauto/marvel/core/network/telemetry/RedactingHttpLoggingInterceptorTest.kt): mascaramento de credenciais TMDB.
-   - [`AuthRepositoryTest.kt`](file:///Users/adautosouza/repos/estudos/core/data/src/test/java/com/adauto/marvel/core/data/repository/AuthRepositoryTest.kt): validação de CSRF, expiração de 10 min e bloqueio de token replay.
+   - [`KeystoreCipherTest.kt`](core/network/src/androidTest/java/com/adauto/marvel/core/network/security/KeystoreCipherTest.kt): criptografia e decriptografia AES-256-GCM.
+   - [`RedactingHttpLoggingInterceptorTest.kt`](core/network/src/test/java/com/adauto/marvel/core/network/telemetry/RedactingHttpLoggingInterceptorTest.kt): mascaramento de credenciais TMDB.
+   - [`AuthRepositoryTest.kt`](core/data/src/test/java/com/adauto/marvel/core/data/repository/AuthRepositoryTest.kt): validação de CSRF, expiração de 10 min e bloqueio de token replay.
 4. **Testes de UI & Previews em Compose:**
    - Testes com `ComposeContentTestRule` usando tags semânticas (`Modifier.testTag`).
    - Cobertura de catálogo com `@ThemePreviews` e `@DevicePreviews` via `PreviewParameterProvider`.
