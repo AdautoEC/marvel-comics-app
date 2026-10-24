@@ -10,10 +10,55 @@ plugins {
     alias(libs.plugins.firebase.crashlytics) apply false
     alias(libs.plugins.firebase.perf) apply false
     alias(libs.plugins.detekt)
+    alias(libs.plugins.kotlinx.kover)
+}
+
+dependencies {
+    kover(project(":app"))
+    kover(project(":core:model"))
+    kover(project(":core:network"))
+    kover(project(":core:database"))
+    kover(project(":core:data"))
+    kover(project(":core:designsystem"))
+    kover(project(":core:ui"))
+    kover(project(":feature:movies"))
+    kover(project(":feature:detail"))
+}
+
+kover {
+    reports {
+        filters {
+            excludes {
+                classes(
+                    "*_Factory",
+                    "*_Factory\$*",
+                    "Hilt_*",
+                    "*_HiltModules*",
+                    "*Database_Impl*",
+                    "*_Impl*",
+                    "*BuildConfig*",
+                    "*_Provide*Factory*",
+                    "*ComposableSingletons*",
+                    "*JsonAdapter*",
+                )
+                packages(
+                    "*.di",
+                    "dagger.hilt.*",
+                    "hilt_aggregated_deps"
+                )
+                annotatedBy(
+                    "*Composable*",
+                    "*Preview*",
+                    "*Generated*"
+                )
+            }
+        }
+    }
 }
 
 subprojects {
     apply(plugin = "io.gitlab.arturbosch.detekt")
+    apply(plugin = "org.jetbrains.kotlinx.kover")
 
     tasks.withType<io.gitlab.arturbosch.detekt.Detekt>().configureEach {
         buildUponDefaultConfig = true

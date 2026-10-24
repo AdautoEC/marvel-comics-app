@@ -26,6 +26,7 @@ turbine = "1.2.0"
 truth = "1.4.4"
 detekt = "1.23.7"
 spotless = "7.0.0.BETA4"
+kover = "0.8.3"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -107,3 +108,4 @@ google-services = { id = "com.google.gms.google-services", version = "4.4.2" }
 firebase-crashlytics = { id = "com.google.firebase.crashlytics", version = "3.0.2" }
 firebase-perf = { id = "com.google.firebase.firebase-perf", version = "1.4.2" }
 detekt = { id = "io.gitlab.arturbosch.detekt", version.ref = "detekt" }
+kotlinx-kover = { id = "org.jetbrains.kotlinx.kover", version.ref = "kover" }
