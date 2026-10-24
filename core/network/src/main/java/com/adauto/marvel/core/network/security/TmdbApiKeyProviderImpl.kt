@@ -59,4 +59,11 @@ class TmdbApiKeyProviderImpl @Inject constructor(
 
         return null
     }
+
+    override suspend fun getReadAccessToken(): String? = null
+
+    override suspend fun getCredentials(): TmdbCredentials? =
+        getApiKey()?.let { TmdbCredentials(apiKey = it) }
+
+    override suspend fun refreshKeyForced(): TmdbCredentials? = getCredentials()
 }
