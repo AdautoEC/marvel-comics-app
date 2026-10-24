@@ -50,4 +50,5 @@ dependencies {
     testImplementation(libs.truth)
     testImplementation(libs.turbine)
     testImplementation(libs.okhttp.core)
+    testImplementation(libs.paging.testing)
 }

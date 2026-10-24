@@ -100,10 +100,11 @@ jobs:
       - name: Build Minified Release APK & Bundle
         env:
           CI_RELEASE_BUILD: "true"
+          VERSION_CODE: ${{ github.run_number }}
           KEYSTORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
-        run: ./gradlew assembleRelease bundleRelease --stacktrace
+        run: ./gradlew assembleRelease bundleRelease -Pandroid.injected.version.code=${{ github.run_number }} --stacktrace
 
       - name: Clean up Keystore
         if: always()

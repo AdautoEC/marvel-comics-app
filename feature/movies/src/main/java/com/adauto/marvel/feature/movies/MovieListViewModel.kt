@@ -16,7 +16,6 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -91,7 +90,6 @@ class MovieListViewModel @Inject constructor(
                         if (_uiState.value.sessionState is SessionState.Authenticated) {
                             moviesRepository.syncCloudWithLocal()
                         }
-                        delay(400)
                     } finally {
                         _uiState.update { it.copy(isRefreshing = false) }
                     }
