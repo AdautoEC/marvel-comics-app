@@ -506,5 +506,31 @@ class MoviesRepositoryImplTest {
         coVerify(atLeast = 1) { api.getWatchlistMovies(42, "sess_iron", 1) }
     }
 
+    @Test
+    fun syncCloudWithLocal_holdsMutexAcrossRemoteDownloadAndDatabaseCommit() = runTest {
+        sessionStateFlow.value = SessionState.Authenticated(
+            accountId = 42,
+            username = "stark",
+            sessionId = "sess_iron"
+        )
+        var mutexLockedDuringDownload = false
+        coEvery { api.getFavoriteMovies(42, "sess_iron", 1) } coAnswers {
+            mutexLockedDuringDownload = syncCoordinator.mutex.isLocked
+            ApiResponse.Success(
+                TmdbPageResponseDto(page = 1, results = emptyList(), totalPages = 1, totalResults = 0)
+            )
+        }
+        coEvery { api.getWatchlistMovies(42, "sess_iron", 1) } returns ApiResponse.Success(
+            TmdbPageResponseDto(page = 1, results = emptyList(), totalPages = 1, totalResults = 0)
+        )
+        every { favoriteDao.getAllFavorites() } returns flowOf(emptyList())
+        every { watchedDao.getAllWatched() } returns flowOf(emptyList())
+
+        val result = repository.syncCloudWithLocal()
+
+        assertThat(result).isInstanceOf(Outcome.Success::class.java)
+        assertThat(mutexLockedDuringDownload).isTrue()
+    }
+
     // endregion
 }
