@@ -3,13 +3,13 @@ package com.adauto.marvel.core.data.mediator
 import androidx.paging.ExperimentalPagingApi
 import androidx.paging.LoadType
 import androidx.paging.PagingConfig
-import androidx.paging.PagingSource
 import androidx.paging.PagingState
 import androidx.paging.RemoteMediator
 import androidx.room.withTransaction
 import com.adauto.marvel.core.database.MarvelDatabase
 import com.adauto.marvel.core.database.dao.MovieDao
-import com.adauto.marvel.core.database.entity.MovieEntity
+import com.adauto.marvel.core.database.dao.MovieRemoteKeysDao
+import com.adauto.marvel.core.database.entity.MovieRemoteKeysEntity
 import com.adauto.marvel.core.database.model.MovieWithUserData
 import com.adauto.marvel.core.network.api.TmdbApi
 import com.adauto.marvel.core.network.model.TmdbMovieDto
@@ -27,6 +27,7 @@ import org.junit.Test
 import java.time.Clock
 import java.time.Instant
 import java.time.ZoneOffset
+import java.util.concurrent.TimeUnit
 
 @OptIn(ExperimentalPagingApi::class)
 class MoviesRemoteMediatorTest {
@@ -34,7 +35,8 @@ class MoviesRemoteMediatorTest {
     private val api: TmdbApi = mockk()
     private val database: MarvelDatabase = mockk()
     private val movieDao: MovieDao = mockk(relaxed = true)
-    private val fixedClock = Clock.fixed(Instant.ofEpochMilli(1_000_000L), ZoneOffset.UTC)
+    private val remoteKeysDao: MovieRemoteKeysDao = mockk(relaxed = true)
+    private val fixedClock = Clock.fixed(Instant.ofEpochMilli(10_000_000L), ZoneOffset.UTC)
 
     private lateinit var mediator: MoviesRemoteMediator
 
@@ -47,6 +49,7 @@ class MoviesRemoteMediatorTest {
             block()
         }
         every { database.movieDao() } returns movieDao
+        every { database.movieRemoteKeysDao() } returns remoteKeysDao
 
         mediator = MoviesRemoteMediator(
             api = api,
@@ -57,81 +60,126 @@ class MoviesRemoteMediatorTest {
         )
     }
 
-    private fun createMovieWithUserData(position: Int): MovieWithUserData {
-        return MovieWithUserData(
-            movie = MovieEntity(
-                id = position + 1,
-                category = "POPULAR",
-                position = position,
-                title = "Movie ${position + 1}",
-                overview = "Overview",
-                posterPath = null,
-                backdropPath = null,
-                voteAverage = 7.0,
-                releaseDate = "2024-01-01",
-                fetchedAt = 1_000_000L
-            ),
-            isFavorite = false,
-            isWatched = false
-        )
-    }
-
-    @Test
-    fun load_append_calculatesNextPageFromLastItemMoviePosition() = runTest {
-        val lastItem = createMovieWithUserData(position = 39) // page 2 item (0-based)
-        val state = PagingState<Int, MovieWithUserData>(
-            pages = listOf(
-                PagingSource.LoadResult.Page(
-                    data = listOf(lastItem),
-                    prevKey = null,
-                    nextKey = 2
-                )
-            ),
+    private fun createPagingState(): PagingState<Int, MovieWithUserData> {
+        return PagingState(
+            pages = emptyList(),
             anchorPosition = null,
             config = PagingConfig(pageSize = 20),
             leadingPlaceholderCount = 0
         )
+    }
 
-        val page3Dto = TmdbMovieDto(
-            id = 41,
-            title = "Movie 41",
-            overview = "Overview",
-            posterPath = null,
-            backdropPath = null,
-            voteAverage = 8.0,
-            releaseDate = "2024-01-01"
+    @Test
+    fun initialize_whenRemoteKeyMissing_returnsLaunchInitialRefresh() = runTest {
+        coEvery { remoteKeysDao.getKey("POPULAR") } returns null
+
+        val action = mediator.initialize()
+
+        assertThat(action).isEqualTo(RemoteMediator.InitializeAction.LAUNCH_INITIAL_REFRESH)
+    }
+
+    @Test
+    fun initialize_whenRemoteKeyFresh_returnsSkipInitialRefresh() = runTest {
+        val now = fixedClock.millis()
+        val freshTime = now - TimeUnit.HOURS.toMillis(2) // 2 hours old, TTL is 6h
+        coEvery { remoteKeysDao.getKey("POPULAR") } returns MovieRemoteKeysEntity(
+            label = "POPULAR",
+            nextPage = 2,
+            totalPages = 10,
+            updatedAt = freshTime
         )
-        coEvery {
-            api.getPopularMovies(page = 3)
-        } returns ApiResponse.Success(
-            TmdbPageResponseDto(
-                page = 3,
-                results = listOf(page3Dto),
-                totalPages = 5,
-                totalResults = 100
+
+        val action = mediator.initialize()
+
+        assertThat(action).isEqualTo(RemoteMediator.InitializeAction.SKIP_INITIAL_REFRESH)
+    }
+
+    @Test
+    fun initialize_whenRemoteKeyExpired_returnsLaunchInitialRefresh() = runTest {
+        val now = fixedClock.millis()
+        val expiredTime = now - TimeUnit.HOURS.toMillis(8) // 8 hours old, TTL is 6h
+        coEvery { remoteKeysDao.getKey("POPULAR") } returns MovieRemoteKeysEntity(
+            label = "POPULAR",
+            nextPage = 2,
+            totalPages = 10,
+            updatedAt = expiredTime
+        )
+
+        val action = mediator.initialize()
+
+        assertThat(action).isEqualTo(RemoteMediator.InitializeAction.LAUNCH_INITIAL_REFRESH)
+    }
+
+    @Test
+    fun load_refresh_clearsCategoryAndKeyInSameTransaction_andInsertsRemoteKey() = runTest {
+        val movieDto = TmdbMovieDto(id = 1, title = "M1", overview = "O", voteAverage = 7.0, releaseDate = "2024")
+        coEvery { api.getPopularMovies(page = 1) } returns ApiResponse.Success(
+            TmdbPageResponseDto(page = 1, results = listOf(movieDto), totalPages = 5, totalResults = 100)
+        )
+
+        val result = mediator.load(LoadType.REFRESH, createPagingState())
+
+        assertThat(result).isInstanceOf(RemoteMediator.MediatorResult.Success::class.java)
+        val success = result as RemoteMediator.MediatorResult.Success
+        assertThat(success.endOfPaginationReached).isFalse()
+
+        coVerify(exactly = 1) { movieDao.clearCategory("POPULAR") }
+        coVerify(exactly = 1) { remoteKeysDao.deleteKey("POPULAR") }
+        coVerify(exactly = 1) { movieDao.upsertAll(any()) }
+        coVerify(exactly = 1) {
+            remoteKeysDao.insertOrReplace(
+                MovieRemoteKeysEntity(
+                    label = "POPULAR",
+                    nextPage = 2,
+                    totalPages = 5,
+                    updatedAt = fixedClock.millis()
+                )
             )
+        }
+    }
+
+    @Test
+    fun load_append_readsNextPageFromMovieRemoteKeys() = runTest {
+        coEvery { remoteKeysDao.getKey("POPULAR") } returns MovieRemoteKeysEntity(
+            label = "POPULAR",
+            nextPage = 3,
+            totalPages = 5,
+            updatedAt = fixedClock.millis()
+        )
+        val movieDto = TmdbMovieDto(id = 41, title = "M41", overview = "O", voteAverage = 8.0, releaseDate = "2024")
+        coEvery { api.getPopularMovies(page = 3) } returns ApiResponse.Success(
+            TmdbPageResponseDto(page = 3, results = listOf(movieDto), totalPages = 5, totalResults = 100)
         )
 
-        val result = mediator.load(LoadType.APPEND, state)
+        val result = mediator.load(LoadType.APPEND, createPagingState())
 
         assertThat(result).isInstanceOf(RemoteMediator.MediatorResult.Success::class.java)
         val success = result as RemoteMediator.MediatorResult.Success
         assertThat(success.endOfPaginationReached).isFalse()
 
         coVerify(exactly = 1) { api.getPopularMovies(page = 3) }
-        coVerify(exactly = 1) { movieDao.upsertAll(any()) }
+        coVerify(exactly = 1) {
+            remoteKeysDao.insertOrReplace(
+                MovieRemoteKeysEntity(
+                    label = "POPULAR",
+                    nextPage = 4,
+                    totalPages = 5,
+                    updatedAt = fixedClock.millis()
+                )
+            )
+        }
     }
 
     @Test
-    fun load_append_returnsEndOfPaginationReachedWhenLastItemIsNull() = runTest {
-        val state = PagingState<Int, MovieWithUserData>(
-            pages = emptyList(),
-            anchorPosition = null,
-            config = PagingConfig(pageSize = 20),
-            leadingPlaceholderCount = 0
+    fun load_append_returnsEndOfPaginationReachedWhenNextPageIsNull() = runTest {
+        coEvery { remoteKeysDao.getKey("POPULAR") } returns MovieRemoteKeysEntity(
+            label = "POPULAR",
+            nextPage = null,
+            totalPages = 5,
+            updatedAt = fixedClock.millis()
         )
 
-        val result = mediator.load(LoadType.APPEND, state)
+        val result = mediator.load(LoadType.APPEND, createPagingState())
 
         assertThat(result).isInstanceOf(RemoteMediator.MediatorResult.Success::class.java)
         val success = result as RemoteMediator.MediatorResult.Success

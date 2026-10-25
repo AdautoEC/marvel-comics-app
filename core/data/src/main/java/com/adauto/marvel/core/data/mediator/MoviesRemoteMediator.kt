@@ -8,6 +8,7 @@ import androidx.room.withTransaction
 import com.adauto.marvel.core.data.mapper.toMovieEntity
 import com.adauto.marvel.core.database.MarvelDatabase
 import com.adauto.marvel.core.database.entity.MovieEntity
+import com.adauto.marvel.core.database.entity.MovieRemoteKeysEntity
 import com.adauto.marvel.core.database.model.MovieWithUserData
 import com.adauto.marvel.core.model.TmdbApiException
 import com.adauto.marvel.core.network.api.TmdbApi
@@ -26,8 +27,10 @@ class MoviesRemoteMediator(
 ) : RemoteMediator<Int, MovieWithUserData>() {
 
     override suspend fun initialize(): InitializeAction {
-        val lastFetched = database.movieDao().lastFetchedAt(category) ?: return InitializeAction.LAUNCH_INITIAL_REFRESH
-        val cacheAge = clock.millis() - lastFetched
+        val remoteKey = database.movieRemoteKeysDao().getKey(category)
+            ?: return InitializeAction.LAUNCH_INITIAL_REFRESH
+
+        val cacheAge = clock.millis() - remoteKey.updatedAt
         return if (cacheAge < TimeUnit.HOURS.toMillis(cacheTtlHours)) {
             InitializeAction.SKIP_INITIAL_REFRESH
         } else {
@@ -40,9 +43,8 @@ class MoviesRemoteMediator(
             LoadType.REFRESH -> 1
             LoadType.PREPEND -> return MediatorResult.Success(endOfPaginationReached = true)
             LoadType.APPEND -> {
-                val lastItem = state.lastItemOrNull()
-                    ?: return MediatorResult.Success(endOfPaginationReached = true)
-                (lastItem.movie.position / state.config.pageSize) + 2
+                val remoteKey = database.movieRemoteKeysDao().getKey(category)
+                remoteKey?.nextPage ?: return MediatorResult.Success(endOfPaginationReached = true)
             }
         }
 
@@ -56,6 +58,7 @@ class MoviesRemoteMediator(
                 val data = response.data
                 val now = clock.millis()
                 val isEnd = page >= data.totalPages || data.results.isEmpty()
+                val nextPage = if (isEnd) null else page + 1
 
                 val startPosition = (page - 1) * state.config.pageSize
                 val entities = data.results.mapIndexed { index, dto ->
@@ -65,8 +68,17 @@ class MoviesRemoteMediator(
                 database.withTransaction {
                     if (loadType == LoadType.REFRESH) {
                         database.movieDao().clearCategory(category)
+                        database.movieRemoteKeysDao().deleteKey(category)
                     }
                     database.movieDao().upsertAll(entities)
+                    database.movieRemoteKeysDao().insertOrReplace(
+                        MovieRemoteKeysEntity(
+                            label = category,
+                            nextPage = nextPage,
+                            totalPages = data.totalPages,
+                            updatedAt = now
+                        )
+                    )
                 }
 
                 MediatorResult.Success(endOfPaginationReached = isEnd)
