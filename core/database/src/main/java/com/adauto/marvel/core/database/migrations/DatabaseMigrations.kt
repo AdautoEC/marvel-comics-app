@@ -42,3 +42,31 @@ val MIGRATION_2_3 = object : Migration(2, 3) {
         db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS `index_movies_category_position` ON `movies` (`category`, `position`)")
     }
 }
+
+val MIGRATION_3_4 = object : Migration(3, 4) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `sync_outbox` (
+                `movieId` INTEGER NOT NULL,
+                `target` TEXT NOT NULL,
+                `desired` INTEGER NOT NULL,
+                `attempts` INTEGER NOT NULL DEFAULT 0,
+                `lastError` TEXT,
+                `version` INTEGER NOT NULL DEFAULT 1,
+                PRIMARY KEY (`movieId`, `target`)
+            )
+            """.trimIndent()
+        )
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `movie_remote_keys` (
+                `label` TEXT NOT NULL PRIMARY KEY,
+                `nextPage` INTEGER,
+                `totalPages` INTEGER,
+                `updatedAt` INTEGER NOT NULL
+            )
+            """.trimIndent()
+        )
+    }
+}

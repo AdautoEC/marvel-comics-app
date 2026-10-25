@@ -24,6 +24,11 @@ android {
 
     testOptions {
         unitTests.isReturnDefaultValues = true
+        unitTests.isIncludeAndroidResources = true
+    }
+
+    sourceSets {
+        getByName("test").assets.srcDir("$projectDir/schemas")
     }
 }
 

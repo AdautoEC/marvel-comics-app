@@ -42,6 +42,10 @@ dependencies {
     implementation(libs.retrofit.core)
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
+    implementation(libs.androidx.work.runtime)
+    implementation(libs.androidx.hilt.work)
+    ksp(libs.androidx.hilt.compiler)
+    implementation(libs.androidx.datastore.preferences)
     implementation(libs.kotlinx.coroutines.core)
 
     testImplementation(libs.junit)
@@ -51,4 +55,5 @@ dependencies {
     testImplementation(libs.turbine)
     testImplementation(libs.okhttp.core)
     testImplementation(libs.paging.testing)
+    testImplementation(libs.androidx.work.testing)
 }

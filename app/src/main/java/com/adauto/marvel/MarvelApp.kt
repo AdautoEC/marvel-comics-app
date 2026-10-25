@@ -1,6 +1,8 @@
 package com.adauto.marvel
 
 import android.app.Application
+import androidx.hilt.work.HiltWorkerFactory
+import androidx.work.Configuration
 import coil.ImageLoader
 import coil.ImageLoaderFactory
 import com.adauto.marvel.core.network.di.ApplicationScope
@@ -15,7 +17,7 @@ import okhttp3.OkHttpClient
 import javax.inject.Inject
 
 @HiltAndroidApp
-class MarvelApp : Application(), ImageLoaderFactory {
+class MarvelApp : Application(), ImageLoaderFactory, Configuration.Provider {
 
     @Inject
     @ImageOkHttpClient
@@ -33,6 +35,14 @@ class MarvelApp : Application(), ImageLoaderFactory {
     @Inject
     @ApplicationScope
     lateinit var applicationScope: CoroutineScope
+
+    @Inject
+    lateinit var workerFactory: HiltWorkerFactory
+
+    override val workManagerConfiguration: Configuration
+        get() = Configuration.Builder()
+            .setWorkerFactory(workerFactory)
+            .build()
 
     override fun onCreate() {
         super.onCreate()

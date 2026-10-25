@@ -5,9 +5,12 @@ import androidx.paging.PagingSource
 import androidx.paging.PagingState
 import androidx.paging.testing.asPagingSourceFactory
 import androidx.paging.testing.asSnapshot
+import androidx.work.WorkManager
+import com.adauto.marvel.core.data.sync.SyncCoordinator
 import com.adauto.marvel.core.database.MarvelDatabase
 import com.adauto.marvel.core.database.dao.FavoriteDao
 import com.adauto.marvel.core.database.dao.MovieDao
+import com.adauto.marvel.core.database.dao.MovieRemoteKeysDao
 import com.adauto.marvel.core.database.dao.WatchedDao
 import com.adauto.marvel.core.database.entity.MovieEntity
 import com.adauto.marvel.core.database.model.MovieWithUserData
@@ -33,7 +36,10 @@ class MoviesRepositoryReactiveTest {
     private val movieDao: MovieDao = mockk(relaxed = true)
     private val favoriteDao: FavoriteDao = mockk(relaxed = true)
     private val watchedDao: WatchedDao = mockk(relaxed = true)
+    private val movieRemoteKeysDao: MovieRemoteKeysDao = mockk(relaxed = true)
     private val sessionManager: SessionManager = mockk(relaxed = true)
+    private val workManager: WorkManager = mockk(relaxed = true)
+    private val syncCoordinator = SyncCoordinator()
     private val clock = Clock.systemUTC()
 
     private lateinit var repository: MoviesRepositoryImpl
@@ -59,11 +65,14 @@ class MoviesRepositoryReactiveTest {
         every { database.movieDao() } returns movieDao
         every { database.favoriteDao() } returns favoriteDao
         every { database.watchedDao() } returns watchedDao
+        every { database.movieRemoteKeysDao() } returns movieRemoteKeysDao
 
         repository = MoviesRepositoryImpl(
             api = api,
             database = database,
             sessionManager = sessionManager,
+            workManager = workManager,
+            syncCoordinator = syncCoordinator,
             clock = clock
         )
     }
