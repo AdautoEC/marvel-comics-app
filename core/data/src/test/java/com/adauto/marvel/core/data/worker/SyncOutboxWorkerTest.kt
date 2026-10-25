@@ -125,7 +125,7 @@ class SyncOutboxWorkerTest {
             desired = true,
             version = TEST_VERSION
         )
-        coEvery { syncOutboxDao.getAllPending() } returns listOf(outboxItem)
+        coEvery { syncOutboxDao.getAllPending() } returns listOf(outboxItem) andThen emptyList()
         coEvery {
             api.markAsFavorite(
                 accountId = TEST_ACCOUNT_ID,
@@ -158,7 +158,7 @@ class SyncOutboxWorkerTest {
             desired = false,
             version = TEST_VERSION
         )
-        coEvery { syncOutboxDao.getAllPending() } returns listOf(outboxItem)
+        coEvery { syncOutboxDao.getAllPending() } returns listOf(outboxItem) andThen emptyList()
         coEvery {
             api.addToWatchlist(
                 accountId = TEST_ACCOUNT_ID,
@@ -193,7 +193,7 @@ class SyncOutboxWorkerTest {
             desired = true,
             version = TEST_VERSION
         )
-        coEvery { syncOutboxDao.getAllPending() } returns listOf(outboxItem)
+        coEvery { syncOutboxDao.getAllPending() } returns listOf(outboxItem) andThen emptyList()
         coEvery {
             api.markAsFavorite(any(), any(), any())
         } returns ApiResponse.Success(TmdbActionResponseDto(status_code = 1, status_message = "Success"))
@@ -273,7 +273,7 @@ class SyncOutboxWorkerTest {
             attempts = SyncOutboxWorker.MAX_ATTEMPTS - 1,
             version = TEST_VERSION
         )
-        coEvery { syncOutboxDao.getAllPending() } returns listOf(outboxItem)
+        coEvery { syncOutboxDao.getAllPending() } returns listOf(outboxItem) andThen emptyList()
         val errorResponse = Response.error<TmdbActionResponseDto>(
             HTTP_INTERNAL_SERVER_ERROR,
             "Internal Server Error".toResponseBody()
@@ -305,7 +305,7 @@ class SyncOutboxWorkerTest {
             attempts = 0,
             version = TEST_VERSION
         )
-        coEvery { syncOutboxDao.getAllPending() } returns listOf(outboxItem)
+        coEvery { syncOutboxDao.getAllPending() } returns listOf(outboxItem) andThen emptyList()
         val errorResponse = Response.error<TmdbActionResponseDto>(
             HTTP_BAD_REQUEST,
             "Bad Request".toResponseBody()
@@ -339,7 +339,7 @@ class SyncOutboxWorkerTest {
             attempts = 0,
             version = TEST_VERSION
         )
-        coEvery { syncOutboxDao.getAllPending() } returns listOf(outboxItem)
+        coEvery { syncOutboxDao.getAllPending() } returns listOf(outboxItem) andThen emptyList()
         val errorResponse = Response.error<TmdbActionResponseDto>(
             HTTP_BAD_REQUEST,
             "Bad Request".toResponseBody()
@@ -367,7 +367,7 @@ class SyncOutboxWorkerTest {
             attempts = 0,
             version = TEST_VERSION
         )
-        coEvery { syncOutboxDao.getAllPending() } returns listOf(outboxItem)
+        coEvery { syncOutboxDao.getAllPending() } returns listOf(outboxItem) andThen emptyList()
         val errorResponse = Response.error<TmdbActionResponseDto>(
             HTTP_BAD_REQUEST,
             "Bad Request".toResponseBody()
@@ -385,6 +385,43 @@ class SyncOutboxWorkerTest {
             coVerify(exactly = 0) { favoriteDao.delete(any()) }
             expectNoEvents()
         }
+    }
+
+    @Test
+    fun whenMultiplePendingBatchesArriveConcurrently_drainsAllBatchesBeforeTerminating() = runTest {
+        val firstItem = SyncOutboxEntity(
+            movieId = 101,
+            target = SyncOutboxWorker.TARGET_FAVORITE,
+            desired = true,
+            version = 1
+        )
+        val secondItem = SyncOutboxEntity(
+            movieId = 202,
+            target = SyncOutboxWorker.TARGET_WATCHLIST,
+            desired = true,
+            version = 1
+        )
+
+        // First loop returns firstItem, second loop returns secondItem (added in-flight), third loop empty
+        coEvery { syncOutboxDao.getAllPending() } returnsMany listOf(
+            listOf(firstItem),
+            listOf(secondItem),
+            emptyList()
+        )
+        coEvery { api.markAsFavorite(any(), any(), any()) } returns ApiResponse.Success(
+            TmdbActionResponseDto(status_code = 1, status_message = "Success")
+        )
+        coEvery { api.addToWatchlist(any(), any(), any()) } returns ApiResponse.Success(
+            TmdbActionResponseDto(status_code = 1, status_message = "Success")
+        )
+        coEvery { syncOutboxDao.deleteVersion(any(), any(), any()) } returns 1
+
+        val result = worker.doWork()
+
+        assertThat(result).isEqualTo(Result.success())
+        coVerify(exactly = 1) { syncOutboxDao.deleteVersion(101, SyncOutboxWorker.TARGET_FAVORITE, 1) }
+        coVerify(exactly = 1) { syncOutboxDao.deleteVersion(202, SyncOutboxWorker.TARGET_WATCHLIST, 1) }
+        coVerify(exactly = 3) { syncOutboxDao.getAllPending() }
     }
 
     @Test
@@ -423,7 +460,7 @@ class SyncOutboxWorkerTest {
             attempts = 0,
             version = TEST_VERSION
         )
-        coEvery { syncOutboxDao.getAllPending() } returns listOf(outboxItem)
+        coEvery { syncOutboxDao.getAllPending() } returns listOf(outboxItem) andThen emptyList()
         val errorResponse = Response.error<TmdbActionResponseDto>(
             HTTP_NOT_FOUND,
             "Not Found".toResponseBody()

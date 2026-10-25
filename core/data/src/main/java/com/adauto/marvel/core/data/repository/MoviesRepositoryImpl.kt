@@ -28,13 +28,18 @@ import com.adauto.marvel.core.model.MovieSummary
 import com.adauto.marvel.core.model.Outcome
 import com.adauto.marvel.core.model.SessionState
 import com.adauto.marvel.core.network.api.TmdbApi
+import com.adauto.marvel.core.network.di.ApplicationScope
 import com.adauto.marvel.core.network.model.TmdbMovieDto
 import com.adauto.marvel.core.network.security.session.SessionManager
 import com.skydoves.sandwich.ApiResponse
 import com.skydoves.sandwich.retrofit.statusCode
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.withLock
 import java.time.Clock
 import javax.inject.Inject
@@ -50,8 +55,17 @@ class MoviesRepositoryImpl @Inject constructor(
     private val sessionManager: SessionManager,
     private val workManager: WorkManager,
     private val syncCoordinator: SyncCoordinator,
+    @ApplicationScope private val externalScope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
     private val clock: Clock = Clock.systemUTC()
 ) : MoviesRepository {
+
+    init {
+        externalScope.launch {
+            syncCoordinator.pullRequests.collect {
+                syncCloudWithLocal()
+            }
+        }
+    }
 
     @OptIn(ExperimentalPagingApi::class)
     override fun movies(category: MovieCategory): Flow<PagingData<MovieSummary>> {

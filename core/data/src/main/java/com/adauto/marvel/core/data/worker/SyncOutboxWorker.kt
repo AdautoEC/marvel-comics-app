@@ -44,19 +44,19 @@ class SyncOutboxWorker @Suppress("LongParameterList") @AssistedInject constructo
             return@withLock Result.success()
         }
 
-        val pending = database.syncOutboxDao().getAllPending()
-        if (pending.isEmpty()) {
-            return@withLock Result.success()
-        }
+        while (true) {
+            val pending = database.syncOutboxDao().getAllPending()
+            if (pending.isEmpty()) {
+                return@withLock Result.success()
+            }
 
-        for (item in pending) {
-            val itemResult = processItem(item, session)
-            if (itemResult != null) {
-                return@withLock itemResult
+            for (item in pending) {
+                val itemResult = processItem(item, session)
+                if (itemResult != null) {
+                    return@withLock itemResult
+                }
             }
         }
-
-        Result.success()
     }
 
     private suspend fun processItem(
@@ -211,8 +211,8 @@ class SyncOutboxWorker @Suppress("LongParameterList") @AssistedInject constructo
     companion object {
         const val WORK_NAME = "sync_outbox_work"
         const val MAX_ATTEMPTS = 5
-        const val TARGET_FAVORITE = "FAVORITE"
-        const val TARGET_WATCHLIST = "WATCHLIST"
+        const val TARGET_FAVORITE = SyncOutboxEntity.TARGET_FAVORITE
+        const val TARGET_WATCHLIST = SyncOutboxEntity.TARGET_WATCHLIST
 
         private const val HEADER_RETRY_AFTER = "Retry-After"
         private const val HTTP_UNAUTHORIZED = 401

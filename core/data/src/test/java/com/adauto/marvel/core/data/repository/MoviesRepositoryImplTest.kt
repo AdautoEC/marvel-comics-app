@@ -32,6 +32,7 @@ import io.mockk.mockkStatic
 import io.mockk.verify
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
 import okhttp3.ResponseBody.Companion.toResponseBody
 import org.junit.Before
@@ -55,6 +56,7 @@ class MoviesRepositoryImplTest {
     private val fixedClock = Clock.fixed(Instant.ofEpochMilli(1_700_000_000_000L), ZoneOffset.UTC)
 
     private val sessionStateFlow = MutableStateFlow<SessionState>(SessionState.Guest)
+    private val testScope = TestScope()
     private lateinit var repository: MoviesRepositoryImpl
 
     private val sampleMovie = MovieSummary(
@@ -86,6 +88,7 @@ class MoviesRepositoryImplTest {
             sessionManager = sessionManager,
             workManager = workManager,
             syncCoordinator = syncCoordinator,
+            externalScope = testScope.backgroundScope,
             clock = fixedClock
         )
     }
@@ -466,6 +469,30 @@ class MoviesRepositoryImplTest {
 
         coVerify(exactly = 0) { favoriteDao.upsert(any()) }
         coVerify(exactly = 0) { favoriteDao.delete(any()) }
+    }
+
+    @Test
+    fun whenSyncCoordinatorPullRequestsEmits_triggersSyncCloudWithLocal() = testScope.runTest {
+        sessionStateFlow.value = SessionState.Authenticated(
+            accountId = 42,
+            username = "stark",
+            sessionId = "sess_iron"
+        )
+        coEvery { api.getFavoriteMovies(any(), any(), any()) } returns ApiResponse.Success(
+            TmdbPageResponseDto(page = 1, results = emptyList(), totalPages = 1, totalResults = 0)
+        )
+        coEvery { api.getWatchlistMovies(any(), any(), any()) } returns ApiResponse.Success(
+            TmdbPageResponseDto(page = 1, results = emptyList(), totalPages = 1, totalResults = 0)
+        )
+        every { favoriteDao.all() } returns flowOf(emptyList())
+        every { watchedDao.all() } returns flowOf(emptyList())
+
+        syncCoordinator.requestPull()
+
+        testScheduler.advanceUntilIdle()
+
+        coVerify(atLeast = 1) { api.getFavoriteMovies(42, "sess_iron", 1) }
+        coVerify(atLeast = 1) { api.getWatchlistMovies(42, "sess_iron", 1) }
     }
 
     // endregion
