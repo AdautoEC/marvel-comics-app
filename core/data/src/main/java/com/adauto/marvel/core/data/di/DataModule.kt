@@ -10,6 +10,8 @@ import com.adauto.marvel.core.data.repository.MoviesRepository
 import com.adauto.marvel.core.data.repository.MoviesRepositoryImpl
 import com.adauto.marvel.core.data.storage.AuthPreferencesStorage
 import com.adauto.marvel.core.data.storage.DataStoreAuthPreferencesStorage
+import com.adauto.marvel.core.data.storage.DataStoreSyncFailureStorage
+import com.adauto.marvel.core.data.storage.SyncFailureStorage
 import com.adauto.marvel.core.data.util.ConnectivityManagerNetworkMonitor
 import com.adauto.marvel.core.data.util.NetworkMonitor
 import dagger.Binds
@@ -57,6 +59,17 @@ interface DataModule {
                 produceFile = { context.preferencesDataStoreFile("auth_preferences") }
             )
             return DataStoreAuthPreferencesStorage(dataStore)
+        }
+
+        @Provides
+        @Singleton
+        fun provideSyncFailureStorage(
+            @ApplicationContext context: Context
+        ): SyncFailureStorage {
+            val dataStore = PreferenceDataStoreFactory.create(
+                produceFile = { context.preferencesDataStoreFile("sync_failures_preferences") }
+            )
+            return DataStoreSyncFailureStorage(dataStore)
         }
     }
 }
