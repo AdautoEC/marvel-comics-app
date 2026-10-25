@@ -484,8 +484,8 @@ class MoviesRepositoryImplTest {
         coEvery { api.getWatchlistMovies(any(), any(), any()) } returns ApiResponse.Success(
             TmdbPageResponseDto(page = 1, results = emptyList(), totalPages = 1, totalResults = 0)
         )
-        every { favoriteDao.all() } returns flowOf(emptyList())
-        every { watchedDao.all() } returns flowOf(emptyList())
+        every { favoriteDao.getAllFavorites() } returns flowOf(emptyList<FavoriteMovieEntity>())
+        every { watchedDao.getAllWatched() } returns flowOf(emptyList<WatchedMovieEntity>())
 
         syncCoordinator.requestPull()
 
