@@ -23,6 +23,7 @@ import com.skydoves.sandwich.retrofit.statusCode
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.sync.withLock
 import retrofit2.Response
 import java.io.IOException
@@ -37,6 +38,8 @@ class SyncOutboxWorker @Suppress("LongParameterList") @AssistedInject constructo
     private val api: TmdbApi,
     private val sessionManager: SessionManager
 ) : CoroutineWorker(appContext, workerParams) {
+
+    internal var delayProvider: suspend (Long) -> Unit = { delay(it) }
 
     override suspend fun doWork(): Result = syncCoordinator.mutex.withLock {
         val session = sessionManager.awaitInitialSession()
@@ -68,11 +71,25 @@ class SyncOutboxWorker @Suppress("LongParameterList") @AssistedInject constructo
         session: SessionState.Authenticated
     ): Result? {
         val capturedVersion = item.version
-        val apiResponse = executeApiCall(item, session) ?: return handlePermanentFailure(
+        var apiResponse = executeApiCall(item, session) ?: return handlePermanentFailure(
             item = item,
             capturedVersion = capturedVersion,
             errorMsg = "Unknown target: ${item.target}"
         )
+
+        if (apiResponse is ApiResponse.Failure.Error && apiResponse.statusCode.code == HTTP_TOO_MANY_REQUESTS) {
+            val retrofitResponse = apiResponse.payload as? Response<*>
+            val retryAfterHeader = retrofitResponse?.headers()?.get(HEADER_RETRY_AFTER)
+            val retryDelaySeconds = retryAfterHeader?.toLongOrNull() ?: DEFAULT_RETRY_AFTER_SECONDS
+            val retryDelayMs = retryDelaySeconds * SECONDS_TO_MILLIS
+            if (retryDelayMs <= MAX_IN_PASS_DELAY_MS) {
+                delayProvider(retryDelayMs)
+                val retriedResponse = executeApiCall(item, session)
+                if (retriedResponse != null) {
+                    apiResponse = retriedResponse
+                }
+            }
+        }
 
         return when (apiResponse) {
             is ApiResponse.Success -> {
@@ -219,6 +236,9 @@ class SyncOutboxWorker @Suppress("LongParameterList") @AssistedInject constructo
         const val TARGET_WATCHLIST = SyncOutboxEntity.TARGET_WATCHLIST
 
         private const val HEADER_RETRY_AFTER = "Retry-After"
+        private const val SECONDS_TO_MILLIS = 1000L
+        private const val DEFAULT_RETRY_AFTER_SECONDS = 5L
+        private const val MAX_IN_PASS_DELAY_MS = 10_000L
         private const val HTTP_UNAUTHORIZED = 401
         private const val HTTP_NOT_FOUND = 404
         private const val HTTP_TOO_MANY_REQUESTS = 429
