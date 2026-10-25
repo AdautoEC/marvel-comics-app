@@ -1,0 +1,130 @@
+package com.adauto.marvel.core.database.dao
+
+import android.content.Context
+import androidx.room.Room
+import androidx.test.core.app.ApplicationProvider
+import com.adauto.marvel.core.database.MarvelDatabase
+import com.adauto.marvel.core.database.entity.SyncOutboxEntity
+import com.google.common.truth.Truth.assertThat
+import kotlinx.coroutines.test.runTest
+import org.junit.After
+import org.junit.Before
+import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+
+@RunWith(RobolectricTestRunner::class)
+class SyncOutboxDaoTest {
+    private lateinit var db: MarvelDatabase
+    private lateinit var syncOutboxDao: SyncOutboxDao
+
+    @Before
+    fun createDb() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        db = Room.inMemoryDatabaseBuilder(context, MarvelDatabase::class.java)
+            .allowMainThreadQueries()
+            .build()
+        syncOutboxDao = db.syncOutboxDao()
+    }
+
+    @After
+    fun closeDb() {
+        db.close()
+    }
+
+    @Test
+    fun upsertAndFind_storesAndRetrievesEntity() = runTest {
+        val entity = SyncOutboxEntity(
+            movieId = 10,
+            target = "FAVORITE",
+            desired = true,
+            attempts = 0,
+            lastError = null,
+            version = 1
+        )
+        syncOutboxDao.upsert(entity)
+
+        val retrieved = syncOutboxDao.find(10, "FAVORITE")
+        assertThat(retrieved).isEqualTo(entity)
+    }
+
+    @Test
+    fun deleteVersion_deletesOnlyWhenVersionMatches() = runTest {
+        val entity = SyncOutboxEntity(
+            movieId = 20,
+            target = "WATCHED",
+            desired = true,
+            attempts = 1,
+            version = 2
+        )
+        syncOutboxDao.upsert(entity)
+
+        // Wrong version: should return 0 deleted rows
+        val deletedWrongVersion = syncOutboxDao.deleteVersion(20, "WATCHED", 1)
+        assertThat(deletedWrongVersion).isEqualTo(0)
+        assertThat(syncOutboxDao.find(20, "WATCHED")).isNotNull()
+
+        // Correct version: should return 1 deleted row
+        val deletedCorrectVersion = syncOutboxDao.deleteVersion(20, "WATCHED", 2)
+        assertThat(deletedCorrectVersion).isEqualTo(1)
+        assertThat(syncOutboxDao.find(20, "WATCHED")).isNull()
+    }
+
+    @Test
+    fun updateFailure_incrementsAttemptsAndSetsErrorWhenVersionMatches() = runTest {
+        val entity = SyncOutboxEntity(
+            movieId = 30,
+            target = "FAVORITE",
+            desired = false,
+            attempts = 0,
+            lastError = null,
+            version = 1
+        )
+        syncOutboxDao.upsert(entity)
+
+        val updated = syncOutboxDao.updateFailure(30, "FAVORITE", 1, "Network timeout")
+        assertThat(updated).isEqualTo(1)
+
+        val modified = syncOutboxDao.find(30, "FAVORITE")
+        assertThat(modified?.attempts).isEqualTo(1)
+        assertThat(modified?.lastError).isEqualTo("Network timeout")
+        assertThat(modified?.version).isEqualTo(1)
+    }
+
+    @Test
+    fun getAllPending_ordersByVersionAscending() = runTest {
+        val first = SyncOutboxEntity(movieId = 1, target = "FAVORITE", desired = true, version = 1)
+        val second = SyncOutboxEntity(movieId = 2, target = "WATCHED", desired = true, version = 5)
+        val third = SyncOutboxEntity(movieId = 3, target = "FAVORITE", desired = false, version = 2)
+
+        syncOutboxDao.upsert(second)
+        syncOutboxDao.upsert(first)
+        syncOutboxDao.upsert(third)
+
+        val all = syncOutboxDao.getAllPending()
+        assertThat(all.map { it.movieId }).containsExactly(1, 3, 2).inOrder()
+    }
+
+    @Test
+    fun getPendingMovieIds_filtersByTarget() = runTest {
+        syncOutboxDao.upsert(SyncOutboxEntity(movieId = 1, target = "FAVORITE", desired = true))
+        syncOutboxDao.upsert(SyncOutboxEntity(movieId = 2, target = "WATCHED", desired = true))
+        syncOutboxDao.upsert(SyncOutboxEntity(movieId = 3, target = "FAVORITE", desired = false))
+
+        val favIds = syncOutboxDao.getPendingMovieIds("FAVORITE")
+        assertThat(favIds).containsExactly(1, 3)
+
+        val watchedIds = syncOutboxDao.getPendingMovieIds("WATCHED")
+        assertThat(watchedIds).containsExactly(2)
+    }
+
+    @Test
+    fun clearAll_removesAllEntries() = runTest {
+        syncOutboxDao.upsert(SyncOutboxEntity(movieId = 1, target = "FAVORITE", desired = true))
+        syncOutboxDao.upsert(SyncOutboxEntity(movieId = 2, target = "WATCHED", desired = true))
+
+        assertThat(syncOutboxDao.getAllPending()).hasSize(2)
+        syncOutboxDao.clearAll()
+        assertThat(syncOutboxDao.getAllPending()).isEmpty()
+    }
+}
