@@ -48,21 +48,24 @@ class MovieListViewModel @Inject constructor(
 
     @OptIn(ExperimentalCoroutinesApi::class)
     internal val moviesFlow: Flow<PagingData<MovieSummary>> = combine(
-        _selectedCategory.flatMapLatest { category ->
-            when (category) {
-                MovieCategory.FAVORITES -> moviesRepository.observeFavorites().map { PagingData.from(it) }
-                MovieCategory.WATCHLIST -> moviesRepository.observeWatched().map { PagingData.from(it) }
-                else -> moviesRepository.movies(category)
-            }
-        },
+        _selectedCategory,
         _searchQuery
-    ) { pagingData, query ->
+    ) { category, query ->
+        category to query
+    }.flatMapLatest { (category, query) ->
+        val baseFlow = when (category) {
+            MovieCategory.FAVORITES -> moviesRepository.observeFavorites().map { PagingData.from(it) }
+            MovieCategory.WATCHLIST -> moviesRepository.observeWatched().map { PagingData.from(it) }
+            else -> moviesRepository.movies(category)
+        }
         val trimmed = query.trim()
         if (trimmed.isBlank()) {
-            pagingData
+            baseFlow
         } else {
-            pagingData.filter { movie ->
-                movie.title.contains(trimmed, ignoreCase = true)
+            baseFlow.map { pagingData ->
+                pagingData.filter { movie ->
+                    movie.title.contains(trimmed, ignoreCase = true)
+                }
             }
         }
     }

@@ -1,6 +1,10 @@
 package com.adauto.marvel.feature.movies
 
+import androidx.paging.Pager
+import androidx.paging.PagingConfig
 import androidx.paging.PagingData
+import androidx.paging.PagingSource
+import androidx.paging.PagingState
 import androidx.paging.testing.asSnapshot
 import app.cash.turbine.test
 import com.adauto.marvel.core.data.repository.AuthRepository
@@ -244,5 +248,35 @@ class MovieListViewModelTest {
         testDispatcher.scheduler.advanceUntilIdle()
 
         assertThat(viewModel.uiState.value.isOffline).isFalse()
+    }
+
+    @Test
+    fun movies_whenSearchQueryChanges_doesNotCollectSamePagingDataTwice() = runTest {
+        val movie1 = MovieSummary(id = 1, title = "Iron Man", posterUrl = null, voteAverage = 8.0)
+        val movie2 = MovieSummary(id = 2, title = "Thor", posterUrl = null, voteAverage = 7.5)
+        fun createPager() = Pager(PagingConfig(pageSize = 2)) {
+            object : PagingSource<Int, MovieSummary>() {
+                override fun getRefreshKey(state: PagingState<Int, MovieSummary>): Int? = null
+                override suspend fun load(params: LoadParams<Int>): LoadResult<Int, MovieSummary> {
+                    return LoadResult.Page(data = listOf(movie1, movie2), prevKey = null, nextKey = null)
+                }
+            }
+        }
+        every { moviesRepository.movies(MovieCategory.POPULAR) } answers { createPager().flow }
+
+        val viewModel = createViewModel()
+
+        viewModel.movies.test {
+            val firstPagingData = awaitItem()
+            val items1 = flowOf(firstPagingData).asSnapshot()
+            assertThat(items1).hasSize(2)
+
+            viewModel.onAction(MovieListAction.SearchQueryChanged("Thor"))
+
+            val secondPagingData = awaitItem()
+            val items2 = flowOf(secondPagingData).asSnapshot()
+            assertThat(items2).hasSize(1)
+            assertThat(items2.first().title).isEqualTo("Thor")
+        }
     }
 }

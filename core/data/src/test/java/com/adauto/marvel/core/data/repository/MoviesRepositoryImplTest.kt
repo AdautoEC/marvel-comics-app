@@ -471,12 +471,13 @@ class MoviesRepositoryImplTest {
 
     @Test
     fun whenSyncCoordinatorPullRequestsEmits_triggersSyncCloudWithLocal() = runTest {
+        val testCoordinator = SyncCoordinator()
         MoviesRepositoryImpl(
             api = api,
             database = database,
             sessionManager = sessionManager,
             workManager = workManager,
-            syncCoordinator = syncCoordinator,
+            syncCoordinator = testCoordinator,
             externalScope = backgroundScope,
             clock = fixedClock
         )
@@ -494,8 +495,11 @@ class MoviesRepositoryImplTest {
         every { favoriteDao.getAllFavorites() } returns flowOf(emptyList<FavoriteMovieEntity>())
         every { watchedDao.getAllWatched() } returns flowOf(emptyList<WatchedMovieEntity>())
 
-        syncCoordinator.requestPull()
+        testScheduler.runCurrent()
 
+        testCoordinator.requestPull()
+
+        testScheduler.runCurrent()
         testScheduler.advanceUntilIdle()
 
         coVerify(atLeast = 1) { api.getFavoriteMovies(42, "sess_iron", 1) }
