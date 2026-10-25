@@ -1,0 +1,48 @@
+<?xml version="1.0" ?>
+<SmellBaseline>
+  <ManuallySuppressedIssues></ManuallySuppressedIssues>
+  <CurrentIssues>
+    <ID>ConstructorParameterNaming:TmdbAuthDto.kt$TmdbActionResponseDto$@SerialName("status_code") val status_code: Int</ID>
+    <ID>ConstructorParameterNaming:TmdbAuthDto.kt$TmdbActionResponseDto$@SerialName("status_message") val status_message: String</ID>
+    <ID>ConstructorParameterNaming:TmdbAuthDto.kt$TmdbAvatarPathDto$@SerialName("avatar_path") val avatar_path: String? = null</ID>
+    <ID>ConstructorParameterNaming:TmdbAuthDto.kt$TmdbCreateSessionRequestDto$@SerialName("request_token") val request_token: String</ID>
+    <ID>ConstructorParameterNaming:TmdbAuthDto.kt$TmdbFavoriteRequestDto$@SerialName("media_id") val media_id: Int</ID>
+    <ID>ConstructorParameterNaming:TmdbAuthDto.kt$TmdbFavoriteRequestDto$@SerialName("media_type") val media_type: String = "movie"</ID>
+    <ID>ConstructorParameterNaming:TmdbAuthDto.kt$TmdbRequestTokenDto$@SerialName("expires_at") val expires_at: String</ID>
+    <ID>ConstructorParameterNaming:TmdbAuthDto.kt$TmdbRequestTokenDto$@SerialName("request_token") val request_token: String</ID>
+    <ID>ConstructorParameterNaming:TmdbAuthDto.kt$TmdbSessionResponseDto$@SerialName("session_id") val session_id: String</ID>
+    <ID>ConstructorParameterNaming:TmdbAuthDto.kt$TmdbWatchlistRequestDto$@SerialName("media_id") val media_id: Int</ID>
+    <ID>ConstructorParameterNaming:TmdbAuthDto.kt$TmdbWatchlistRequestDto$@SerialName("media_type") val media_type: String = "movie"</ID>
+    <ID>CyclomaticComplexMethod:TmdbAuthenticator.kt$TmdbAuthenticator$override fun authenticate(route: Route?, response: Response): Request?</ID>
+    <ID>FunctionOnlyReturningConstant:HostileEnvironmentDetector.kt$HostileEnvironmentDetector$fun isDebuggable(): Boolean</ID>
+    <ID>LongMethod:TmdbAuthenticator.kt$TmdbAuthenticator$override fun authenticate(route: Route?, response: Response): Request?</ID>
+    <ID>MagicNumber:ImageClientModule.kt$ImageClientModule$15</ID>
+    <ID>MagicNumber:ImageClientModule.kt$ImageClientModule$20</ID>
+    <ID>MagicNumber:KeystoreCipher.kt$KeystoreCipher$12</ID>
+    <ID>MagicNumber:KeystoreCipher.kt$KeystoreCipher$128</ID>
+    <ID>MagicNumber:KeystoreCipher.kt$KeystoreCipher$256</ID>
+    <ID>MagicNumber:KeystoreCipher.kt$KeystoreCipher$28</ID>
+    <ID>MagicNumber:NetworkModule.kt$NetworkModule$15</ID>
+    <ID>MagicNumber:NetworkModule.kt$NetworkModule$20</ID>
+    <ID>MagicNumber:SecurityModule.kt$SecurityModule.Companion$12</ID>
+    <ID>MagicNumber:SecurityModule.kt$SecurityModule.Companion$3600L</ID>
+    <ID>MaxLineLength:RedactingHttpLoggingInterceptorTest.kt$RedactingHttpLoggingInterceptorTest$val originalUrl = "https://gateway.marvel.com/v1/public/characters?ts=12345&amp;apikey=super-secret-key&amp;hash=abcdef0123456789&amp;limit=20&amp;offset=40".toHttpUrl()</ID>
+    <ID>MaxLineLength:SessionManagerTest.kt$SessionManagerTest$val decryptedJson = """{"accountId":42,"username":"restored_user","sessionId":"sess_restored","avatarUrl":null}"""</ID>
+    <ID>MaxLineLength:TmdbApiKeyProviderImplTest.kt$TmdbApiKeyProviderImplTest$every { cipher.decrypt(encryptedBlob) } returns """{"apiKey":"cached_key","readAccessToken":"cached_token"}""".toByteArray()</ID>
+    <ID>MaxLineLength:TmdbApiKeyProviderImplTest.kt$TmdbApiKeyProviderImplTest$every { cipher.decrypt(encryptedBlob) } returns """{"apiKey":"current_key","readAccessToken":"current_token"}""".toByteArray()</ID>
+    <ID>MaxLineLength:TmdbApiKeyProviderImplTest.kt$TmdbApiKeyProviderImplTest$every { cipher.decrypt(encryptedBlob) } returns """{"apiKey":"delegated_key","readAccessToken":"delegated_token"}""".toByteArray()</ID>
+    <ID>MaxLineLength:TmdbApiKeyProviderImplTest.kt$TmdbApiKeyProviderImplTest$every { cipher.decrypt(encryptedBlob) } returns """{"apiKey":"initial_key","readAccessToken":"initial_token"}""".toByteArray()</ID>
+    <ID>MaxLineLength:TmdbApiKeyProviderImplTest.kt$TmdbApiKeyProviderImplTest$every { cipher.decrypt(initialBlob) } returns """{"apiKey":"stale_key","readAccessToken":"stale_token"}""".toByteArray()</ID>
+    <ID>MaxLineLength:TmdbAuthApiTest.kt$TmdbAuthApiTest$.</ID>
+    <ID>MaxLineLength:TmdbAuthenticatorTest.kt$TmdbAuthenticatorTest$bodyJson = """{"status_code":3,"status_message":"Authentication failed: You do not have permissions to access the service.","success":false}"""</ID>
+    <ID>MaxLineLength:TmdbAuthenticatorTest.kt$TmdbAuthenticatorTest$bodyJson = """{"status_code":7,"status_message":"Invalid API key: You must be granted a valid key.","success":false}"""</ID>
+    <ID>ReturnCount:KeystoreCipher.kt$KeystoreCipher$@Synchronized private fun getOrCreateSecretKey(): SecretKey</ID>
+    <ID>ReturnCount:TmdbApiKeyProviderImpl.kt$TmdbApiKeyProviderImpl$override suspend fun getCredentials(): TmdbCredentials?</ID>
+    <ID>ReturnCount:TmdbAuthenticator.kt$TmdbAuthenticator$override fun authenticate(route: Route?, response: Response): Request?</ID>
+    <ID>TooGenericExceptionCaught:RedactingHttpLoggingInterceptor.kt$RedactingHttpLoggingInterceptor$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:TmdbApiKeyProviderImpl.kt$TmdbApiKeyProviderImpl$e: Exception</ID>
+    <ID>TooManyFunctions:TmdbApi.kt$TmdbApi</ID>
+    <ID>UnusedParameter:ClientIntegrityManager.kt$ClientIntegrityManager$context: Context</ID>
+    <ID>UnusedPrivateProperty:TmdbApiKeyProviderImplTest.kt$TmdbApiKeyProviderImplTest$private lateinit var testScope: TestScope</ID>
+  </CurrentIssues>
+</SmellBaseline>

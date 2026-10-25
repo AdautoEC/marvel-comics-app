@@ -1,0 +1,7 @@
+<?xml version="1.0" ?>
+<SmellBaseline>
+  <ManuallySuppressedIssues></ManuallySuppressedIssues>
+  <CurrentIssues>
+    <ID>ReturnCount:DeepLinkHandler.kt$DeepLinkHandler$fun extractApprovedRequestToken(uri: Uri?): String?</ID>
+  </CurrentIssues>
+</SmellBaseline>
