@@ -155,7 +155,7 @@ class MoviesRepositoryImplTest {
         verify(exactly = 1) {
             workManager.enqueueUniqueWork(
                 SyncOutboxWorker.WORK_NAME,
-                ExistingWorkPolicy.KEEP,
+                ExistingWorkPolicy.APPEND_OR_REPLACE,
                 any<OneTimeWorkRequest>()
             )
         }
@@ -269,7 +269,7 @@ class MoviesRepositoryImplTest {
         verify(exactly = 1) {
             workManager.enqueueUniqueWork(
                 SyncOutboxWorker.WORK_NAME,
-                ExistingWorkPolicy.KEEP,
+                ExistingWorkPolicy.APPEND_OR_REPLACE,
                 any<OneTimeWorkRequest>()
             )
         }

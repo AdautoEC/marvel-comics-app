@@ -185,7 +185,7 @@ class AuthRepositoryImpl(
         val request = OneTimeWorkRequestBuilder<SyncOutboxWorker>()
             .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
             .build()
-        workManager.enqueueUniqueWork(SyncOutboxWorker.WORK_NAME, ExistingWorkPolicy.KEEP, request)
+        workManager.enqueueUniqueWork(SyncOutboxWorker.WORK_NAME, ExistingWorkPolicy.APPEND_OR_REPLACE, request)
     }
 
     override suspend fun logout() {
