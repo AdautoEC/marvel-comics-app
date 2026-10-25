@@ -1,5 +1,6 @@
 package com.adauto.marvel.core.data.sync
 
+import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
@@ -10,10 +11,13 @@ import javax.inject.Singleton
 @Singleton
 class SyncCoordinator @Inject constructor() {
     val mutex = Mutex()
-    private val _pullRequests = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    private val _pullRequests = MutableSharedFlow<Unit>(
+        extraBufferCapacity = 1,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST
+    )
     val pullRequests: SharedFlow<Unit> = _pullRequests.asSharedFlow()
 
-    suspend fun requestPull() {
-        _pullRequests.emit(Unit)
+    fun requestPull() {
+        _pullRequests.tryEmit(Unit)
     }
 }
