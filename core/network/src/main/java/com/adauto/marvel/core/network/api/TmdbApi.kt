@@ -3,6 +3,7 @@ package com.adauto.marvel.core.network.api
 import com.adauto.marvel.core.network.model.TmdbActionResponseDto
 import com.adauto.marvel.core.network.model.TmdbAccountDto
 import com.adauto.marvel.core.network.model.TmdbCreateSessionRequestDto
+import com.adauto.marvel.core.network.model.TmdbDeleteSessionRequestDto
 import com.adauto.marvel.core.network.model.TmdbFavoriteRequestDto
 import com.adauto.marvel.core.network.model.TmdbMovieDetailDto
 import com.adauto.marvel.core.network.model.TmdbMovieDto
@@ -13,6 +14,7 @@ import com.adauto.marvel.core.network.model.TmdbWatchlistRequestDto
 import com.skydoves.sandwich.ApiResponse
 import retrofit2.http.Body
 import retrofit2.http.GET
+import retrofit2.http.HTTP
 import retrofit2.http.POST
 import retrofit2.http.Path
 import retrofit2.http.Query
@@ -52,6 +54,11 @@ interface TmdbApi {
     suspend fun createSession(
         @Body body: TmdbCreateSessionRequestDto
     ): ApiResponse<TmdbSessionResponseDto>
+
+    @HTTP(method = "DELETE", path = "3/authentication/session", hasBody = true)
+    suspend fun deleteSession(
+        @Body body: TmdbDeleteSessionRequestDto
+    ): ApiResponse<TmdbActionResponseDto>
 
     @GET("3/account")
     suspend fun getAccountDetails(

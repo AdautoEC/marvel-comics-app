@@ -20,11 +20,15 @@ import com.adauto.marvel.core.model.Outcome
 import com.adauto.marvel.core.model.SessionState
 import com.adauto.marvel.core.network.api.TmdbApi
 import com.adauto.marvel.core.network.model.TmdbAccountDto
+import com.adauto.marvel.core.network.model.TmdbActionResponseDto
 import com.adauto.marvel.core.network.model.TmdbAvatarDto
 import com.adauto.marvel.core.network.model.TmdbAvatarPathDto
 import com.adauto.marvel.core.network.model.TmdbCreateSessionRequestDto
+import com.adauto.marvel.core.network.model.TmdbDeleteSessionRequestDto
+import com.adauto.marvel.core.network.model.TmdbFavoriteRequestDto
 import com.adauto.marvel.core.network.model.TmdbRequestTokenDto
 import com.adauto.marvel.core.network.model.TmdbSessionResponseDto
+import com.adauto.marvel.core.network.model.TmdbWatchlistRequestDto
 import com.adauto.marvel.core.network.security.session.SessionManager
 import com.google.common.truth.Truth.assertThat
 import com.skydoves.sandwich.ApiResponse
@@ -72,6 +76,7 @@ class AuthRepositoryTest {
         every { database.syncOutboxDao() } returns syncOutboxDao
         every { favoriteDao.getAllFavorites() } returns flowOf(emptyList())
         every { watchedDao.getAllWatched() } returns flowOf(emptyList())
+        every { sessionManager.sessionState } returns MutableStateFlow<SessionState>(SessionState.Guest)
 
         var pendingTokenStorage: Pair<String, Long>? = null
         coEvery { authPreferences.savePendingRequestToken(any(), any()) } coAnswers {
@@ -578,5 +583,64 @@ class AuthRepositoryTest {
         coVerify(exactly = 1) { favoriteDao.clearAll() }
         coVerify(exactly = 1) { watchedDao.clearAll() }
         coVerify(exactly = 1) { authPreferences.clearLastAccountId() }
+    }
+
+    @Test
+    fun logout_whenAuthenticated_revokesRemoteSessionOnTmdb() = runTest {
+        val authState = SessionState.Authenticated(
+            accountId = 42,
+            username = "stark",
+            sessionId = "sess_iron",
+            avatarUrl = null
+        )
+        every { sessionManager.sessionState } returns MutableStateFlow(authState)
+        coEvery { api.deleteSession(any()) } returns ApiResponse.Success(
+            TmdbActionResponseDto(status_code = 1, status_message = "Success")
+        )
+
+        authRepository.logout()
+
+        coVerify(exactly = 1) {
+            api.deleteSession(TmdbDeleteSessionRequestDto(sessionId = "sess_iron"))
+        }
+        coVerify(exactly = 1) { sessionManager.clearSession() }
+        coVerify(exactly = 1) { authPreferences.clearPendingRequestToken() }
+        coVerify(exactly = 1) { authPreferences.clearLastAccountId() }
+    }
+
+    @Test
+    fun logout_whenPendingOutboxExists_attemptsFlushBeforeClearing() = runTest {
+        val authState = SessionState.Authenticated(
+            accountId = 42,
+            username = "stark",
+            sessionId = "sess_iron",
+            avatarUrl = null
+        )
+        every { sessionManager.sessionState } returns MutableStateFlow(authState)
+        val outboxItem = SyncOutboxEntity(
+            movieId = 101,
+            target = SyncOutboxWorker.TARGET_FAVORITE,
+            desired = true,
+            version = 1
+        )
+        coEvery { syncOutboxDao.getAllPending() } returns listOf(outboxItem)
+        coEvery {
+            api.markAsFavorite(42, "sess_iron", any())
+        } returns ApiResponse.Success(TmdbActionResponseDto(status_code = 1, status_message = "Success"))
+        coEvery { api.deleteSession(any()) } returns ApiResponse.Success(
+            TmdbActionResponseDto(status_code = 1, status_message = "Success")
+        )
+
+        authRepository.logout()
+
+        coVerify(exactly = 1) {
+            api.markAsFavorite(42, "sess_iron", TmdbFavoriteRequestDto(media_id = 101, favorite = true))
+        }
+        coVerify(exactly = 1) {
+            syncOutboxDao.deleteVersion(101, SyncOutboxWorker.TARGET_FAVORITE, 1)
+        }
+        coVerify(exactly = 1) {
+            api.deleteSession(TmdbDeleteSessionRequestDto("sess_iron"))
+        }
     }
 }

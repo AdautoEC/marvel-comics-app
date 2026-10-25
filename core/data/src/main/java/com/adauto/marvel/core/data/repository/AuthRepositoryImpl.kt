@@ -18,6 +18,9 @@ import com.adauto.marvel.core.model.Outcome
 import com.adauto.marvel.core.model.SessionState
 import com.adauto.marvel.core.network.api.TmdbApi
 import com.adauto.marvel.core.network.model.TmdbCreateSessionRequestDto
+import com.adauto.marvel.core.network.model.TmdbDeleteSessionRequestDto
+import com.adauto.marvel.core.network.model.TmdbFavoriteRequestDto
+import com.adauto.marvel.core.network.model.TmdbWatchlistRequestDto
 import com.adauto.marvel.core.network.security.session.SessionManager
 import com.skydoves.sandwich.ApiResponse
 import kotlinx.coroutines.flow.StateFlow
@@ -185,13 +188,28 @@ class AuthRepositoryImpl(
     }
 
     override suspend fun logout() {
+        val state = sessionManager.sessionState.value
+        val authenticatedSession = state as? SessionState.Authenticated
+
         authPreferences.clearPendingRequestToken()
         workManager.cancelUniqueWork(SyncOutboxWorker.WORK_NAME)
+
         withTimeoutOrNull(LOGOUT_FLUSH_TIMEOUT_MS) {
             syncCoordinator.mutex.withLock {
-                // Wait for any active sync cycle to complete or release
+                if (authenticatedSession != null) {
+                    flushPendingOutbox(authenticatedSession)
+                }
             }
         }
+
+        if (authenticatedSession != null) {
+            try {
+                api.deleteSession(TmdbDeleteSessionRequestDto(authenticatedSession.sessionId))
+            } catch (@Suppress("SwallowedException", "TooGenericExceptionCaught") e: Exception) {
+                // Best-effort remote revocation; local session will still be purged
+            }
+        }
+
         sessionManager.clearSession()
         database.withTransaction {
             database.syncOutboxDao().clearAll()
@@ -199,5 +217,37 @@ class AuthRepositoryImpl(
             database.watchedDao().clearAll()
         }
         authPreferences.clearLastAccountId()
+    }
+
+    private suspend fun flushPendingOutbox(session: SessionState.Authenticated) {
+        val pending = database.syncOutboxDao().getAllPending()
+        for (item in pending) {
+            val response = try {
+                when (item.target) {
+                    SyncOutboxWorker.TARGET_FAVORITE -> api.markAsFavorite(
+                        accountId = session.accountId,
+                        sessionId = session.sessionId,
+                        body = TmdbFavoriteRequestDto(
+                            media_id = item.movieId,
+                            favorite = item.desired
+                        )
+                    )
+                    SyncOutboxWorker.TARGET_WATCHLIST -> api.addToWatchlist(
+                        accountId = session.accountId,
+                        sessionId = session.sessionId,
+                        body = TmdbWatchlistRequestDto(
+                            media_id = item.movieId,
+                            watchlist = item.desired
+                        )
+                    )
+                    else -> null
+                }
+            } catch (@Suppress("SwallowedException", "TooGenericExceptionCaught") e: Exception) {
+                null
+            }
+            if (response is ApiResponse.Success) {
+                database.syncOutboxDao().deleteVersion(item.movieId, item.target, item.version)
+            }
+        }
     }
 }
