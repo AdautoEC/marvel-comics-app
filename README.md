@@ -7,8 +7,8 @@
 [![Compose](https://img.shields.io/badge/Jetpack%20Compose-BOM%202024.10.00-4285F4.svg?style=flat&logo=jetpackcompose)](https://developer.android.com/jetpack/compose)
 [![Clean Architecture](https://img.shields.io/badge/Architecture-Clean%20%2B%20MVI%2FUDF-brightgreen.svg?style=flat)](https://developer.android.com/topic/architecture)
 [![CI/CD](https://img.shields.io/badge/CI%2FCD-GitHub%20Actions%20%2B%20Test%20Lab-2088FF.svg?style=flat&logo=githubactions)](https://github.com/AdautoEC/marvel-comics-app/actions)
-[![Coverage](https://img.shields.io/badge/Coverage-80.96%25-brightgreen.svg?style=flat)](#-cobertura-de-testes--métricas-kover)
-[![Detekt](https://img.shields.io/badge/Detekt-0%20issues-brightgreen.svg?style=flat)](config/detekt/detekt.yml)
+[![Coverage](https://img.shields.io/badge/Coverage-80.96%25%20(excl.%20Compose%2FDI)-brightgreen.svg?style=flat)](#-cobertura-de-testes--métricas-kover)
+[![Detekt](https://img.shields.io/badge/Detekt-0%20active%20(98%20baselined)-brightgreen.svg?style=flat)](#-estratégia-abrangente-de-testes)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
 O **Cinema Hub** é um aplicativo Android nativo moderno desenvolvido para servir como **referência arquitetural de alto nível**, demonstrando padrões de engenharia de software de nível de produção (Tier-1), segurança em profundidade, performance rigorosa em Jetpack Compose, persistência reativa com Room, sincronização em nuvem e automação completa de CI/CD com Firebase Test Lab e App Distribution.
@@ -237,6 +237,9 @@ items(
 ```
 Permite que o Compose reutilize os slots estruturais de layout dos cartões durante o scroll, minimizando o tempo de layout e eliminando "jank" (frames perdidos).
 
+### 3. AOT Compilation com Baseline Profiles (`profileinstaller`)
+O aplicativo inclui regras de compilação Ahead-Of-Time (AOT) empacotadas em [`app/src/main/baseline-prof.txt`](app/src/main/baseline-prof.txt) e integradas ao `androidx.profileinstaller`. O perfil pré-compila as classes críticas de inicialização (`MainActivity`, `CinemaHubApp`), injeção de repositórios, DAOs Room e renderização da grade Compose, acelerando a inicialização a frio e estabilizando a taxa de quadros em 60/120 FPS.
+
 ---
 
 ## 🧪 Estratégia Abrangente de Testes
@@ -276,7 +279,13 @@ flowchart TD
 
 ## 📊 Cobertura de Testes & Métricas Kover
 
-O projeto utiliza o **KotlinX Kover (v0.8.3)** para agregação unificada de métricas de cobertura de código através de todos os submódulos Gradle, com exclusão estrita de classes geradas (`*_Factory`, `Hilt_*`, Room `_Impl`, `BuildConfig`) e funções `@Composable` / `@Preview`:
+> [!NOTE]
+> **Declaração de Escopo de Cobertura:** O relatório Kover mede a integridade de regras de negócio, persistência, autenticação, rede e ViewModels. O escopo **exclui deliberadamente** funções declarativas de UI (`@Composable`, `@Preview`), módulos de injeção de dependência (`*.di`, `*Module`) e classes geradas (`*_Factory`, `*_Impl`), mantendo foco estrito na lógica determinística testável.
+
+> [!NOTE]
+> **Governança Detekt & Baseline:** O gate de qualidade impõe estritamente `maxIssues = 0` (zero code smells novos permitidos na CI). O projeto documenta transparentemente 98 regras legadas em `detekt-baseline.xml` em processo contínuo de refatoração gradual.
+
+O projeto utiliza o **KotlinX Kover (v0.8.3)** para agregação unificada de métricas de cobertura de código através de todos os submódulos Gradle:
 
 ### Métricas Consolidadas (Relatório Oficial da CI):
 
