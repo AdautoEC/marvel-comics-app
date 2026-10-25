@@ -12,9 +12,12 @@ import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTagsAsResourceId
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.compose.rememberNavController
 import com.adauto.marvel.core.data.repository.AuthRepository
+import com.adauto.marvel.core.data.sync.SyncEventBus
 import com.adauto.marvel.core.designsystem.theme.MarvelTheme
 import com.adauto.marvel.core.model.Outcome
 import com.adauto.marvel.navigation.DeepLinkHandler
@@ -29,12 +32,14 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var authRepository: AuthRepository
 
+    @Inject
+    lateinit var syncEventBus: SyncEventBus
+
     @OptIn(ExperimentalComposeUiApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        if (savedInstanceState == null) {
-            handleDeepLink(intent)
-        }
+        handleDeepLink(intent)
+        observeSyncFailures()
         enableEdgeToEdge()
         setContent {
             MarvelTheme {
@@ -54,6 +59,23 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         handleDeepLink(intent)
+    }
+
+    private fun observeSyncFailures() {
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                syncEventBus.unconsumedFailures.collect { failures ->
+                    if (failures.isNotEmpty()) {
+                        Toast.makeText(
+                            this@MainActivity,
+                            getString(R.string.sync_failure_message),
+                            Toast.LENGTH_LONG
+                        ).show()
+                        syncEventBus.consumeFailures()
+                    }
+                }
+            }
+        }
     }
 
     private fun handleDeepLink(intent: Intent?) {

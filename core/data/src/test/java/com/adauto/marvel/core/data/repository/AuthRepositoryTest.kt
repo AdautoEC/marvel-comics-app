@@ -25,6 +25,7 @@ import com.adauto.marvel.core.network.model.TmdbAvatarDto
 import com.adauto.marvel.core.network.model.TmdbAvatarPathDto
 import com.adauto.marvel.core.network.model.TmdbCreateSessionRequestDto
 import com.adauto.marvel.core.network.model.TmdbDeleteSessionRequestDto
+import com.adauto.marvel.core.network.model.TmdbDeleteSessionResponseDto
 import com.adauto.marvel.core.network.model.TmdbFavoriteRequestDto
 import com.adauto.marvel.core.network.model.TmdbRequestTokenDto
 import com.adauto.marvel.core.network.model.TmdbSessionResponseDto
@@ -595,7 +596,7 @@ class AuthRepositoryTest {
         )
         every { sessionManager.sessionState } returns MutableStateFlow(authState)
         coEvery { api.deleteSession(any()) } returns ApiResponse.Success(
-            TmdbActionResponseDto(status_code = 1, status_message = "Success")
+            TmdbDeleteSessionResponseDto(success = true)
         )
 
         authRepository.logout()
@@ -628,7 +629,7 @@ class AuthRepositoryTest {
             api.markAsFavorite(42, "sess_iron", any())
         } returns ApiResponse.Success(TmdbActionResponseDto(status_code = 1, status_message = "Success"))
         coEvery { api.deleteSession(any()) } returns ApiResponse.Success(
-            TmdbActionResponseDto(status_code = 1, status_message = "Success")
+            TmdbDeleteSessionResponseDto(success = true)
         )
 
         authRepository.logout()
@@ -641,6 +642,34 @@ class AuthRepositoryTest {
         }
         coVerify(exactly = 1) {
             api.deleteSession(TmdbDeleteSessionRequestDto("sess_iron"))
+        }
+    }
+
+    @Test
+    fun flushPendingOutbox_rethrowsCancellationException() = runTest {
+        val authState = SessionState.Authenticated(
+            accountId = 42,
+            username = "stark",
+            sessionId = "sess_iron",
+            avatarUrl = null
+        )
+        every { sessionManager.sessionState } returns MutableStateFlow(authState)
+        val outboxItem = SyncOutboxEntity(
+            movieId = 101,
+            target = SyncOutboxWorker.TARGET_FAVORITE,
+            desired = true,
+            version = 1
+        )
+        coEvery { syncOutboxDao.getAllPending() } returns listOf(outboxItem)
+        coEvery {
+            api.markAsFavorite(42, "sess_iron", any())
+        } throws kotlinx.coroutines.CancellationException("Timeout reached")
+
+        try {
+            authRepository.logout()
+            org.junit.Assert.fail("Expected CancellationException to be thrown")
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            assertThat(e.message).isEqualTo("Timeout reached")
         }
     }
 }

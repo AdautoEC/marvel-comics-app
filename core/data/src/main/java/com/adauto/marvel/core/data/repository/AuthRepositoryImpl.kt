@@ -23,6 +23,7 @@ import com.adauto.marvel.core.network.model.TmdbFavoriteRequestDto
 import com.adauto.marvel.core.network.model.TmdbWatchlistRequestDto
 import com.adauto.marvel.core.network.security.session.SessionManager
 import com.skydoves.sandwich.ApiResponse
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.sync.withLock
@@ -205,6 +206,8 @@ class AuthRepositoryImpl(
         if (authenticatedSession != null) {
             try {
                 api.deleteSession(TmdbDeleteSessionRequestDto(authenticatedSession.sessionId))
+            } catch (e: CancellationException) {
+                throw e
             } catch (@Suppress("SwallowedException", "TooGenericExceptionCaught") e: Exception) {
                 // Best-effort remote revocation; local session will still be purged
             }
@@ -242,6 +245,8 @@ class AuthRepositoryImpl(
                     )
                     else -> null
                 }
+            } catch (e: CancellationException) {
+                throw e
             } catch (@Suppress("SwallowedException", "TooGenericExceptionCaught") e: Exception) {
                 null
             }

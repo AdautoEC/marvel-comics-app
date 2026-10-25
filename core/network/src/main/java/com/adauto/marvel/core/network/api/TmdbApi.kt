@@ -4,6 +4,7 @@ import com.adauto.marvel.core.network.model.TmdbActionResponseDto
 import com.adauto.marvel.core.network.model.TmdbAccountDto
 import com.adauto.marvel.core.network.model.TmdbCreateSessionRequestDto
 import com.adauto.marvel.core.network.model.TmdbDeleteSessionRequestDto
+import com.adauto.marvel.core.network.model.TmdbDeleteSessionResponseDto
 import com.adauto.marvel.core.network.model.TmdbFavoriteRequestDto
 import com.adauto.marvel.core.network.model.TmdbMovieDetailDto
 import com.adauto.marvel.core.network.model.TmdbMovieDto
@@ -58,7 +59,7 @@ interface TmdbApi {
     @HTTP(method = "DELETE", path = "3/authentication/session", hasBody = true)
     suspend fun deleteSession(
         @Body body: TmdbDeleteSessionRequestDto
-    ): ApiResponse<TmdbActionResponseDto>
+    ): ApiResponse<TmdbDeleteSessionResponseDto>
 
     @GET("3/account")
     suspend fun getAccountDetails(
