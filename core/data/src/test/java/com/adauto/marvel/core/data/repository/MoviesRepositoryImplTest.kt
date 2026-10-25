@@ -56,7 +56,6 @@ class MoviesRepositoryImplTest {
     private val fixedClock = Clock.fixed(Instant.ofEpochMilli(1_700_000_000_000L), ZoneOffset.UTC)
 
     private val sessionStateFlow = MutableStateFlow<SessionState>(SessionState.Guest)
-    private val testScope = TestScope()
     private lateinit var repository: MoviesRepositoryImpl
 
     private val sampleMovie = MovieSummary(
@@ -88,7 +87,6 @@ class MoviesRepositoryImplTest {
             sessionManager = sessionManager,
             workManager = workManager,
             syncCoordinator = syncCoordinator,
-            externalScope = testScope.backgroundScope,
             clock = fixedClock
         )
     }
@@ -472,7 +470,16 @@ class MoviesRepositoryImplTest {
     }
 
     @Test
-    fun whenSyncCoordinatorPullRequestsEmits_triggersSyncCloudWithLocal() = testScope.runTest {
+    fun whenSyncCoordinatorPullRequestsEmits_triggersSyncCloudWithLocal() = runTest {
+        MoviesRepositoryImpl(
+            api = api,
+            database = database,
+            sessionManager = sessionManager,
+            workManager = workManager,
+            syncCoordinator = syncCoordinator,
+            externalScope = backgroundScope,
+            clock = fixedClock
+        )
         sessionStateFlow.value = SessionState.Authenticated(
             accountId = 42,
             username = "stark",
