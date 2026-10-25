@@ -7,6 +7,8 @@
 [![Compose](https://img.shields.io/badge/Jetpack%20Compose-BOM%202024.10.00-4285F4.svg?style=flat&logo=jetpackcompose)](https://developer.android.com/jetpack/compose)
 [![Clean Architecture](https://img.shields.io/badge/Architecture-Clean%20%2B%20MVI%2FUDF-brightgreen.svg?style=flat)](https://developer.android.com/topic/architecture)
 [![CI/CD](https://img.shields.io/badge/CI%2FCD-GitHub%20Actions%20%2B%20Test%20Lab-2088FF.svg?style=flat&logo=githubactions)](https://github.com/AdautoEC/marvel-comics-app/actions)
+[![Coverage](https://img.shields.io/badge/Coverage-80.96%25-brightgreen.svg?style=flat)](#-cobertura-de-testes--métricas-kover)
+[![Detekt](https://img.shields.io/badge/Detekt-0%20issues-brightgreen.svg?style=flat)](config/detekt/detekt.yml)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
 O **Cinema Hub** é um aplicativo Android nativo moderno desenvolvido para servir como **referência arquitetural de alto nível**, demonstrando padrões de engenharia de software de nível de produção (Tier-1), segurança em profundidade, performance rigorosa em Jetpack Compose, persistência reativa com Room, sincronização em nuvem e automação completa de CI/CD com Firebase Test Lab e App Distribution.
@@ -21,9 +23,10 @@ O **Cinema Hub** é um aplicativo Android nativo moderno desenvolvido para servi
 4. [Engenharia de Segurança em Profundidade](#-engenharia-de-segurança-em-profundidade)
 5. [Otimizações de Performance em Jetpack Compose](#-otimizações-de-performance-em-jetpack-compose)
 6. [Estratégia Abrangente de Testes](#-estratégia-abrangente-de-testes)
-7. [Pipeline de CI/CD & Automação de Release](#-pipeline-de-cicd--automação-de-release)
-8. [Stack de Tecnologias & Bibliotecas](#-stack-de-tecnologias--bibliotecas)
-9. [Instruções de Compilação & Execução](#-instruções-de-compilação--execução)
+7. [Cobertura de Testes & Métricas Kover](#-cobertura-de-testes--métricas-kover)
+8. [Pipeline de CI/CD & Automação de Release](#-pipeline-de-cicd--automação-de-release)
+9. [Stack de Tecnologias & Bibliotecas](#-stack-de-tecnologias--bibliotecas)
+10. [Instruções de Compilação & Execução](#-instruções-de-compilação--execução)
 
 ---
 
@@ -146,6 +149,34 @@ Todos os ViewModels seguem o padrão formal UDF com contratos explícitos:
 - **`UiAction`:** Ações e intenções do usuário disparadas pela View (ex: `CategorySelected`, `FavoriteToggled`, `SearchQueryChanged`).
 - **`UiEffect`:** Eventos únicos emitidos via `Channel<UiEffect>` (ex: `OpenAuthUrl`, `ShowSnackbar`).
 
+### 5. Arquitetura Local-First com Outbox e Controle de Concorrência Otimista (OCC)
+- **Desafio:** Garantir que mutações offline (favoritar/assistir) sobrevivam a quedas de rede e processos encerrados sem perder edições concorrentes caso o usuário alterne rapidamente o estado.
+- **Solução Implementada:**
+  - Room elevado para v4 com tabela versionada `sync_outbox` e migração atômica [`MIGRATION_3_4`](core/database/src/main/java/com/adauto/marvel/core/database/migrations/DatabaseMigrations.kt).
+  - Toggles do usuário incrementam monotonicamente o campo `version` em uma transação Room (`database.withTransaction`).
+  - Worker em segundo plano ([`SyncOutboxWorker`](core/data/src/main/java/com/adauto/marvel/core/data/worker/SyncOutboxWorker.kt)) executa **Compare-and-Delete**: `DELETE FROM sync_outbox WHERE movieId = :id AND target = :target AND version = :capturedVersion`. Se o usuário alterar o item enquanto a requisição HTTP estava em voo, a versão é incrementada e o delete afeta 0 linhas, preservando a mutação mais recente.
+  - Loop de drenagem `while (workerResult == null)` que esvazia a fila contra starve sob mutações concorrentes em rajada.
+  - Backoff exponencial com retentativas para erros transitórios (HTTP 429, 5xx, IOExceptions) até 5 tentativas, e rollback atômico em falha permanente.
+
+### 6. Rotação Resiliente de Chaves com OkHttp Authenticator
+- **Provedor Seguro com Stale-While-Revalidate ([`TmdbApiKeyProviderImpl`](core/network/src/main/java/com/adauto/marvel/core/network/security/TmdbApiKeyProviderImpl.kt)):**
+  - Cache em memória de processo com TTL de 24 horas (SWR).
+  - Prewarm não-bloqueante no startup (`MarvelApp.onCreate`) via `@ApplicationScope`.
+  - Mutex protegendo refetch forçado contra Firebase Remote Config com cooldown de 15 minutos e proteção anti-thundering herd.
+  - Build de Release configurado com segredos vazios em `BuildConfig`, garantindo zero credenciais em texto claro no binário final.
+- **Desafio de 401s Diferenciados ([`TmdbAuthenticator`](core/network/src/main/java/com/adauto/marvel/core/network/authenticator/TmdbAuthenticator.kt)):**
+  - O Authenticator inspeciona o corpo da resposta sem consumir o fluxo (`peekBody(1024L)`).
+  - Reage **estritamente ao código JSON `status_code: 7` ("Invalid API key")** do TMDB. Outros erros 401 (como sessão de usuário expirada) retornam `null` para tratamento seguro pelo gerenciador de sessões.
+  - Coordenação single-flight em bloco sincronizado com detecção de credenciais já rotacionadas e higienização mútua de slots de autenticação (Query vs Header Bearer).
+
+### 7. Isolamento de Contas e Proteção de Sessão OAuth
+- O repositório armazena [`last_account_id`](core/data/src/main/java/com/adauto/marvel/core/data/storage/AuthPreferencesStorage.kt) em DataStore Preferences isolado dos tokens de sessão.
+- Ao efetuar login com uma conta TMDB diferente da anterior, todo o banco de dados do usuário anterior e a fila de outbox são expurgados antes da importação, impedindo vazamento de dados entre perfis distintos. Reautenticação na mesma conta mantém o cache intacto.
+
+### 8. Paging 3 com Chaves Remotas e Recuperação a Frio
+- Substituição da paginação baseada em posição por tabela de chaves remotas [`MovieRemoteKeysEntity`](core/database/src/main/java/com/adauto/marvel/core/database/entity/MovieRemoteKeysEntity.kt).
+- O [`MoviesRemoteMediator`](core/data/src/main/java/com/adauto/marvel/core/data/mediator/MoviesRemoteMediator.kt) valida a presença da chave em `initialize()`. Categorias em cache migradas a frio sem chave forçam `LAUNCH_INITIAL_REFRESH`, invalidando categoria e chaves em uma transação atômica.
+
 ---
 
 ## 🔒 Engenharia de Segurança em Profundidade
@@ -243,6 +274,43 @@ flowchart TD
 
 ---
 
+## 📊 Cobertura de Testes & Métricas Kover
+
+O projeto utiliza o **KotlinX Kover (v0.8.3)** para agregação unificada de métricas de cobertura de código através de todos os submódulos Gradle, com exclusão estrita de classes geradas (`*_Factory`, `Hilt_*`, Room `_Impl`, `BuildConfig`) e funções `@Composable` / `@Preview`:
+
+### Métricas Consolidadas (Relatório Oficial da CI):
+
+| Métrica | Cobertura | Coberto / Total | Não Coberto |
+|---|---|---|---|
+| **Linhas (Lines)** | **80.96%** | **1.429 / 1.765** | 336 |
+| **Classes** | **87.82%** | **173 / 197** | 24 |
+| **Métodos** | **80.26%** | **313 / 390** | 77 |
+| **Instruções** | **78.12%** | **10.298 / 13.183** | 2.885 |
+| **Branches** | **49.37%** | **428 / 867** | 439 |
+
+### Destaques por Pacote e Camada Arquitetural:
+
+| Pacote / Componente | Cobertura de Linha | Responsabilidade Verificada |
+|---|---|---|
+| `core/database/migrations` | **100.00%** (15/15) | Integridade de `MIGRATION_2_3` e `MIGRATION_3_4` |
+| `core/database/entity` | **100.00%** (40/40) | Entidades `SyncOutboxEntity`, `MovieRemoteKeysEntity` |
+| `core/data/sync` | **100.00%** (13/13) | `SyncCoordinator` (Mutex) e `SyncEventBus` |
+| `core/data/util` | **100.00%** (27/27) | `ConnectivityManagerNetworkMonitor` |
+| `core/network/interceptor` | **100.00%** (25/25) | `TmdbAuthInterceptor` e stripping mútuo de slots |
+| `core/data/worker` | **95.56%** (86/90) | `SyncOutboxWorker` (Compare-and-Delete, retries, rollback) |
+| `core/network/authenticator` | **94.74%** (54/57) | `TmdbAuthenticator` (Status 7, single-flight, cooldown) |
+| `core/model` | **94.59%** (70/74) | Modelos puros e extensões de domínio |
+| `core/network/model` | **93.98%** (78/83) | DTOs e serializadores JSON KotlinX |
+| `core/network/telemetry` | **92.00%** (23/25) | `RedactingHttpLoggingInterceptor` (sanitize secrets) |
+| `core/data/mapper` | **91.55%** (65/71) | Mapeamento de erros de domínio e projeções Room |
+| `core/network/security/session` | **90.91%** (50/55) | `SessionManager` e ciclo de vida OAuth |
+| `feature/movies` | **87.18%** (102/117) | `MoviesViewModel` (UDF, busca reativa, load states) |
+| `core/data/storage` | **86.67%** (13/15) | `DataStoreAuthPreferencesStorage` (last_account_id) |
+| `core/data/mediator` | **80.00%** (40/50) | `MoviesRemoteMediator` (Remote Keys & cold migration) |
+| `core/data/repository` | **80.00%** (252/315) | `MoviesRepositoryImpl` & `AuthRepositoryImpl` |
+
+---
+
 ## 🚀 Pipeline de CI/CD & Automação de Release
 
 O repositório é equipado com automação completa via **GitHub Actions** em dois fluxos complementares:
@@ -278,8 +346,9 @@ O repositório é equipado com automação completa via **GitHub Actions** em do
 | **Paginação & Listas** | AndroidX Paging 3 (Paging 3.3.2, Paging Compose, RemoteMediator) |
 | **Injeção de Dependências** | Dagger Hilt 2.52 |
 | **Segurança & Criptografia** | Android Keystore Provider, AES-256-GCM, Custom Tabs 1.8.0 |
-| **Qualidade & Análise** | Detekt 1.23.7, Android Lint |
-| **Testes** | JUnit 4, Robolectric 4.14.1, MockK 1.13.13, Google Truth 1.4.4, Turbine 1.2.0 |
+| **Qualidade & Análise** | Detekt 1.23.7, Android Lint, KotlinX Kover 0.8.3 |
+| **Testes & Benchmark** | JUnit 4, Robolectric 4.14.1, MockK 1.13.13, Google Truth 1.4.4, Turbine 1.2.0, AndroidX Benchmark Macro 1.3.3, UiAutomator 2.3.0 |
+| **Processamento em Segundo Plano** | AndroidX WorkManager 2.9.1, Hilt Work 1.2.0 |
 | **Cloud & DevOps** | Firebase App Distribution, Firebase Test Lab, Google Cloud SDK, GitHub Actions |
 
 ---
@@ -307,11 +376,17 @@ tmdb.read.access.token=SEU_TMDB_READ_ACCESS_TOKEN_AQUI
 ### 3. Comandos Úteis do Gradle
 
 ```bash
-# Executar análise estática com Detekt (todas as camadas)
+# Executar análise estática com Detekt (todas as camadas, zero code smells)
 ./gradlew detekt
 
 # Executar todas as suítes de testes unitários e de integração
 ./gradlew testDebugUnitTest
+
+# Gerar relatórios de cobertura de código agregados com KotlinX Kover (XML e HTML)
+./gradlew koverXmlReport koverHtmlReport
+
+# Compilar módulo de Macrobenchmark
+./gradlew :benchmark:assembleBenchmark
 
 # Executar verificação de lint
 ./gradlew lintDebug
