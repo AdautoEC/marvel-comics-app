@@ -6,6 +6,7 @@ import androidx.work.ListenableWorker.Result
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import app.cash.turbine.test
+import com.adauto.marvel.core.data.storage.SyncFailureStorage
 import com.adauto.marvel.core.data.sync.SyncCoordinator
 import com.adauto.marvel.core.data.sync.SyncEventBus
 import com.adauto.marvel.core.database.MarvelDatabase
@@ -58,7 +59,8 @@ class SyncOutboxWorkerTest {
     )
 
     private val syncCoordinator = SyncCoordinator()
-    private val syncEventBus = SyncEventBus()
+    private val syncFailureStorage: SyncFailureStorage = mockk(relaxed = true)
+    private val syncEventBus = SyncEventBus(storage = syncFailureStorage)
 
     private lateinit var worker: SyncOutboxWorker
 
@@ -293,6 +295,9 @@ class SyncOutboxWorkerTest {
             val event = awaitItem()
             assertThat(event.movieId).isEqualTo(TEST_MOVIE_ID)
             assertThat(event.target).isEqualTo(SyncOutboxWorker.TARGET_FAVORITE)
+            coVerify(exactly = 1) {
+                syncFailureStorage.recordFailure(match { it.movieId == TEST_MOVIE_ID }, any())
+            }
         }
     }
 

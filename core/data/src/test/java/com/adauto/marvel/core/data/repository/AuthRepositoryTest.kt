@@ -20,11 +20,16 @@ import com.adauto.marvel.core.model.Outcome
 import com.adauto.marvel.core.model.SessionState
 import com.adauto.marvel.core.network.api.TmdbApi
 import com.adauto.marvel.core.network.model.TmdbAccountDto
+import com.adauto.marvel.core.network.model.TmdbActionResponseDto
 import com.adauto.marvel.core.network.model.TmdbAvatarDto
 import com.adauto.marvel.core.network.model.TmdbAvatarPathDto
 import com.adauto.marvel.core.network.model.TmdbCreateSessionRequestDto
+import com.adauto.marvel.core.network.model.TmdbDeleteSessionRequestDto
+import com.adauto.marvel.core.network.model.TmdbDeleteSessionResponseDto
+import com.adauto.marvel.core.network.model.TmdbFavoriteRequestDto
 import com.adauto.marvel.core.network.model.TmdbRequestTokenDto
 import com.adauto.marvel.core.network.model.TmdbSessionResponseDto
+import com.adauto.marvel.core.network.model.TmdbWatchlistRequestDto
 import com.adauto.marvel.core.network.security.session.SessionManager
 import com.google.common.truth.Truth.assertThat
 import com.skydoves.sandwich.ApiResponse
@@ -72,6 +77,16 @@ class AuthRepositoryTest {
         every { database.syncOutboxDao() } returns syncOutboxDao
         every { favoriteDao.getAllFavorites() } returns flowOf(emptyList())
         every { watchedDao.getAllWatched() } returns flowOf(emptyList())
+        every { sessionManager.sessionState } returns MutableStateFlow<SessionState>(SessionState.Guest)
+
+        var pendingTokenStorage: Pair<String, Long>? = null
+        coEvery { authPreferences.savePendingRequestToken(any(), any()) } coAnswers {
+            pendingTokenStorage = firstArg<String>() to secondArg<Long>()
+        }
+        coEvery { authPreferences.getPendingRequestToken() } coAnswers { pendingTokenStorage }
+        coEvery { authPreferences.clearPendingRequestToken() } coAnswers {
+            pendingTokenStorage = null
+        }
 
         authRepository = AuthRepositoryImpl(
             api = api,
@@ -255,6 +270,84 @@ class AuthRepositoryTest {
         assertThat(result).isInstanceOf(Outcome.Failure::class.java)
         assertThat((result as Outcome.Failure).error).isEqualTo(DomainError.InvalidKey)
         coVerify(exactly = 0) { api.createSession(any()) }
+    }
+
+    @Test
+    fun completeAuthentication_whenTokenDoesNotMatch_doesNotClearPendingToken() = runTest {
+        coEvery { api.createRequestToken() } returns ApiResponse.Success(
+            TmdbRequestTokenDto(
+                success = true,
+                request_token = "legitimate_token",
+                expires_at = "2026-10-23"
+            )
+        )
+        coEvery {
+            api.createSession(TmdbCreateSessionRequestDto("legitimate_token"))
+        } returns ApiResponse.Success(TmdbSessionResponseDto(success = true, session_id = "sess_123"))
+        coEvery {
+            api.getAccountDetails("sess_123")
+        } returns ApiResponse.Success(
+            TmdbAccountDto(
+                id = 42,
+                username = "user_marvel",
+                name = "Stan",
+                avatar = TmdbAvatarDto(tmdb = TmdbAvatarPathDto("/avatar.jpg"))
+            )
+        )
+        coEvery { moviesRepository.syncCloudWithLocal() } returns Outcome.Success(Unit)
+
+        var storedPendingToken: Pair<String, Long>? = null
+        coEvery { authPreferences.savePendingRequestToken(any(), any()) } answers {
+            storedPendingToken = firstArg<String>() to secondArg<Long>()
+        }
+        coEvery { authPreferences.getPendingRequestToken() } answers { storedPendingToken }
+        coEvery { authPreferences.clearPendingRequestToken() } answers { storedPendingToken = null }
+
+        authRepository.createRequestToken()
+
+        val attackResult = authRepository.completeAuthentication("attacker_forged_token")
+        assertThat(attackResult).isInstanceOf(Outcome.Failure::class.java)
+        assertThat((attackResult as Outcome.Failure).error).isEqualTo(DomainError.InvalidKey)
+
+        assertThat(storedPendingToken?.first).isEqualTo("legitimate_token")
+
+        val legitimateResult = authRepository.completeAuthentication("legitimate_token")
+        assertThat(legitimateResult).isInstanceOf(Outcome.Success::class.java)
+        assertThat(storedPendingToken).isNull()
+    }
+
+    @Test
+    fun completeAuthentication_survivesProcessDeath_whenTokenReadFromStorage() = runTest {
+        coEvery { authPreferences.getPendingRequestToken() } returns ("persisted_token" to currentTimeMs)
+        coEvery {
+            api.createSession(TmdbCreateSessionRequestDto("persisted_token"))
+        } returns ApiResponse.Success(TmdbSessionResponseDto(success = true, session_id = "sess_survived"))
+        coEvery {
+            api.getAccountDetails("sess_survived")
+        } returns ApiResponse.Success(
+            TmdbAccountDto(
+                id = 99,
+                username = "survivor",
+                name = "Survivor",
+                avatar = null
+            )
+        )
+        coEvery { moviesRepository.syncCloudWithLocal() } returns Outcome.Success(Unit)
+
+        val freshRepository = AuthRepositoryImpl(
+            api = api,
+            sessionManager = sessionManager,
+            database = database,
+            moviesRepository = moviesRepository,
+            authPreferences = authPreferences,
+            workManager = workManager,
+            syncCoordinator = syncCoordinator,
+            timeProvider = { currentTimeMs }
+        )
+
+        val result = freshRepository.completeAuthentication("persisted_token")
+        assertThat(result).isInstanceOf(Outcome.Success::class.java)
+        coVerify(exactly = 1) { authPreferences.clearPendingRequestToken() }
     }
 
     @Test
@@ -491,5 +584,92 @@ class AuthRepositoryTest {
         coVerify(exactly = 1) { favoriteDao.clearAll() }
         coVerify(exactly = 1) { watchedDao.clearAll() }
         coVerify(exactly = 1) { authPreferences.clearLastAccountId() }
+    }
+
+    @Test
+    fun logout_whenAuthenticated_revokesRemoteSessionOnTmdb() = runTest {
+        val authState = SessionState.Authenticated(
+            accountId = 42,
+            username = "stark",
+            sessionId = "sess_iron",
+            avatarUrl = null
+        )
+        every { sessionManager.sessionState } returns MutableStateFlow(authState)
+        coEvery { api.deleteSession(any()) } returns ApiResponse.Success(
+            TmdbDeleteSessionResponseDto(success = true)
+        )
+
+        authRepository.logout()
+
+        coVerify(exactly = 1) {
+            api.deleteSession(TmdbDeleteSessionRequestDto(sessionId = "sess_iron"))
+        }
+        coVerify(exactly = 1) { sessionManager.clearSession() }
+        coVerify(exactly = 1) { authPreferences.clearPendingRequestToken() }
+        coVerify(exactly = 1) { authPreferences.clearLastAccountId() }
+    }
+
+    @Test
+    fun logout_whenPendingOutboxExists_attemptsFlushBeforeClearing() = runTest {
+        val authState = SessionState.Authenticated(
+            accountId = 42,
+            username = "stark",
+            sessionId = "sess_iron",
+            avatarUrl = null
+        )
+        every { sessionManager.sessionState } returns MutableStateFlow(authState)
+        val outboxItem = SyncOutboxEntity(
+            movieId = 101,
+            target = SyncOutboxWorker.TARGET_FAVORITE,
+            desired = true,
+            version = 1
+        )
+        coEvery { syncOutboxDao.getAllPending() } returns listOf(outboxItem)
+        coEvery {
+            api.markAsFavorite(42, "sess_iron", any())
+        } returns ApiResponse.Success(TmdbActionResponseDto(status_code = 1, status_message = "Success"))
+        coEvery { api.deleteSession(any()) } returns ApiResponse.Success(
+            TmdbDeleteSessionResponseDto(success = true)
+        )
+
+        authRepository.logout()
+
+        coVerify(exactly = 1) {
+            api.markAsFavorite(42, "sess_iron", TmdbFavoriteRequestDto(media_id = 101, favorite = true))
+        }
+        coVerify(exactly = 1) {
+            syncOutboxDao.deleteVersion(101, SyncOutboxWorker.TARGET_FAVORITE, 1)
+        }
+        coVerify(exactly = 1) {
+            api.deleteSession(TmdbDeleteSessionRequestDto("sess_iron"))
+        }
+    }
+
+    @Test
+    fun flushPendingOutbox_rethrowsCancellationException() = runTest {
+        val authState = SessionState.Authenticated(
+            accountId = 42,
+            username = "stark",
+            sessionId = "sess_iron",
+            avatarUrl = null
+        )
+        every { sessionManager.sessionState } returns MutableStateFlow(authState)
+        val outboxItem = SyncOutboxEntity(
+            movieId = 101,
+            target = SyncOutboxWorker.TARGET_FAVORITE,
+            desired = true,
+            version = 1
+        )
+        coEvery { syncOutboxDao.getAllPending() } returns listOf(outboxItem)
+        coEvery {
+            api.markAsFavorite(42, "sess_iron", any())
+        } throws kotlinx.coroutines.CancellationException("Timeout reached")
+
+        try {
+            authRepository.logout()
+            org.junit.Assert.fail("Expected CancellationException to be thrown")
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            assertThat(e.message).isEqualTo("Timeout reached")
+        }
     }
 }

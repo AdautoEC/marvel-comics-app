@@ -259,24 +259,34 @@ class MoviesRepositoryImpl @Inject constructor(
         val accountId = state.accountId
         val sessionId = state.sessionId
 
-        val remoteFavs = when (val favsResult = fetchAllRemoteFavorites(accountId, sessionId)) {
-            is Outcome.Success -> favsResult.value
-            is Outcome.Failure -> return favsResult
-        }
+        return syncCoordinator.mutex.withLock {
+            val sessionAfterLock = sessionManager.sessionState.value
+            if (sessionAfterLock !is SessionState.Authenticated || sessionAfterLock.sessionId != sessionId) {
+                return@withLock Outcome.Success(Unit)
+            }
 
-        val remoteWatchlist = when (val watchResult = fetchAllRemoteWatchlist(accountId, sessionId)) {
-            is Outcome.Success -> watchResult.value
-            is Outcome.Failure -> return watchResult
-        }
+            val remoteFavs = when (val favsResult = fetchAllRemoteFavorites(accountId, sessionId)) {
+                is Outcome.Success -> favsResult.value
+                is Outcome.Failure -> return@withLock favsResult
+            }
 
-        syncCoordinator.mutex.withLock {
+            val remoteWatchlist = when (val watchResult = fetchAllRemoteWatchlist(accountId, sessionId)) {
+                is Outcome.Success -> watchResult.value
+                is Outcome.Failure -> return@withLock watchResult
+            }
+
+            val sessionBeforeCommit = sessionManager.sessionState.value
+            if (sessionBeforeCommit !is SessionState.Authenticated || sessionBeforeCommit.sessionId != sessionId) {
+                return@withLock Outcome.Success(Unit)
+            }
+
             database.withTransaction {
                 reconcileFavorites(remoteFavs)
                 reconcileWatchlist(remoteWatchlist)
             }
-        }
 
-        return Outcome.Success(Unit)
+            Outcome.Success(Unit)
+        }
     }
 
     private suspend fun fetchAllRemoteFavorites(

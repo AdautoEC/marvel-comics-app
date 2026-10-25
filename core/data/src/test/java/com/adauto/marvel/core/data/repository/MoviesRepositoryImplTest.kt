@@ -506,5 +506,66 @@ class MoviesRepositoryImplTest {
         coVerify(atLeast = 1) { api.getWatchlistMovies(42, "sess_iron", 1) }
     }
 
+    @Test
+    fun syncCloudWithLocal_holdsMutexAcrossRemoteDownloadAndDatabaseCommit() = runTest {
+        sessionStateFlow.value = SessionState.Authenticated(
+            accountId = 42,
+            username = "stark",
+            sessionId = "sess_iron"
+        )
+        var mutexLockedDuringDownload = false
+        coEvery { api.getFavoriteMovies(42, "sess_iron", 1) } coAnswers {
+            mutexLockedDuringDownload = syncCoordinator.mutex.isLocked
+            ApiResponse.Success(
+                TmdbPageResponseDto(page = 1, results = emptyList(), totalPages = 1, totalResults = 0)
+            )
+        }
+        coEvery { api.getWatchlistMovies(42, "sess_iron", 1) } returns ApiResponse.Success(
+            TmdbPageResponseDto(page = 1, results = emptyList(), totalPages = 1, totalResults = 0)
+        )
+        every { favoriteDao.getAllFavorites() } returns flowOf(emptyList())
+        every { watchedDao.getAllWatched() } returns flowOf(emptyList())
+
+        val result = repository.syncCloudWithLocal()
+
+        assertThat(result).isInstanceOf(Outcome.Success::class.java)
+        assertThat(mutexLockedDuringDownload).isTrue()
+    }
+
+    @Test
+    fun syncCloudWithLocal_whenSessionLoggedOutDuringDownload_abortsAndDoesNotWriteToDatabase() = runTest {
+        sessionStateFlow.value = SessionState.Authenticated(
+            accountId = 42,
+            username = "stark",
+            sessionId = "sess_iron"
+        )
+        val remoteMovie = TmdbMovieDto(
+            id = 999,
+            title = "Stale Movie",
+            overview = "Desc",
+            posterPath = null,
+            backdropPath = null,
+            voteAverage = 8.0,
+            releaseDate = "2020-01-01"
+        )
+        coEvery { api.getFavoriteMovies(42, "sess_iron", 1) } coAnswers {
+            // Concurrent logout occurs while download is in-flight
+            sessionStateFlow.value = SessionState.Guest
+            ApiResponse.Success(
+                TmdbPageResponseDto(page = 1, results = listOf(remoteMovie), totalPages = 1, totalResults = 1)
+            )
+        }
+        coEvery { api.getWatchlistMovies(any(), any(), any()) } returns ApiResponse.Success(
+            TmdbPageResponseDto(page = 1, results = emptyList(), totalPages = 1, totalResults = 0)
+        )
+        every { favoriteDao.getAllFavorites() } returns flowOf(emptyList())
+        every { watchedDao.getAllWatched() } returns flowOf(emptyList())
+
+        val result = repository.syncCloudWithLocal()
+
+        assertThat(result).isInstanceOf(Outcome.Success::class.java)
+        coVerify(exactly = 0) { favoriteDao.upsert(any()) }
+    }
+
     // endregion
 }
