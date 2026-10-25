@@ -27,16 +27,16 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Set up JDK 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@3a4f6e1af504cf6a31855fa899c6aa5355ba6c12 # v4.7.0
         with:
           distribution: 'temurin'
           java-version: '17'
 
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@94baf225fe0a508e581a564467443d0e2379123b # v4.3.0
 
       - name: Copy fake google-services.json for CI
         run: |
@@ -55,7 +55,7 @@ jobs:
         run: ./gradlew detekt lintDebug testDebugUnitTest koverXmlReport koverHtmlReport :benchmark:assembleBenchmark --stacktrace
 
       - name: Upload Kover Coverage Report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@4cec3d8aa04e39d1a68397de0c4cd6fb9dce8ec1 # v4.6.1
         if: always()
         with:
           name: kover-coverage-report
@@ -69,16 +69,16 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Set up JDK 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@3a4f6e1af504cf6a31855fa899c6aa5355ba6c12 # v4.7.0
         with:
           distribution: 'temurin'
           java-version: '17'
 
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@94baf225fe0a508e581a564467443d0e2379123b # v4.3.0
 
       - name: Setup google-services.json
         env:
@@ -170,28 +170,28 @@ jobs:
           cp app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk stage/test-lab/app-debug-androidTest.apk
 
       - name: Archive Release APK
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@4cec3d8aa04e39d1a68397de0c4cd6fb9dce8ec1 # v4.6.1
         with:
           name: app-release-apk
           path: stage/release/app-release.apk
           retention-days: 7
 
       - name: Archive Release Bundle (AAB)
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@4cec3d8aa04e39d1a68397de0c4cd6fb9dce8ec1 # v4.6.1
         with:
           name: app-release-bundle
           path: stage/bundle/*.aab
           retention-days: 7
 
       - name: Archive ProGuard / R8 Mapping File
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@4cec3d8aa04e39d1a68397de0c4cd6fb9dce8ec1 # v4.6.1
         with:
           name: mapping-release
           path: stage/mapping/mapping.txt
           retention-days: 7
 
       - name: Archive Test APKs for Test Lab
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@4cec3d8aa04e39d1a68397de0c4cd6fb9dce8ec1 # v4.6.1
         with:
           name: test-lab-apks
           path: stage/test-lab/*.apk
@@ -207,10 +207,10 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Download Test APKs
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@cc203385981b70ca67e1cc392babf9cc229d5806 # v4.1.9
         with:
           name: test-lab-apks
           path: apks
@@ -218,13 +218,13 @@ jobs:
       - name: Authenticate to Google Cloud
         id: gcp_auth
         if: env.GCP_SA_KEY != ''
-        uses: google-github-actions/auth@v2
+        uses: google-github-actions/auth@71f986410dfbc7added4569d411d040a91dc6935 # v2.1.8
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
 
       - name: Set up Cloud SDK
         if: steps.gcp_auth.outcome == 'success'
-        uses: google-github-actions/setup-gcloud@v2
+        uses: google-github-actions/setup-gcloud@6189d56e4096ee891640bb02ac264be376592d6a # v2.1.2
 
       - name: Run Firebase Test Lab (Instrumentation Tests)
         if: steps.gcp_auth.outcome == 'success'
@@ -292,32 +292,37 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           fetch-depth: 0
 
       - name: Download Release APK
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@cc203385981b70ca67e1cc392babf9cc229d5806 # v4.1.9
         with:
           name: app-release-apk
           path: release-apk
 
       - name: Download Release Bundle
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@cc203385981b70ca67e1cc392babf9cc229d5806 # v4.1.9
         with:
           name: app-release-bundle
           path: release-bundle
 
       - name: Download R8 Mapping
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@cc203385981b70ca67e1cc392babf9cc229d5806 # v4.1.9
         with:
           name: mapping-release
           path: release-mapping
 
+      - name: Validate Firebase App Distribution Credentials
+        if: env.FIREBASE_APP_ID == '' || env.FIREBASE_SERVICE_ACCOUNT == ''
+        run: |
+          echo "::warning::Firebase App Distribution credentials missing (FIREBASE_APP_ID or FIREBASE_SERVICE_ACCOUNT). Deployment to testers cannot run."
+
       - name: Deploy to Firebase App Distribution (App Tester)
         id: firebase_dist
         if: env.FIREBASE_APP_ID != '' && env.FIREBASE_SERVICE_ACCOUNT != ''
-        uses: wzieba/Firebase-Distribution-Github-Action@v1
+        uses: wzieba/Firebase-Distribution-Github-Action@bd494989dd4bec0343f78adee87fe66e48279ad6 # v1.7.1
         with:
           appId: ${{ secrets.FIREBASE_APP_ID }}
           serviceCredentialsFileContent: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
@@ -326,6 +331,15 @@ jobs:
           releaseNotes: |
             Release automated from main (commit ${{ github.sha }})
             Commit: ${{ github.event.head_commit.message }}
+
+      - name: Determine Distribution Status Note
+        id: dist_note
+        run: |
+          if [ "${{ steps.firebase_dist.outcome }}" = "success" ]; then
+            echo "status=- Deployed to Firebase App Distribution (group: \`testers\`)" >> $GITHUB_OUTPUT
+          else
+            echo "status=- Firebase App Distribution: Skipped (missing credentials)" >> $GITHUB_OUTPUT
+          fi
 
       - name: Calculate Release Tag
         id: tag_calc
@@ -349,7 +363,7 @@ jobs:
           git push origin "$TAG"
 
       - name: Publish GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@c95fe1489396fe8a9eb87c0abf8aa5b2ef267fda # v2.2.1
         with:
           tag_name: ${{ steps.tag_calc.outputs.tag }}
           name: Release ${{ steps.tag_calc.outputs.tag }}
@@ -362,9 +376,9 @@ jobs:
             ### Quality Gates Passed:
             - Detekt: 0 code smells
             - Android Lint: 0 errors
-            - Unit Tests: 100% passing (218 tests)
+            - Unit Tests: 100% passing
             - Release APK minified with R8 (2.5 MB)
-            - Deployed to Firebase App Distribution (group: `testers`)
+            ${{ steps.dist_note.outputs.status }}
           files: |
             release-apk/app-release.apk
             release-bundle/*.aab
