@@ -34,12 +34,12 @@ class BaselineProfileGenerator {
             startActivityAndWait()
 
             // Wait until movie items are rendered
-            device.wait(Until.hasObject(By.descContains("Ver detalhes")), 5_000)
+            device.wait(Until.hasObject(By.descContains("Ver detalhes")), RENDER_TIMEOUT_MS)
 
             // Scroll movies feed
             val moviesList = device.findObject(By.scrollable(true))
             moviesList?.let { list ->
-                list.setGestureMargin(device.displayWidth / 5)
+                list.setGestureMargin(device.displayWidth / GESTURE_MARGIN_DIVISOR)
                 list.fling(Direction.DOWN)
                 device.waitForIdle()
                 list.fling(Direction.UP)
@@ -58,8 +58,13 @@ class BaselineProfileGenerator {
                 device.waitForIdle()
             }
 
-            pressBack()
+            device.pressBack()
             device.waitForIdle()
         }
+    }
+
+    companion object {
+        private const val RENDER_TIMEOUT_MS = 5_000L
+        private const val GESTURE_MARGIN_DIVISOR = 5
     }
 }

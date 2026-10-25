@@ -29,4 +29,5 @@ include(":core:designsystem")
 include(":core:ui")
 include(":feature:movies")
 include(":feature:detail")
+include(":benchmark")
 

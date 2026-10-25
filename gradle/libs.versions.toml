@@ -27,6 +27,9 @@ truth = "1.4.4"
 detekt = "1.23.7"
 spotless = "7.0.0.BETA4"
 kover = "0.8.3"
+androidx-benchmark = "1.3.3"
+androidx-uiautomator = "2.3.0"
+androidx-profileinstaller = "1.4.1"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -95,8 +98,12 @@ androidx-test-ext-junit = { group = "androidx.test.ext", name = "junit", version
 androidx-test-runner = { group = "androidx.test", name = "runner", version = "1.6.2" }
 robolectric = { group = "org.robolectric", name = "robolectric", version = "4.14.1" }
 room-testing = { group = "androidx.room", name = "room-testing", version.ref = "room" }
+androidx-benchmark-macro = { group = "androidx.benchmark", name = "benchmark-macro-junit4", version.ref = "androidx-benchmark" }
+androidx-uiautomator = { group = "androidx.test.uiautomator", name = "uiautomator", version.ref = "androidx-uiautomator" }
+androidx-profileinstaller = { group = "androidx.profileinstaller", name = "profileinstaller", version.ref = "androidx-profileinstaller" }
 
 [plugins]
+android-test = { id = "com.android.test", version.ref = "agp" }
 android-application = { id = "com.android.application", version.ref = "agp" }
 android-library = { id = "com.android.library", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
