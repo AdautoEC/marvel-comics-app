@@ -6,6 +6,8 @@ import kotlinx.coroutines.flow.StateFlow
 interface SessionManager {
     val sessionState: StateFlow<SessionState>
 
+    suspend fun awaitInitialSession(): SessionState
+
     suspend fun saveSession(
         accountId: Int,
         username: String,

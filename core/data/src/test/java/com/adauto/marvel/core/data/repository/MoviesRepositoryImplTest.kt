@@ -80,6 +80,7 @@ class MoviesRepositoryImplTest {
         every { database.movieDao() } returns movieDao
         every { database.syncOutboxDao() } returns syncOutboxDao
         every { sessionManager.sessionState } returns sessionStateFlow
+        coEvery { sessionManager.awaitInitialSession() } coAnswers { sessionStateFlow.value }
 
         repository = MoviesRepositoryImpl(
             api = api,

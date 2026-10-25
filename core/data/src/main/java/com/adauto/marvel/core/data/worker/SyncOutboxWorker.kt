@@ -39,7 +39,7 @@ class SyncOutboxWorker @Suppress("LongParameterList") @AssistedInject constructo
 ) : CoroutineWorker(appContext, workerParams) {
 
     override suspend fun doWork(): Result = syncCoordinator.mutex.withLock {
-        val session = sessionManager.sessionState.value
+        val session = sessionManager.awaitInitialSession()
         if (session !is SessionState.Authenticated) {
             return@withLock Result.success()
         }

@@ -75,6 +75,7 @@ class SyncOutboxWorkerTest {
         every { database.favoriteDao() } returns favoriteDao
         every { database.watchedDao() } returns watchedDao
         every { sessionManager.sessionState } returns sessionStateFlow
+        coEvery { sessionManager.awaitInitialSession() } coAnswers { sessionStateFlow.value }
 
         coEvery { database.withTransaction(any<suspend () -> Any>()) } coAnswers {
             @Suppress("UNCHECKED_CAST")

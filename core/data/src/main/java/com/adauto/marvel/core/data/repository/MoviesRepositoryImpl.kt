@@ -148,7 +148,7 @@ class MoviesRepositoryImpl @Inject constructor(
     }
 
     override suspend fun toggleFavorite(movie: MovieSummary) {
-        val isAuthenticated = sessionManager.sessionState.value is SessionState.Authenticated
+        val isAuthenticated = sessionManager.awaitInitialSession() is SessionState.Authenticated
 
         if (!isAuthenticated) {
             mutateLocalFavorite(movie)
@@ -194,7 +194,7 @@ class MoviesRepositoryImpl @Inject constructor(
     }
 
     override suspend fun toggleWatchlist(movie: MovieSummary) {
-        val isAuthenticated = sessionManager.sessionState.value is SessionState.Authenticated
+        val isAuthenticated = sessionManager.awaitInitialSession() is SessionState.Authenticated
 
         if (!isAuthenticated) {
             mutateLocalWatchlist(movie)
@@ -251,7 +251,7 @@ class MoviesRepositoryImpl @Inject constructor(
     }
 
     override suspend fun syncCloudWithLocal(): Outcome<Unit> {
-        val state = sessionManager.sessionState.value
+        val state = sessionManager.awaitInitialSession()
         if (state !is SessionState.Authenticated) {
             return Outcome.Success(Unit)
         }
