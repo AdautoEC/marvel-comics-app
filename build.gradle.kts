@@ -59,7 +59,9 @@ kover {
 
 subprojects {
     apply(plugin = "io.gitlab.arturbosch.detekt")
-    apply(plugin = "org.jetbrains.kotlinx.kover")
+    if (name != "benchmark") {
+        apply(plugin = "org.jetbrains.kotlinx.kover")
+    }
 
     tasks.withType<io.gitlab.arturbosch.detekt.Detekt>().configureEach {
         buildUponDefaultConfig = true

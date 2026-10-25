@@ -1,4 +1,4 @@
-package com.adauto.marvel.benchmark
+package com.adauto.cinemahub.benchmark
 
 import androidx.benchmark.macro.junit4.BaselineProfileRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
