@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Cinema Hub</string>
+    <string name="auth_error_message">Falha ao autenticar com o TMDB. Tente novamente.</string>
 </resources>

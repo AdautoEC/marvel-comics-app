@@ -24,18 +24,12 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withTimeoutOrNull
-import java.util.concurrent.atomic.AtomicReference
 import javax.inject.Inject
 import javax.inject.Singleton
 
 private const val TMDB_AVATAR_BASE_URL = "https://image.tmdb.org/t/p/w200"
 private const val TOKEN_TTL_MS = 10 * 60 * 1000L // 10 minutes
 private const val LOGOUT_FLUSH_TIMEOUT_MS = 3_000L
-
-private data class PendingAuthToken(
-    val token: String,
-    val createdAtMs: Long
-)
 
 @Singleton
 @Suppress("LongParameterList")
@@ -70,15 +64,13 @@ class AuthRepositoryImpl(
         timeProvider = { System.currentTimeMillis() }
     )
 
-    private val pendingToken = AtomicReference<PendingAuthToken?>()
-
     override val sessionState: StateFlow<SessionState> = sessionManager.sessionState
 
     override suspend fun createRequestToken(): Outcome<String> {
         return when (val response = api.createRequestToken()) {
             is ApiResponse.Success -> {
                 val token = response.data.request_token
-                pendingToken.set(PendingAuthToken(token, timeProvider()))
+                authPreferences.savePendingRequestToken(token, timeProvider())
                 Outcome.Success(token)
             }
             is ApiResponse.Failure -> Outcome.Failure(response.toDomainError())
@@ -86,12 +78,24 @@ class AuthRepositoryImpl(
     }
 
     override suspend fun completeAuthentication(requestToken: String): Outcome<AccountProfile> {
-        val pending = pendingToken.getAndSet(null) // Atomic check-and-consume
+        val pending = authPreferences.getPendingRequestToken()
         val now = timeProvider()
 
-        if (pending == null || pending.token != requestToken || (now - pending.createdAtMs) > TOKEN_TTL_MS) {
+        if (pending == null) {
             return Outcome.Failure(DomainError.InvalidKey)
         }
+
+        val (token, createdAtMs) = pending
+        if (now - createdAtMs > TOKEN_TTL_MS) {
+            authPreferences.clearPendingRequestToken()
+            return Outcome.Failure(DomainError.InvalidKey)
+        }
+
+        if (token != requestToken) {
+            return Outcome.Failure(DomainError.InvalidKey)
+        }
+
+        authPreferences.clearPendingRequestToken()
 
         val sessionResponse = api.createSession(TmdbCreateSessionRequestDto(requestToken))
         val sessionId = when (sessionResponse) {
@@ -181,7 +185,7 @@ class AuthRepositoryImpl(
     }
 
     override suspend fun logout() {
-        pendingToken.set(null)
+        authPreferences.clearPendingRequestToken()
         workManager.cancelUniqueWork(SyncOutboxWorker.WORK_NAME)
         withTimeoutOrNull(LOGOUT_FLUSH_TIMEOUT_MS) {
             syncCoordinator.mutex.withLock {

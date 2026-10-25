@@ -73,6 +73,15 @@ class AuthRepositoryTest {
         every { favoriteDao.getAllFavorites() } returns flowOf(emptyList())
         every { watchedDao.getAllWatched() } returns flowOf(emptyList())
 
+        var pendingTokenStorage: Pair<String, Long>? = null
+        coEvery { authPreferences.savePendingRequestToken(any(), any()) } coAnswers {
+            pendingTokenStorage = firstArg<String>() to secondArg<Long>()
+        }
+        coEvery { authPreferences.getPendingRequestToken() } coAnswers { pendingTokenStorage }
+        coEvery { authPreferences.clearPendingRequestToken() } coAnswers {
+            pendingTokenStorage = null
+        }
+
         authRepository = AuthRepositoryImpl(
             api = api,
             sessionManager = sessionManager,
@@ -255,6 +264,84 @@ class AuthRepositoryTest {
         assertThat(result).isInstanceOf(Outcome.Failure::class.java)
         assertThat((result as Outcome.Failure).error).isEqualTo(DomainError.InvalidKey)
         coVerify(exactly = 0) { api.createSession(any()) }
+    }
+
+    @Test
+    fun completeAuthentication_whenTokenDoesNotMatch_doesNotClearPendingToken() = runTest {
+        coEvery { api.createRequestToken() } returns ApiResponse.Success(
+            TmdbRequestTokenDto(
+                success = true,
+                request_token = "legitimate_token",
+                expires_at = "2026-10-23"
+            )
+        )
+        coEvery {
+            api.createSession(TmdbCreateSessionRequestDto("legitimate_token"))
+        } returns ApiResponse.Success(TmdbSessionResponseDto(success = true, session_id = "sess_123"))
+        coEvery {
+            api.getAccountDetails("sess_123")
+        } returns ApiResponse.Success(
+            TmdbAccountDto(
+                id = 42,
+                username = "user_marvel",
+                name = "Stan",
+                avatar = TmdbAvatarDto(tmdb = TmdbAvatarPathDto("/avatar.jpg"))
+            )
+        )
+        coEvery { moviesRepository.syncCloudWithLocal() } returns Outcome.Success(Unit)
+
+        var storedPendingToken: Pair<String, Long>? = null
+        coEvery { authPreferences.savePendingRequestToken(any(), any()) } answers {
+            storedPendingToken = firstArg<String>() to secondArg<Long>()
+        }
+        coEvery { authPreferences.getPendingRequestToken() } answers { storedPendingToken }
+        coEvery { authPreferences.clearPendingRequestToken() } answers { storedPendingToken = null }
+
+        authRepository.createRequestToken()
+
+        val attackResult = authRepository.completeAuthentication("attacker_forged_token")
+        assertThat(attackResult).isInstanceOf(Outcome.Failure::class.java)
+        assertThat((attackResult as Outcome.Failure).error).isEqualTo(DomainError.InvalidKey)
+
+        assertThat(storedPendingToken?.first).isEqualTo("legitimate_token")
+
+        val legitimateResult = authRepository.completeAuthentication("legitimate_token")
+        assertThat(legitimateResult).isInstanceOf(Outcome.Success::class.java)
+        assertThat(storedPendingToken).isNull()
+    }
+
+    @Test
+    fun completeAuthentication_survivesProcessDeath_whenTokenReadFromStorage() = runTest {
+        coEvery { authPreferences.getPendingRequestToken() } returns ("persisted_token" to currentTimeMs)
+        coEvery {
+            api.createSession(TmdbCreateSessionRequestDto("persisted_token"))
+        } returns ApiResponse.Success(TmdbSessionResponseDto(success = true, session_id = "sess_survived"))
+        coEvery {
+            api.getAccountDetails("sess_survived")
+        } returns ApiResponse.Success(
+            TmdbAccountDto(
+                id = 99,
+                username = "survivor",
+                name = "Survivor",
+                avatar = null
+            )
+        )
+        coEvery { moviesRepository.syncCloudWithLocal() } returns Outcome.Success(Unit)
+
+        val freshRepository = AuthRepositoryImpl(
+            api = api,
+            sessionManager = sessionManager,
+            database = database,
+            moviesRepository = moviesRepository,
+            authPreferences = authPreferences,
+            workManager = workManager,
+            syncCoordinator = syncCoordinator,
+            timeProvider = { currentTimeMs }
+        )
+
+        val result = freshRepository.completeAuthentication("persisted_token")
+        assertThat(result).isInstanceOf(Outcome.Success::class.java)
+        coVerify(exactly = 1) { authPreferences.clearPendingRequestToken() }
     }
 
     @Test

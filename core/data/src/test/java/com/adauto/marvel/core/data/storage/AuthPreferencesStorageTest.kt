@@ -53,4 +53,26 @@ class AuthPreferencesStorageTest {
         storage.clearLastAccountId()
         assertThat(storage.getLastAccountId()).isNull()
     }
+
+    @Test
+    fun getPendingRequestToken_whenEmpty_returnsNull() = runTest(testDispatcher) {
+        val tokenPair = storage.getPendingRequestToken()
+        assertThat(tokenPair).isNull()
+    }
+
+    @Test
+    fun savePendingRequestToken_persistsAndRetrievesTokenAndTimestamp() = runTest(testDispatcher) {
+        storage.savePendingRequestToken("req_token_123", 1000L)
+        val tokenPair = storage.getPendingRequestToken()
+        assertThat(tokenPair).isEqualTo("req_token_123" to 1000L)
+    }
+
+    @Test
+    fun clearPendingRequestToken_removesToken() = runTest(testDispatcher) {
+        storage.savePendingRequestToken("req_token_123", 1000L)
+        assertThat(storage.getPendingRequestToken()).isNotNull()
+
+        storage.clearPendingRequestToken()
+        assertThat(storage.getPendingRequestToken()).isNull()
+    }
 }

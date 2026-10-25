@@ -2,6 +2,7 @@ package com.adauto.marvel
 
 import android.content.Intent
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -15,6 +16,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.navigation.compose.rememberNavController
 import com.adauto.marvel.core.data.repository.AuthRepository
 import com.adauto.marvel.core.designsystem.theme.MarvelTheme
+import com.adauto.marvel.core.model.Outcome
 import com.adauto.marvel.navigation.DeepLinkHandler
 import com.adauto.marvel.navigation.MarvelNavHost
 import dagger.hilt.android.AndroidEntryPoint
@@ -59,7 +61,14 @@ class MainActivity : ComponentActivity() {
         if (requestToken != null) {
             intent?.data = null
             lifecycleScope.launch {
-                authRepository.completeAuthentication(requestToken)
+                val outcome = authRepository.completeAuthentication(requestToken)
+                if (outcome is Outcome.Failure) {
+                    Toast.makeText(
+                        this@MainActivity,
+                        getString(R.string.auth_error_message),
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
             }
         }
     }
