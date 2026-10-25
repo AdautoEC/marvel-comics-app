@@ -32,6 +32,24 @@ class SessionManagerTest {
     }
 
     @Test
+    fun awaitInitialSession_waitsForStoredSessionBeforeReturning() = runTest {
+        val encrypted = byteArrayOf(9, 9, 9)
+        val decryptedJson = """{"accountId":42,"username":"tony","sessionId":"sess_123","avatarUrl":null}"""
+        coEvery { storage.loadEncryptedSession() } coAnswers {
+            kotlinx.coroutines.delay(50)
+            encrypted
+        }
+        coEvery { cipher.decrypt(encrypted) } returns decryptedJson.encodeToByteArray()
+
+        val sessionManager = SessionManagerImpl(cipher, storage, backgroundScope)
+        val initial = sessionManager.awaitInitialSession()
+
+        assertThat(initial).isInstanceOf(SessionState.Authenticated::class.java)
+        val auth = initial as SessionState.Authenticated
+        assertThat(auth.sessionId).isEqualTo("sess_123")
+    }
+
+    @Test
     fun initial_state_is_Guest_and_transitions_to_Authenticated_on_save() = runTest {
         val sessionManager = SessionManagerImpl(cipher, storage, testScope)
         assertThat(sessionManager.sessionState.value).isEqualTo(SessionState.Guest)

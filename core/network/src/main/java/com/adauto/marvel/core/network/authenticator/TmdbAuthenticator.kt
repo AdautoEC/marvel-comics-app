@@ -77,6 +77,13 @@ class TmdbAuthenticator @Inject constructor(
 
             if (newCredentials == null || !newCredentials.isNotEmpty) return null
 
+            val isSameKey = when {
+                requestBearer != null -> newCredentials.readAccessToken == requestBearer
+                requestKey != null -> newCredentials.apiKey == requestKey
+                else -> false
+            }
+            if (isSameKey) return null
+
             val requestBuilder = response.request.newBuilder()
             if (!newCredentials.readAccessToken.isNullOrBlank()) {
                 val newUrl = response.request.url.newBuilder()

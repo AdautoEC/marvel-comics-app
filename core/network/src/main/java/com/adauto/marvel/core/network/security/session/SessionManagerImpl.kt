@@ -3,6 +3,7 @@ package com.adauto.marvel.core.network.security.session
 import com.adauto.marvel.core.model.SessionState
 import com.adauto.marvel.core.network.security.KeystoreCipher
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -35,15 +36,25 @@ class SessionManagerImpl(
     )
 
     private val mutex = Mutex()
+    private val initDeferred = CompletableDeferred<Unit>()
     private val _sessionState = MutableStateFlow<SessionState>(SessionState.Guest)
     override val sessionState: StateFlow<SessionState> = _sessionState.asStateFlow()
 
     init {
         scope.launch {
-            mutex.withLock {
-                loadStoredSession()
+            try {
+                mutex.withLock {
+                    loadStoredSession()
+                }
+            } finally {
+                initDeferred.complete(Unit)
             }
         }
+    }
+
+    override suspend fun awaitInitialSession(): SessionState {
+        initDeferred.await()
+        return sessionState.value
     }
 
     private suspend fun loadStoredSession() {

@@ -75,6 +75,7 @@ class SyncOutboxWorkerTest {
         every { database.favoriteDao() } returns favoriteDao
         every { database.watchedDao() } returns watchedDao
         every { sessionManager.sessionState } returns sessionStateFlow
+        coEvery { sessionManager.awaitInitialSession() } coAnswers { sessionStateFlow.value }
 
         coEvery { database.withTransaction(any<suspend () -> Any>()) } coAnswers {
             @Suppress("UNCHECKED_CAST")
@@ -204,6 +205,56 @@ class SyncOutboxWorkerTest {
         val result = worker.doWork()
 
         assertThat(result).isEqualTo(Result.success())
+        coVerify(exactly = 1) {
+            syncOutboxDao.deleteVersion(TEST_MOVIE_ID, SyncOutboxWorker.TARGET_FAVORITE, TEST_VERSION)
+        }
+    }
+
+    @Test
+    fun handleHttpError_429WithRetryAfterUnder10s_delaysCooperativelyAndRetriesInPass() = runTest {
+        val outboxItem = SyncOutboxEntity(
+            movieId = TEST_MOVIE_ID,
+            target = SyncOutboxWorker.TARGET_FAVORITE,
+            desired = true,
+            attempts = 0,
+            version = TEST_VERSION
+        )
+        coEvery { syncOutboxDao.getAllPending() } returns listOf(outboxItem) andThen emptyList()
+        coEvery { syncOutboxDao.deleteVersion(TEST_MOVIE_ID, SyncOutboxWorker.TARGET_FAVORITE, TEST_VERSION) } returns 1
+
+        val headers = okhttp3.Headers.Builder().add("Retry-After", "2").build()
+        val rawResponse = okhttp3.Response.Builder()
+            .code(HTTP_TOO_MANY_REQUESTS)
+            .message("Rate limited")
+            .protocol(okhttp3.Protocol.HTTP_1_1)
+            .request(okhttp3.Request.Builder().url("https://api.themoviedb.org/3").build())
+            .headers(headers)
+            .build()
+        val errorResponse = Response.error<TmdbActionResponseDto>(
+            "Rate limited".toResponseBody(),
+            rawResponse
+        )
+
+        var callCount = 0
+        coEvery {
+            api.markAsFavorite(any(), any(), any())
+        } answers {
+            callCount++
+            if (callCount == 1) {
+                ApiResponse.Failure.Error(errorResponse)
+            } else {
+                ApiResponse.Success(TmdbActionResponseDto(status_code = 1, status_message = "Success", success = true))
+            }
+        }
+
+        var delayedMs = 0L
+        worker.delayProvider = { delay: Long -> delayedMs += delay }
+
+        val result = worker.doWork()
+
+        assertThat(result).isEqualTo(Result.success())
+        assertThat(delayedMs).isEqualTo(2000L)
+        assertThat(callCount).isEqualTo(2)
         coVerify(exactly = 1) {
             syncOutboxDao.deleteVersion(TEST_MOVIE_ID, SyncOutboxWorker.TARGET_FAVORITE, TEST_VERSION)
         }

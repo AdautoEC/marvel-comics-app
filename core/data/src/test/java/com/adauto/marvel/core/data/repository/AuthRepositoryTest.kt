@@ -474,7 +474,7 @@ class AuthRepositoryTest {
         verify(exactly = 1) {
             workManager.enqueueUniqueWork(
                 SyncOutboxWorker.WORK_NAME,
-                ExistingWorkPolicy.KEEP,
+                ExistingWorkPolicy.APPEND_OR_REPLACE,
                 any<OneTimeWorkRequest>()
             )
         }
@@ -508,7 +508,7 @@ class AuthRepositoryTest {
         verify(exactly = 1) {
             workManager.enqueueUniqueWork(
                 SyncOutboxWorker.WORK_NAME,
-                ExistingWorkPolicy.KEEP,
+                ExistingWorkPolicy.APPEND_OR_REPLACE,
                 any<OneTimeWorkRequest>()
             )
         }
@@ -550,7 +550,7 @@ class AuthRepositoryTest {
         verify(exactly = 1) {
             workManager.enqueueUniqueWork(
                 SyncOutboxWorker.WORK_NAME,
-                ExistingWorkPolicy.KEEP,
+                ExistingWorkPolicy.APPEND_OR_REPLACE,
                 any<OneTimeWorkRequest>()
             )
         }

@@ -33,8 +33,10 @@ class BaselineProfileGenerator {
             pressHome()
             startActivityAndWait()
 
-            // Wait until movie items are rendered
-            device.wait(Until.hasObject(By.descContains("Ver detalhes")), RENDER_TIMEOUT_MS)
+            // Wait until movie items are rendered (prioritizing locale-agnostic testTag)
+            val cardPattern = java.util.regex.Pattern.compile(".*MovieCard_.*")
+            device.wait(Until.hasObject(By.res(cardPattern)), RENDER_TIMEOUT_MS)
+                ?: device.wait(Until.hasObject(By.descContains("Ver detalhes")), RENDER_TIMEOUT_MS)
 
             // Scroll movies feed
             val moviesList = device.findObject(By.scrollable(true))
@@ -47,7 +49,8 @@ class BaselineProfileGenerator {
             }
 
             // Navigate to detail screen
-            val firstCard = device.findObject(By.descContains("Ver detalhes"))
+            val firstCard = device.findObject(By.res(cardPattern))
+                ?: device.findObject(By.descContains("Ver detalhes"))
             firstCard?.click()
             device.waitForIdle()
 
