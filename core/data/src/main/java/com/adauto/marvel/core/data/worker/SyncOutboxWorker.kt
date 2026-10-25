@@ -44,19 +44,23 @@ class SyncOutboxWorker @Suppress("LongParameterList") @AssistedInject constructo
             return@withLock Result.success()
         }
 
-        while (true) {
+        var workerResult: Result? = null
+        while (workerResult == null) {
             val pending = database.syncOutboxDao().getAllPending()
             if (pending.isEmpty()) {
-                return@withLock Result.success()
+                workerResult = Result.success()
+                break
             }
 
             for (item in pending) {
                 val itemResult = processItem(item, session)
                 if (itemResult != null) {
-                    return@withLock itemResult
+                    workerResult = itemResult
+                    break
                 }
             }
         }
+        workerResult ?: Result.success()
     }
 
     private suspend fun processItem(
