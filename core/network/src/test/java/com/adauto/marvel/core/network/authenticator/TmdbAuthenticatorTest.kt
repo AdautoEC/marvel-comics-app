@@ -290,4 +290,35 @@ class TmdbAuthenticatorTest {
 
         assertThat(resultRequest).isNull()
     }
+
+    @Test
+    fun authenticate_returnsNullWhenKeyProviderReturnsIdenticalCredentialsDuringCooldown() {
+        val sameCreds = TmdbCredentials(apiKey = "invalid_key", readAccessToken = null)
+        coEvery { keyProvider.getCredentials() } returns sameCreds
+        coEvery { keyProvider.refreshKeyForced() } returns sameCreds
+
+        val response = createResponse(
+            url = "https://api.themoviedb.org/3/movie/1?api_key=invalid_key",
+            bodyJson = """{"status_code":7,"status_message":"Invalid API key","success":false}"""
+        )
+        val nextRequest = authenticator.authenticate(null, response)
+
+        assertThat(nextRequest).isNull()
+    }
+
+    @Test
+    fun authenticate_returnsNullWhenBearerTokenMatchesDuringCooldown() {
+        val sameCreds = TmdbCredentials(apiKey = null, readAccessToken = "invalid_bearer")
+        coEvery { keyProvider.getCredentials() } returns sameCreds
+        coEvery { keyProvider.refreshKeyForced() } returns sameCreds
+
+        val response = createResponse(
+            url = "https://api.themoviedb.org/3/movie/1",
+            headers = mapOf("Authorization" to "Bearer invalid_bearer"),
+            bodyJson = """{"status_code":7,"status_message":"Invalid API key","success":false}"""
+        )
+        val nextRequest = authenticator.authenticate(null, response)
+
+        assertThat(nextRequest).isNull()
+    }
 }
