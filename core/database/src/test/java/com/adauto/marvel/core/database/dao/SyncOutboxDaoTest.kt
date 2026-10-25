@@ -93,9 +93,24 @@ class SyncOutboxDaoTest {
 
     @Test
     fun getAllPending_ordersByVersionAscending() = runTest {
-        val first = SyncOutboxEntity(movieId = 1, target = SyncOutboxEntity.TARGET_FAVORITE, desired = true, version = 1)
-        val second = SyncOutboxEntity(movieId = 2, target = SyncOutboxEntity.TARGET_WATCHLIST, desired = true, version = 5)
-        val third = SyncOutboxEntity(movieId = 3, target = SyncOutboxEntity.TARGET_FAVORITE, desired = false, version = 2)
+        val first = SyncOutboxEntity(
+            movieId = 1,
+            target = SyncOutboxEntity.TARGET_FAVORITE,
+            desired = true,
+            version = 1
+        )
+        val second = SyncOutboxEntity(
+            movieId = 2,
+            target = SyncOutboxEntity.TARGET_WATCHLIST,
+            desired = true,
+            version = 5
+        )
+        val third = SyncOutboxEntity(
+            movieId = 3,
+            target = SyncOutboxEntity.TARGET_FAVORITE,
+            desired = false,
+            version = 2
+        )
 
         syncOutboxDao.upsert(second)
         syncOutboxDao.upsert(first)
@@ -107,9 +122,15 @@ class SyncOutboxDaoTest {
 
     @Test
     fun getPendingMovieIds_filtersByTarget() = runTest {
-        syncOutboxDao.upsert(SyncOutboxEntity(movieId = 1, target = SyncOutboxEntity.TARGET_FAVORITE, desired = true))
-        syncOutboxDao.upsert(SyncOutboxEntity(movieId = 2, target = SyncOutboxEntity.TARGET_WATCHLIST, desired = true))
-        syncOutboxDao.upsert(SyncOutboxEntity(movieId = 3, target = SyncOutboxEntity.TARGET_FAVORITE, desired = false))
+        syncOutboxDao.upsert(
+            SyncOutboxEntity(movieId = 1, target = SyncOutboxEntity.TARGET_FAVORITE, desired = true)
+        )
+        syncOutboxDao.upsert(
+            SyncOutboxEntity(movieId = 2, target = SyncOutboxEntity.TARGET_WATCHLIST, desired = true)
+        )
+        syncOutboxDao.upsert(
+            SyncOutboxEntity(movieId = 3, target = SyncOutboxEntity.TARGET_FAVORITE, desired = false)
+        )
 
         val favIds = syncOutboxDao.getPendingMovieIds(SyncOutboxEntity.TARGET_FAVORITE)
         assertThat(favIds).containsExactly(1, 3)
@@ -120,8 +141,12 @@ class SyncOutboxDaoTest {
 
     @Test
     fun clearAll_removesAllEntries() = runTest {
-        syncOutboxDao.upsert(SyncOutboxEntity(movieId = 1, target = SyncOutboxEntity.TARGET_FAVORITE, desired = true))
-        syncOutboxDao.upsert(SyncOutboxEntity(movieId = 2, target = SyncOutboxEntity.TARGET_WATCHLIST, desired = true))
+        syncOutboxDao.upsert(
+            SyncOutboxEntity(movieId = 1, target = SyncOutboxEntity.TARGET_FAVORITE, desired = true)
+        )
+        syncOutboxDao.upsert(
+            SyncOutboxEntity(movieId = 2, target = SyncOutboxEntity.TARGET_WATCHLIST, desired = true)
+        )
 
         assertThat(syncOutboxDao.getAllPending()).hasSize(2)
         syncOutboxDao.clearAll()
