@@ -347,4 +347,60 @@ class TmdbApiKeyProviderImplTest {
         assertEquals("mutex_key", res2?.apiKey)
         coVerify(exactly = 1) { remoteConfig.fetch(0) }
     }
+
+    @Test
+    fun getCredentials_preservesStoredFetchedAt_andTriggersRefreshIfExpired() = runTest {
+        val expiredTimestamp = currentTimeMs - 25 * 60 * 60 * 1000L // 25 hours ago
+        val storedJson = """{"apiKey":"old_key","readAccessToken":"old_token","fetchedAt":$expiredTimestamp}"""
+        coEvery { encryptedStorage.loadEncryptedBlob() } returns storedJson.toByteArray()
+        coEvery { cipher.decrypt(any()) } returns storedJson.toByteArray()
+
+        every { remoteConfig.fetchAndActivate() } returns mockSuccessfulTask(true)
+        every { remoteConfig.getString("tmdb_api_key") } returns "refreshed_key"
+        every { remoteConfig.getString("tmdb_read_access_token") } returns "refreshed_token"
+        every { cipher.encrypt(any()) } returns byteArrayOf(99)
+        coEvery { encryptedStorage.saveEncryptedBlob(any()) } returns Unit
+
+        val provider = TmdbApiKeyProviderImpl(
+            externalScope = this,
+            remoteConfig = remoteConfig,
+            encryptedStorage = encryptedStorage,
+            cipher = cipher,
+            timeProvider = timeProvider
+        )
+
+        val creds = provider.getCredentials()
+        assertEquals("old_key", creds?.apiKey)
+
+        // Advance idle to let background refresh execute
+        testScheduler.advanceUntilIdle()
+        coVerify(atLeast = 1) { remoteConfig.fetchAndActivate() }
+    }
+
+    @Test
+    fun getCredentials_singleFlight_preventsMultipleConcurrentStorageReads() = runTest {
+        val storedJson = """{"apiKey":"key1","readAccessToken":"tok1","fetchedAt":$currentTimeMs}"""
+        coEvery { encryptedStorage.loadEncryptedBlob() } coAnswers {
+            kotlinx.coroutines.delay(100)
+            storedJson.toByteArray()
+        }
+        coEvery { cipher.decrypt(any()) } returns storedJson.toByteArray()
+
+        val provider = TmdbApiKeyProviderImpl(
+            externalScope = this,
+            remoteConfig = remoteConfig,
+            encryptedStorage = encryptedStorage,
+            cipher = cipher,
+            timeProvider = timeProvider
+        )
+
+        val d1 = async { provider.getCredentials() }
+        val d2 = async { provider.getCredentials() }
+        val d3 = async { provider.getCredentials() }
+        val res = listOf(d1.await(), d2.await(), d3.await())
+
+        assertEquals(3, res.size)
+        assertEquals("key1", res[0]?.apiKey)
+        coVerify(exactly = 1) { encryptedStorage.loadEncryptedBlob() }
+    }
 }

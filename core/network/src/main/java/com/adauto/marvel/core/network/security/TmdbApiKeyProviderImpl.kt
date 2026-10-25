@@ -14,6 +14,7 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withTimeout
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.util.concurrent.atomic.AtomicBoolean
@@ -47,10 +48,18 @@ class TmdbApiKeyProviderImpl(
         timeProvider = { System.currentTimeMillis() }
     )
 
+    @Serializable
+    internal data class StoredCredentials(
+        val apiKey: String? = null,
+        val readAccessToken: String? = null,
+        val fetchedAt: Long = 0L
+    )
+
     private val cachedCredentials = AtomicReference<Pair<TmdbCredentials, Long>?>()
     private val lastForcedFetchMs = AtomicLong(-1L)
     private val isRefreshing = AtomicBoolean(false)
     private val forcedRefreshMutex = Mutex()
+    private val coldStartMutex = Mutex()
 
     companion object {
         const val KEY_TMDB_API_KEY = "tmdb_api_key"
@@ -66,50 +75,62 @@ class TmdbApiKeyProviderImpl(
     override suspend fun getReadAccessToken(): String? = getCredentials()?.readAccessToken
 
     override suspend fun getCredentials(): TmdbCredentials? {
-        val cached = cachedCredentials.get()
-        if (cached != null) {
-            val (creds, cachedAt) = cached
+        cachedCredentials.get()?.let { return checkValidOrRefresh(it) }
+
+        return coldStartMutex.withLock {
+            cachedCredentials.get()?.let { return@withLock checkValidOrRefresh(it) }
+
+            loadFromStorage()
+                ?: fetchAndStoreCredentials()
+                ?: loadFallbackCredentials()
+        }
+    }
+
+    private fun checkValidOrRefresh(cached: Pair<TmdbCredentials, Long>): TmdbCredentials {
+        val (creds, cachedAt) = cached
+        val now = timeProvider()
+        if (now - cachedAt < TTL_24H) {
+            return creds
+        }
+        if (isRefreshing.compareAndSet(false, true)) {
+            externalScope.launch {
+                try {
+                    fetchAndStoreCredentials()
+                } finally {
+                    isRefreshing.set(false)
+                }
+            }
+        }
+        return creds
+    }
+
+    private suspend fun loadFromStorage(): TmdbCredentials? {
+        val cachedEncrypted = encryptedStorage.loadEncryptedBlob() ?: return null
+        val decrypted = try {
+            cipher.decrypt(cachedEncrypted).toString(Charsets.UTF_8)
+        } catch (_: Exception) {
+            null
+        }
+        val stored = decrypted?.takeIf { it.isNotBlank() }?.let { parseStoredCredentials(it, timeProvider) }
+        val creds = stored?.let { TmdbCredentials(it.apiKey, it.readAccessToken) }?.takeIf { it.isNotEmpty }
+
+        if (creds != null) {
             val now = timeProvider()
-            if (now - cachedAt < TTL_24H) {
-                return creds
-            } else {
-                if (isRefreshing.compareAndSet(false, true)) {
-                    externalScope.launch {
-                        try {
-                            fetchAndStoreCredentials()
-                        } finally {
-                            isRefreshing.set(false)
-                        }
+            cachedCredentials.set(creds to stored.fetchedAt)
+            if (now - stored.fetchedAt >= TTL_24H && isRefreshing.compareAndSet(false, true)) {
+                externalScope.launch {
+                    try {
+                        fetchAndStoreCredentials()
+                    } finally {
+                        isRefreshing.set(false)
                     }
                 }
-                return creds
             }
         }
+        return creds
+    }
 
-        // First run: load from encrypted storage
-        val cachedEncrypted = encryptedStorage.loadEncryptedBlob()
-        if (cachedEncrypted != null) {
-            val decrypted = try {
-                cipher.decrypt(cachedEncrypted).toString(Charsets.UTF_8)
-            } catch (_: Exception) {
-                null
-            }
-            if (!decrypted.isNullOrBlank()) {
-                val creds = TmdbCredentials.parse(decrypted)
-                if (creds.isNotEmpty) {
-                    cachedCredentials.set(creds to timeProvider())
-                    return creds
-                }
-            }
-        }
-
-        // Storage is empty or invalid: fetch from remote config
-        val remoteCreds = fetchAndStoreCredentials()
-        if (remoteCreds != null && remoteCreds.isNotEmpty) {
-            return remoteCreds
-        }
-
-        // In debug builds, fallback to BuildConfig and cache in memory
+    private fun loadFallbackCredentials(): TmdbCredentials? {
         if (BuildConfig.DEBUG) {
             val fallback = TmdbCredentials(
                 apiKey = BuildConfig.TMDB_API_KEY.takeIf { it.isNotBlank() },
@@ -120,7 +141,6 @@ class TmdbApiKeyProviderImpl(
                 return fallback
             }
         }
-
         return null
     }
 
@@ -191,7 +211,13 @@ class TmdbApiKeyProviderImpl(
     }
 
     private suspend fun persistAndCache(creds: TmdbCredentials) {
-        val serialized = Json.encodeToString(creds)
+        val now = timeProvider()
+        val stored = StoredCredentials(
+            apiKey = creds.apiKey,
+            readAccessToken = creds.readAccessToken,
+            fetchedAt = now
+        )
+        val serialized = Json.encodeToString(stored)
         val encrypted = try {
             cipher.encrypt(serialized.toByteArray(Charsets.UTF_8))
         } catch (_: Exception) {
@@ -200,15 +226,31 @@ class TmdbApiKeyProviderImpl(
         if (encrypted != null) {
             encryptedStorage.saveEncryptedBlob(encrypted)
         }
-        cachedCredentials.set(creds to timeProvider())
+        cachedCredentials.set(creds to now)
     }
+}
 
-    private suspend fun <T> Task<T>.awaitTask(): T = suspendCancellableCoroutine { cont ->
-        addOnSuccessListener { result ->
-            if (cont.isActive) cont.resume(result)
+private fun parseStoredCredentials(
+    decrypted: String,
+    timeProvider: () -> Long
+): TmdbApiKeyProviderImpl.StoredCredentials? {
+    return try {
+        Json.decodeFromString<TmdbApiKeyProviderImpl.StoredCredentials>(decrypted)
+    } catch (_: Exception) {
+        val legacy = TmdbCredentials.parse(decrypted)
+        if (legacy.isNotEmpty) {
+            TmdbApiKeyProviderImpl.StoredCredentials(legacy.apiKey, legacy.readAccessToken, timeProvider())
+        } else {
+            null
         }
-        addOnFailureListener { exception ->
-            if (cont.isActive) cont.resumeWithException(exception)
-        }
+    }
+}
+
+private suspend fun <T> Task<T>.awaitTask(): T = suspendCancellableCoroutine { cont ->
+    addOnSuccessListener { result ->
+        if (cont.isActive) cont.resume(result)
+    }
+    addOnFailureListener { exception ->
+        if (cont.isActive) cont.resumeWithException(exception)
     }
 }
