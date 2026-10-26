@@ -19,7 +19,7 @@ if (!googleServicesFile.exists()) {
 }
 
 android {
-    namespace = "com.adauto.marvel"
+    namespace = "com.adauto.cinemahub"
     compileSdk = 35
 
     defaultConfig {

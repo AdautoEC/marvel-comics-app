@@ -5,7 +5,7 @@ plugins {
 }
 
 android {
-    namespace = "com.adauto.marvel.core.database"
+    namespace = "com.adauto.cinemahub.core.database"
     compileSdk = 35
 
     defaultConfig {

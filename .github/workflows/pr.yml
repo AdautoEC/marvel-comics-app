@@ -44,7 +44,7 @@ jobs:
           echo "tmdb.read.access.token=${TMDB_READ_ACCESS_TOKEN}" >> local.properties
 
       - name: Run checks, tests, coverage and benchmark assembly
-        run: ./gradlew detekt lintDebug testDebugUnitTest koverXmlReport koverHtmlReport :benchmark:assembleBenchmark assembleDebug assembleRelease --stacktrace
+        run: ./gradlew checkNoHardcodedStrings detekt lintDebug testDebugUnitTest koverXmlReport koverHtmlReport :benchmark:assembleBenchmark assembleDebug assembleRelease --stacktrace
 
       - name: Upload Kover Coverage Report
         uses: actions/upload-artifact@4cec3d8aa04e39d1a68397de0c4cd6fb9dce8ec1 # v4.6.1

@@ -7,7 +7,7 @@ plugins {
 }
 
 android {
-    namespace = "com.adauto.marvel.feature.movies"
+    namespace = "com.adauto.cinemahub.feature.movies"
     compileSdk = 35
 
     defaultConfig {

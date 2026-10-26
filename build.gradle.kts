@@ -79,3 +79,10 @@ subprojects {
         baseline.set(file("$projectDir/detekt-baseline.xml"))
     }
 }
+
+tasks.register<Exec>("checkNoHardcodedStrings") {
+    group = "verification"
+    description = "Ensures no hardcoded string literals exist in production Compose code"
+    workingDir = rootDir
+    commandLine("./ci/check_no_hardcoded_strings.sh")
+}
