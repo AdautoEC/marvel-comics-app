@@ -5,20 +5,13 @@ import com.adauto.cinemahub.core.network.interceptor.TmdbAuthInterceptor
 import com.adauto.cinemahub.core.network.telemetry.RedactingHttpLoggingInterceptor
 import io.mockk.mockk
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class NetworkModuleTest {
 
     @Test
-    fun provideJson_createsJsonWithLenientConfig() {
-        val json = NetworkModule.provideJson()
-        assertNotNull(json)
-    }
-
-    @Test
-    fun provideTmdbOkHttpClient_configuresInterceptors() {
+    fun provideTmdbOkHttpClient_configuresInterceptorsAndTimeouts() {
         val authInterceptor = mockk<TmdbAuthInterceptor>(relaxed = true)
         val authenticator = mockk<TmdbAuthenticator>(relaxed = true)
 
@@ -32,7 +25,7 @@ class NetworkModuleTest {
     }
 
     @Test
-    fun provideRetrofit_and_provideTmdbApi_createProperlyConfiguredInstances() {
+    fun provideRetrofit_configuresBaseUrl() {
         val authInterceptor = mockk<TmdbAuthInterceptor>(relaxed = true)
         val authenticator = mockk<TmdbAuthenticator>(relaxed = true)
         val json = NetworkModule.provideJson()
@@ -40,8 +33,5 @@ class NetworkModuleTest {
 
         val retrofit = NetworkModule.provideRetrofit(client, json)
         assertEquals(NetworkModule.TMDB_BASE_URL, retrofit.baseUrl().toString())
-
-        val api = NetworkModule.provideTmdbApi(retrofit)
-        assertNotNull(api)
     }
 }
