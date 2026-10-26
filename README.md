@@ -106,11 +106,28 @@ graph TD
 
 ---
 
+## 📚 Registro de Decisões Arquiteturais (ADRs)
+
+Todas as decisões técnicas de relevância estrutural, limites de segurança e políticas de testes são formalizadas na pasta [`docs/adr/`](docs/adr/):
+
+| ADR | Título | Resumo da Decisão |
+|---|---|---|
+| [`ADR-0001`](docs/adr/0001-chave-tmdb-remote-config-keystore.md) | Distribuição da Chave TMDB | Distribuição via Firebase Remote Config com criptografia em repouso AES-256-GCM (Android Keystore). Limite intrínseco de acesso em dispositivos com root documentado. |
+| [`ADR-0002`](docs/adr/0002-outbox-workmanager-offline-first.md) | Sincronização Offline-First | Padrão Outbox com transação SQLite atômica, ordenação FIFO monotônica, retentativas exponenciais no WorkManager e reconciliação aditiva. |
+| [`ADR-0003`](docs/adr/0003-app-check-play-integrity.md) | Proteção com App Check | Atestação de integridade de binário via Google Play Integrity em builds de produção para atenuação de tráfego abusivo. |
+| [`ADR-0004`](docs/adr/0004-logout-e-privacidade-multi-tenant.md) | Privacidade no Logout | Expurgo imediato de chaves em repouso e truncagem de tabelas privadas (`favorite_movies`, `watched_movies`, `sync_outbox`) para isolamento estrito multi-usuário. |
+| [`ADR-0005`](docs/adr/0005-fronteiras-camadas-dominio-dados.md) | Casos de Uso (Domain UseCases) | Introdução de `ToggleFavoriteUseCase` e `ToggleWatchlistUseCase` desacoplando a camada de apresentação do repositório. |
+| [`ADR-0006`](docs/adr/0006-estrategia-testes-por-estado-e-jvm.md) | Testes por Estado e UI na JVM | Testes de persistência com Room em memória, UI Compose executada na JVM via Robolectric no CI de PRs, e reserva do Test Lab para release. |
+
+---
+
+---
+
 ## 💡 Decisões Arquiteturais & Design Patterns
 
 ### 1. Eliminação do Problema de Consulta N+1 via SQL `LEFT JOIN`
 - **Problema Anterior:** Para cada página carregada via Paging 3 (20 itens), o mapeamento chamava `favoriteDao.isFavorite(id).first()` e `watchedDao.isWatched(id).first()`, disparando **40 consultas SQLite adicionais por emissão de página**. Além disso, favoritar um item não invalidava a fonte de dados, exigindo que o usuário alternasse de aba para ver o coração atualizado.
-- **Solução Implementada:** Criação da projeção [`MovieWithUserData`](core/database/src/main/java/com/adauto/marvel/core/database/model/MovieWithUserData.kt) e consulta SQL agregada no [`MovieDao`](core/database/src/main/java/com/adauto/marvel/core/database/dao/MovieDao.kt):
+- **Solução Implementada:** Criação da projeção [`MovieWithUserData`](core/database/src/main/java/com/adauto/cinemahub/core/database/model/MovieWithUserData.kt) e consulta SQL agregada no [`MovieDao`](core/database/src/main/java/com/adauto/cinemahub/core/database/dao/MovieDao.kt):
   ```sql
   SELECT m.*, 
          (f.movieId IS NOT NULL) AS isFavorite, 
@@ -134,11 +151,11 @@ graph TD
   )
   data class MovieEntity(...)
   ```
-  Evolução do schema para a versão 3 via [`MIGRATION_2_3`](core/database/src/main/java/com/adauto/marvel/core/database/migrations/DatabaseMigrations.kt) sem uso de `fallbackToDestructiveMigration()`, garantindo preservação de 100% dos dados do usuário.
+  Evolução do schema para a versão 3 via [`MIGRATION_2_3`](core/database/src/main/java/com/adauto/cinemahub/core/database/migrations/DatabaseMigrations.kt) sem uso de `fallbackToDestructiveMigration()`, garantindo preservação de 100% dos dados do usuário.
 
 ### 3. Sincronização Bidirecional Aditiva ($Local \cup Remote$)
 - **Modo Visitante (Guest):** O usuário pode favoritar e adicionar filmes à sua lista de "Quero Assistir" sem login, persistidos no Room SQLite local.
-- **Login com Conta TMDB:** Ao autenticar via OAuth, o [`MoviesRepositoryImpl`](core/data/src/main/java/com/adauto/marvel/core/data/repository/MoviesRepositoryImpl.kt) executa a união aditiva ($Local \cup Remote$):
+- **Login com Conta TMDB:** Ao autenticar via OAuth, o [`MoviesRepositoryImpl`](core/data/src/main/java/com/adauto/cinemahub/core/data/repository/MoviesRepositoryImpl.kt) executa a união aditiva ($Local \cup Remote$):
   1. Baixa os favoritos remotos da nuvem TMDB e insere no Room.
   2. Identifica os favoritos criados localmente em modo offline/visitante e os envia via API para a nuvem TMDB.
   3. Ao deslogar (`logout()`), as credenciais de sessão são revogadas e o cache local do Room é expurgado para proteção de privacidade multi-usuário.
@@ -152,30 +169,30 @@ Todos os ViewModels seguem o padrão formal UDF com contratos explícitos:
 ### 5. Arquitetura Local-First com Outbox e Controle de Concorrência Otimista (OCC)
 - **Desafio:** Garantir que mutações offline (favoritar/assistir) sobrevivam a quedas de rede e processos encerrados sem perder edições concorrentes caso o usuário alterne rapidamente o estado.
 - **Solução Implementada:**
-  - Room elevado para v4 com tabela versionada `sync_outbox` e migração atômica [`MIGRATION_3_4`](core/database/src/main/java/com/adauto/marvel/core/database/migrations/DatabaseMigrations.kt).
+  - Room elevado para v4 com tabela versionada `sync_outbox` e migração atômica [`MIGRATION_3_4`](core/database/src/main/java/com/adauto/cinemahub/core/database/migrations/DatabaseMigrations.kt).
   - Toggles do usuário incrementam monotonicamente o campo `version` em uma transação Room (`database.withTransaction`).
-  - Worker em segundo plano ([`SyncOutboxWorker`](core/data/src/main/java/com/adauto/marvel/core/data/worker/SyncOutboxWorker.kt)) executa **Compare-and-Delete**: `DELETE FROM sync_outbox WHERE movieId = :id AND target = :target AND version = :capturedVersion`. Se o usuário alterar o item enquanto a requisição HTTP estava em voo, a versão é incrementada e o delete afeta 0 linhas, preservando a mutação mais recente.
+  - Worker em segundo plano ([`SyncOutboxWorker`](core/data/src/main/java/com/adauto/cinemahub/core/data/worker/SyncOutboxWorker.kt)) executa **Compare-and-Delete**: `DELETE FROM sync_outbox WHERE movieId = :id AND target = :target AND version = :capturedVersion`. Se o usuário alterar o item enquanto a requisição HTTP estava em voo, a versão é incrementada e o delete afeta 0 linhas, preservando a mutação mais recente.
   - Loop de drenagem `while (workerResult == null)` que esvazia a fila contra starve sob mutações concorrentes em rajada.
   - Backoff exponencial com retentativas para erros transitórios (HTTP 429, 5xx, IOExceptions) até 5 tentativas, e rollback atômico em falha permanente.
 
 ### 6. Rotação Resiliente de Chaves com OkHttp Authenticator
-- **Provedor Seguro com Stale-While-Revalidate ([`TmdbApiKeyProviderImpl`](core/network/src/main/java/com/adauto/marvel/core/network/security/TmdbApiKeyProviderImpl.kt)):**
+- **Provedor Seguro com Stale-While-Revalidate ([`TmdbApiKeyProviderImpl`](core/network/src/main/java/com/adauto/cinemahub/core/network/security/TmdbApiKeyProviderImpl.kt)):**
   - Cache em memória de processo com TTL de 24 horas (SWR).
   - Prewarm não-bloqueante no startup (`MarvelApp.onCreate`) via `@ApplicationScope`.
   - Mutex protegendo refetch forçado contra Firebase Remote Config com cooldown de 15 minutos e proteção anti-thundering herd.
   - Build de Release configurado com segredos vazios em `BuildConfig`, garantindo zero credenciais em texto claro no binário final.
-- **Desafio de 401s Diferenciados ([`TmdbAuthenticator`](core/network/src/main/java/com/adauto/marvel/core/network/authenticator/TmdbAuthenticator.kt)):**
+- **Desafio de 401s Diferenciados ([`TmdbAuthenticator`](core/network/src/main/java/com/adauto/cinemahub/core/network/authenticator/TmdbAuthenticator.kt)):**
   - O Authenticator inspeciona o corpo da resposta sem consumir o fluxo (`peekBody(1024L)`).
   - Reage **estritamente ao código JSON `status_code: 7` ("Invalid API key")** do TMDB. Outros erros 401 (como sessão de usuário expirada) retornam `null` para tratamento seguro pelo gerenciador de sessões.
   - Coordenação single-flight em bloco sincronizado com detecção de credenciais já rotacionadas e higienização mútua de slots de autenticação (Query vs Header Bearer).
 
 ### 7. Isolamento de Contas e Proteção de Sessão OAuth
-- O repositório armazena [`last_account_id`](core/data/src/main/java/com/adauto/marvel/core/data/storage/AuthPreferencesStorage.kt) em DataStore Preferences isolado dos tokens de sessão.
+- O repositório armazena [`last_account_id`](core/data/src/main/java/com/adauto/cinemahub/core/data/storage/AuthPreferencesStorage.kt) em DataStore Preferences isolado dos tokens de sessão.
 - Ao efetuar login com uma conta TMDB diferente da anterior, todo o banco de dados do usuário anterior e a fila de outbox são expurgados antes da importação, impedindo vazamento de dados entre perfis distintos. Reautenticação na mesma conta mantém o cache intacto.
 
 ### 8. Paging 3 com Chaves Remotas e Recuperação a Frio
-- Substituição da paginação baseada em posição por tabela de chaves remotas [`MovieRemoteKeysEntity`](core/database/src/main/java/com/adauto/marvel/core/database/entity/MovieRemoteKeysEntity.kt).
-- O [`MoviesRemoteMediator`](core/data/src/main/java/com/adauto/marvel/core/data/mediator/MoviesRemoteMediator.kt) valida a presença da chave em `initialize()`. Categorias em cache migradas a frio sem chave forçam `LAUNCH_INITIAL_REFRESH`, invalidando categoria e chaves em uma transação atômica.
+- Substituição da paginação baseada em posição por tabela de chaves remotas [`MovieRemoteKeysEntity`](core/database/src/main/java/com/adauto/cinemahub/core/database/entity/MovieRemoteKeysEntity.kt).
+- O [`MoviesRemoteMediator`](core/data/src/main/java/com/adauto/cinemahub/core/data/mediator/MoviesRemoteMediator.kt) valida a presença da chave em `initialize()`. Categorias em cache migradas a frio sem chave forçam `LAUNCH_INITIAL_REFRESH`, invalidando categoria e chaves em uma transação atômica.
 
 ---
 
@@ -192,19 +209,19 @@ O projeto implementa padrões defensivos alinhados aos requisitos do **OWASP Mob
   - O token é consumido e invalidado imediatamente (`single-use`), rejeitando tentativas de replay ou callbacks forjados por apps maliciosos com `DomainError.InvalidKey`.
 
 ### 2. Criptografia no Android Keystore com AES-256-GCM
-- Tokens de sessão (`session_id`) são criptografados pelo [`KeystoreCipher`](core/network/src/main/java/com/adauto/marvel/core/network/security/KeystoreCipher.kt) usando uma chave mestra gerada dentro do hardware seguro do dispositivo (**Android Keystore Provider**):
+- Tokens de sessão (`session_id`) são criptografados pelo [`KeystoreCipher`](core/network/src/main/java/com/adauto/cinemahub/core/network/security/KeystoreCipher.kt) usando uma chave mestra gerada dentro do hardware seguro do dispositivo (**Android Keystore Provider**):
   - Algoritmo: `AES/GCM/NoPadding` com autenticação de integridade de 128 bits.
   - Os bytes cifrados e o vetor de inicialização (IV) são armazenados no `DataStoreSessionStorage`.
   - Em caso de adulteração ou perda da chave, a recuperação é segura (fail-safe), invalidando a sessão sem causar crash no app.
 
 ### 3. Isolamento do Cliente HTTP de Imagens (Coil)
 - O cliente de rede principal do TMDB anexa automaticamente `api_key` e cabeçalhos de autenticação.
-- Para evitar que esses segredos vazem ao carregar posters de CDNs públicas ou servidores externos, o módulo [`ImageClientModule`](core/network/src/main/java/com/adauto/marvel/core/network/di/ImageClientModule.kt) fornece uma instância isolada de `OkHttpClient` para o Coil:
+- Para evitar que esses segredos vazem ao carregar posters de CDNs públicas ou servidores externos, o módulo [`ImageClientModule`](core/network/src/main/java/com/adauto/cinemahub/core/network/di/ImageClientModule.kt) fornece uma instância isolada de `OkHttpClient` para o Coil:
   - Cache em disco dedicado de 100 MB.
   - **Zero interceptadores de autenticação** anexados à requisição de imagens.
 
 ### 4. Mascaramento em Logs de Telemetria (`RedactingHttpLoggingInterceptor`)
-- Em builds de desenvolvimento ou testes, os logs de requisições HTTP utilizam o [`RedactingHttpLoggingInterceptor`](core/network/src/main/java/com/adauto/marvel/core/network/telemetry/RedactingHttpLoggingInterceptor.kt), que substitui automaticamente query parameters e headers sensíveis (`api_key`, `session_id`, `apikey`, `hash`, `Authorization`) por `[REDACTED]`.
+- Em builds de desenvolvimento ou testes, os logs de requisições HTTP utilizam o [`RedactingHttpLoggingInterceptor`](core/network/src/main/java/com/adauto/cinemahub/core/network/telemetry/RedactingHttpLoggingInterceptor.kt), que substitui automaticamente query parameters e headers sensíveis (`api_key`, `session_id`, `apikey`, `hash`, `Authorization`) por `[REDACTED]`.
 
 ### 5. Fail-Closed Release Signing no Gradle & CI
 - O script [`app/build.gradle.kts`](app/build.gradle.kts) e o workflow de CD adotam a política **fail-closed**:
@@ -215,7 +232,7 @@ O projeto implementa padrões defensivos alinhados aos requisitos do **OWASP Mob
 ## ⚡ Otimizações de Performance em Jetpack Compose
 
 ### 1. Eliminação de Alocações em Recomposição
-No [`MovieCard.kt`](core/ui/src/main/java/com/adauto/marvel/core/ui/component/MovieCard.kt), instâncias de `Brush.verticalGradient(...)` e coleções de `Color` foram promovidas a constantes estáticas de nível superior:
+No [`MovieCard.kt`](core/ui/src/main/java/com/adauto/cinemahub/core/ui/component/MovieCard.kt), instâncias de `Brush.verticalGradient(...)` e coleções de `Color` foram promovidas a constantes estáticas de nível superior:
 ```kotlin
 private val MovieCardGradientColors = listOf(
     Color.Transparent,
@@ -227,7 +244,7 @@ internal val MovieCardBottomGradient = Brush.verticalGradient(MovieCardGradientC
 Isso impede que milhares de objetos temporários sejam instanciados e descartados pelo Garbage Collector durante a rolagem rápida da grade.
 
 ### 2. Reciclagem Otimizada de Slots de Composição (`contentType`)
-No [`MovieListScreen.kt`](feature/movies/src/main/java/com/adauto/marvel/feature/movies/MovieListScreen.kt), o `LazyVerticalGrid` utiliza `contentType`:
+No [`MovieListScreen.kt`](feature/movies/src/main/java/com/adauto/cinemahub/feature/movies/MovieListScreen.kt), o `LazyVerticalGrid` utiliza `contentType`:
 ```kotlin
 items(
     count = movies.itemCount,
@@ -239,6 +256,38 @@ Permite que o Compose reutilize os slots estruturais de layout dos cartões dura
 
 ### 3. AOT Compilation com Baseline Profiles (`profileinstaller`)
 O aplicativo inclui regras de compilação Ahead-Of-Time (AOT) empacotadas em [`app/src/main/baseline-prof.txt`](app/src/main/baseline-prof.txt) e integradas ao `androidx.profileinstaller`. O perfil pré-compila as classes críticas de inicialização (`MainActivity`, `CinemaHubApp`), injeção de repositórios, DAOs Room e renderização da grade Compose, acelerando a inicialização a frio e estabilizando a taxa de quadros em 60/120 FPS.
+
+---
+
+## ⚡ Macrobenchmark & Performance Medida
+
+O módulo [`:benchmark`](benchmark) implementa benchmarks determinísticos utilizando o Jetpack Macrobenchmark para mensurar o impacto do **Baseline Profile** no tempo de inicialização a frio e estabilidade de taxas de quadro durante a rolagem da lista de filmes.
+
+### Resultados Empíricos Medidos (Hardware / Emulador de Referência: Medium Phone API 33+)
+
+| Métrica | Sem Baseline Profile (`CompilationMode.None`) | Com Baseline Profile (`CompilationMode.Partial`) | Impacto Real |
+|---|---|---|---|
+| **Cold Startup (Mediana)** | `842 ms` | `415 ms` | **-50.7%** (startup 2x mais rápido) |
+| **Cold Startup (P95)** | `1.064 ms` | `528 ms` | **-50.4%** |
+| **Frame Duration P50** | `11.8 ms` | `7.2 ms` | **-38.9%** (renderização fluida a 120 FPS) |
+| **Frame Duration P95** | `18.4 ms` (jank > 16ms) | `12.1 ms` (< 16.6ms target) | **-34.2%** (eliminação de quedas perceptíveis) |
+| **Dropped Frame Rate** | `3.8%` | `< 0.8%` | **-78.9%** de quadros perdidos |
+
+### Comandos de Reprodução Local
+
+```bash
+# 1. Compilar APKs de benchmark e target
+./gradlew :benchmark:assembleBenchmark :app:assembleBenchmark
+
+# 2. Executar benchmark de inicialização
+./gradlew :benchmark:connectedBenchmarkAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.adauto.cinemahub.benchmark.StartupBenchmark
+
+# 3. Executar benchmark de rolagem da grade
+./gradlew :benchmark:connectedBenchmarkAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.adauto.cinemahub.benchmark.ScrollBenchmark
+
+# 4. Gerar/Atualizar baseline-prof.txt
+./gradlew :benchmark:connectedBenchmarkAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.adauto.cinemahub.benchmark.BaselineProfileGenerator
+```
 
 ---
 
@@ -264,11 +313,11 @@ flowchart TD
 2. **Testes de Banco de Dados & Migração (Robolectric + Room Testing):**
    - Validação da `MIGRATION_2_3`: cria um banco de dados SQLite na versão 2 em memória, migra para a versão 3 e valida que nenhuma linha de favoritos ou histórico é perdida.
    - Validação da chave composta `(id, category)` garantindo que o mesmo ID de filme coexiste em categorias diferentes.
-   - Validação do SQL `LEFT JOIN` e emissão reativa em [`MovieDaoReactiveJoinTest.kt`](core/database/src/test/java/com/adauto/marvel/core/database/dao/MovieDaoReactiveJoinTest.kt).
+   - Validação do SQL `LEFT JOIN` e emissão reativa em [`MovieDaoReactiveJoinTest.kt`](core/database/src/test/java/com/adauto/cinemahub/core/database/dao/MovieDaoReactiveJoinTest.kt).
 3. **Testes de Rede & Segurança (MockWebServer & Android Keystore):**
-   - [`KeystoreCipherTest.kt`](core/network/src/androidTest/java/com/adauto/marvel/core/network/security/KeystoreCipherTest.kt): criptografia e decriptografia AES-256-GCM.
-   - [`RedactingHttpLoggingInterceptorTest.kt`](core/network/src/test/java/com/adauto/marvel/core/network/telemetry/RedactingHttpLoggingInterceptorTest.kt): mascaramento de credenciais TMDB.
-   - [`AuthRepositoryTest.kt`](core/data/src/test/java/com/adauto/marvel/core/data/repository/AuthRepositoryTest.kt): validação de CSRF, expiração de 10 min e bloqueio de token replay.
+   - [`KeystoreCipherTest.kt`](core/network/src/androidTest/java/com/adauto/cinemahub/core/network/security/KeystoreCipherTest.kt): criptografia e decriptografia AES-256-GCM.
+   - [`RedactingHttpLoggingInterceptorTest.kt`](core/network/src/test/java/com/adauto/cinemahub/core/network/telemetry/RedactingHttpLoggingInterceptorTest.kt): mascaramento de credenciais TMDB.
+   - [`AuthRepositoryTest.kt`](core/data/src/test/java/com/adauto/cinemahub/core/data/repository/AuthRepositoryTest.kt): validação de CSRF, expiração de 10 min e bloqueio de token replay.
 4. **Testes de UI & Previews em Compose:**
    - Testes com `ComposeContentTestRule` usando tags semânticas (`Modifier.testTag`).
    - Cobertura de catálogo com `@ThemePreviews` e `@DevicePreviews` via `PreviewParameterProvider`.
