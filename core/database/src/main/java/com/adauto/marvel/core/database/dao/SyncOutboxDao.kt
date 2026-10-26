@@ -22,7 +22,7 @@ interface SyncOutboxDao {
     )
     suspend fun updateFailure(movieId: Int, target: String, version: Int, error: String?): Int
 
-    @Query("SELECT * FROM sync_outbox ORDER BY version ASC")
+    @Query("SELECT * FROM sync_outbox ORDER BY createdAt ASC, version ASC")
     suspend fun getAllPending(): List<SyncOutboxEntity>
 
     @Query("SELECT movieId FROM sync_outbox WHERE target = :target")
