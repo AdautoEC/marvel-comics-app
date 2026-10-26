@@ -25,7 +25,6 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import com.adauto.cinemahub.core.designsystem.theme.CinemaHubColors
 import com.adauto.cinemahub.core.ui.R
 import com.adauto.cinemahub.core.ui.util.titleRes
 import com.adauto.cinemahub.feature.movies.MovieListAction
@@ -66,7 +65,7 @@ private fun SearchTopBar(
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                     contentDescription = stringResource(R.string.cd_search_close),
-                    tint = CinemaHubColors.TextPrimary
+                    tint = MaterialTheme.colorScheme.onSurface
                 )
             }
         },
@@ -86,13 +85,13 @@ private fun SearchTopBar(
                     Icon(
                         imageVector = Icons.Default.Close,
                         contentDescription = stringResource(R.string.cd_search_clear),
-                        tint = CinemaHubColors.TextSecondary
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
         },
         colors = TopAppBarDefaults.topAppBarColors(
-            containerColor = CinemaHubColors.DarkBackground
+            containerColor = MaterialTheme.colorScheme.background
         )
     )
 }
@@ -104,9 +103,9 @@ private fun searchTextFieldColors() = TextFieldDefaults.colors(
     disabledContainerColor = Color.Transparent,
     focusedIndicatorColor = Color.Transparent,
     unfocusedIndicatorColor = Color.Transparent,
-    cursorColor = CinemaHubColors.CinemaHubRed,
-    focusedTextColor = CinemaHubColors.TextPrimary,
-    unfocusedTextColor = CinemaHubColors.TextPrimary
+    cursorColor = MaterialTheme.colorScheme.primary,
+    focusedTextColor = MaterialTheme.colorScheme.onSurface,
+    unfocusedTextColor = MaterialTheme.colorScheme.onSurface
 )
 
 @Composable
@@ -125,7 +124,7 @@ private fun SearchTextField(
                     R.string.search_placeholder,
                     stringResource(uiState.selectedCategory.titleRes)
                 ),
-                color = CinemaHubColors.TextSecondary,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 style = MaterialTheme.typography.bodyMedium
             )
         },
@@ -154,7 +153,7 @@ private fun StandardTopBar(
                 style = MaterialTheme.typography.titleLarge.copy(
                     fontWeight = FontWeight.Black
                 ),
-                color = CinemaHubColors.CinemaHubRed,
+                color = MaterialTheme.colorScheme.primary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
@@ -167,7 +166,7 @@ private fun StandardTopBar(
                 Icon(
                     imageVector = Icons.Default.Search,
                     contentDescription = stringResource(R.string.cd_search_open),
-                    tint = CinemaHubColors.TextPrimary
+                    tint = MaterialTheme.colorScheme.onSurface
                 )
             }
             UserSessionPill(
@@ -177,7 +176,7 @@ private fun StandardTopBar(
             )
         },
         colors = TopAppBarDefaults.topAppBarColors(
-            containerColor = CinemaHubColors.DarkBackground
+            containerColor = MaterialTheme.colorScheme.background
         )
     )
 }

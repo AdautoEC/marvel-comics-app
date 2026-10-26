@@ -37,7 +37,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.adauto.cinemahub.core.designsystem.preview.DevicePreviews
 import com.adauto.cinemahub.core.designsystem.preview.ThemePreviews
-import com.adauto.cinemahub.core.designsystem.theme.CinemaHubColors
 import com.adauto.cinemahub.core.designsystem.theme.CinemaHubTheme
 import com.adauto.cinemahub.core.model.SessionState
 import com.adauto.cinemahub.core.ui.R
@@ -57,8 +56,8 @@ fun UserSessionPill(
                     .clip(RoundedCornerShape(20.dp))
                     .testTag("UserSessionPill_Guest"),
                 shape = RoundedCornerShape(20.dp),
-                color = CinemaHubColors.SurfaceDark,
-                border = BorderStroke(1.dp, CinemaHubColors.SurfaceCard)
+                color = MaterialTheme.colorScheme.surface,
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceVariant)
             ) {
                 Row(
                     modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
@@ -67,28 +66,28 @@ fun UserSessionPill(
                     Icon(
                         imageVector = Icons.Default.Person,
                         contentDescription = null,
-                        tint = CinemaHubColors.TextSecondary,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(16.dp)
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
                         text = stringResource(R.string.session_guest),
                         style = MaterialTheme.typography.labelMedium,
-                        color = CinemaHubColors.TextSecondary
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Box(
                         modifier = Modifier
                             .height(14.dp)
                             .width(1.dp)
-                            .background(CinemaHubColors.SurfaceCard)
+                            .background(MaterialTheme.colorScheme.surfaceVariant)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     val connectLabel = stringResource(R.string.session_connect_label)
                     Text(
                         text = stringResource(R.string.session_connect),
                         style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
-                        color = CinemaHubColors.CinemaHubRed,
+                        color = MaterialTheme.colorScheme.primary,
                         modifier = Modifier
                             .clip(RoundedCornerShape(4.dp))
                             .clickable(
@@ -116,8 +115,8 @@ fun UserSessionPill(
                         )
                         .testTag("UserSessionPill_Authenticated"),
                     shape = RoundedCornerShape(20.dp),
-                    color = CinemaHubColors.SurfaceDark,
-                    border = BorderStroke(1.dp, CinemaHubColors.SurfaceCard)
+                    color = MaterialTheme.colorScheme.surface,
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.surfaceVariant)
                 ) {
                     Row(
                         modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
@@ -139,7 +138,7 @@ fun UserSessionPill(
                             Icon(
                                 imageVector = Icons.Default.Person,
                                 contentDescription = null,
-                                tint = CinemaHubColors.CinemaHubRed,
+                                tint = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.size(16.dp)
                             )
                         }
@@ -147,13 +146,13 @@ fun UserSessionPill(
                         Text(
                             text = "@${sessionState.username}",
                             style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
-                            color = CinemaHubColors.TextPrimary
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                         Spacer(modifier = Modifier.width(2.dp))
                         Icon(
                             imageVector = Icons.Default.ArrowDropDown,
                             contentDescription = null,
-                            tint = CinemaHubColors.TextSecondary,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(18.dp)
                         )
                     }
@@ -163,14 +162,14 @@ fun UserSessionPill(
                     expanded = menuExpanded,
                     onDismissRequest = { menuExpanded = false },
                     modifier = Modifier
-                        .background(CinemaHubColors.SurfaceDark)
+                        .background(MaterialTheme.colorScheme.surface)
                         .testTag("UserSessionMenu")
                 ) {
                     DropdownMenuItem(
                         text = {
                             Text(
                                 text = stringResource(R.string.session_logout),
-                                color = CinemaHubColors.CinemaHubRed,
+                                color = MaterialTheme.colorScheme.primary,
                                 fontWeight = FontWeight.SemiBold
                             )
                         },
@@ -191,7 +190,7 @@ fun UserSessionPill(
 @Composable
 private fun UserSessionPillGuestPreview() {
     CinemaHubTheme {
-        Box(modifier = Modifier.padding(16.dp)) {
+        Box(modifier = Modifier.padding(CinemaHubTheme.spacing.medium)) {
             UserSessionPill(
                 sessionState = SessionState.Guest,
                 onConnectClicked = {},
@@ -206,7 +205,7 @@ private fun UserSessionPillGuestPreview() {
 @Composable
 private fun UserSessionPillAuthenticatedPreview() {
     CinemaHubTheme {
-        Box(modifier = Modifier.padding(16.dp)) {
+        Box(modifier = Modifier.padding(CinemaHubTheme.spacing.medium)) {
             UserSessionPill(
                 sessionState = SessionState.Authenticated(
                     accountId = 12345,

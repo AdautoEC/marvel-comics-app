@@ -6,6 +6,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -20,7 +21,6 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.adauto.cinemahub.core.designsystem.preview.ThemePreviews
-import com.adauto.cinemahub.core.designsystem.theme.CinemaHubColors
 import com.adauto.cinemahub.core.designsystem.theme.CinemaHubTheme
 import com.adauto.cinemahub.core.ui.R
 
@@ -40,19 +40,19 @@ fun MovieCover(
     val isInspectionMode = LocalInspectionMode.current
 
     Box(
-        modifier = modifier.background(CinemaHubColors.SurfaceDark),
+        modifier = modifier.background(MaterialTheme.colorScheme.surface),
         contentAlignment = Alignment.Center
     ) {
         if (isInspectionMode) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(CinemaHubColors.SurfaceCard),
+                    .background(MaterialTheme.colorScheme.surfaceVariant),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = stringResource(R.string.poster_preview),
-                    color = CinemaHubColors.TextSecondary,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Bold
                 )
