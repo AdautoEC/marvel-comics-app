@@ -27,6 +27,7 @@ object DatabaseModule {
     fun provideCinemaHubDatabase(
         @ApplicationContext context: Context
     ): CinemaHubDatabase {
+        migrateLegacyDatabaseFileIfNeeded(context)
         return Room.databaseBuilder(
             context,
             CinemaHubDatabase::class.java,
@@ -35,6 +36,22 @@ object DatabaseModule {
             .addMigrations(MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
             .fallbackToDestructiveMigrationFrom(1)
             .build()
+    }
+
+    private fun migrateLegacyDatabaseFileIfNeeded(context: Context) {
+        val oldDb = context.getDatabasePath("marvel.db")
+        val newDb = context.getDatabasePath("cinemahub.db")
+        if (oldDb.exists() && !newDb.exists()) {
+            runCatching {
+                oldDb.copyTo(newDb)
+                val oldWal = context.getDatabasePath("marvel.db-wal")
+                val newWal = context.getDatabasePath("cinemahub.db-wal")
+                if (oldWal.exists()) oldWal.copyTo(newWal)
+                val oldShm = context.getDatabasePath("marvel.db-shm")
+                val newShm = context.getDatabasePath("cinemahub.db-shm")
+                if (oldShm.exists()) oldShm.copyTo(newShm)
+            }
+        }
     }
 
     @Provides
