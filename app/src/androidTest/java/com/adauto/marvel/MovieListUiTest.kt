@@ -19,6 +19,7 @@ import androidx.compose.ui.test.performTextReplacement
 import androidx.paging.LoadState
 import androidx.paging.LoadStates
 import androidx.paging.PagingData
+import androidx.paging.compose.collectAsLazyPagingItems
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.adauto.marvel.core.model.MovieCategory
 import com.adauto.marvel.core.model.MovieSummary
@@ -52,10 +53,11 @@ class MovieListUiTest {
     @Test
     fun movieGrid_scrollDown_displaysSubsequentMovies() {
         composeTestRule.setContent {
-            val pagingFlow = remember { flowOf(PagingData.from(sampleMovies)) }
+            val movies = remember { flowOf(PagingData.from(sampleMovies)) }.collectAsLazyPagingItems()
 
             MovieListScreen(
-                uiState = MovieListUiState(movies = pagingFlow),
+                uiState = MovieListUiState(),
+                movies = movies,
                 onAction = {}
             )
         }
@@ -77,14 +79,14 @@ class MovieListUiTest {
 
         composeTestRule.setContent {
             var selectedCategory by remember { mutableStateOf(MovieCategory.POPULAR) }
-            val pagingFlow = remember { flowOf(PagingData.from(sampleMovies)) }
+            val movies = remember { flowOf(PagingData.from(sampleMovies)) }.collectAsLazyPagingItems()
 
             MovieListScreen(
                 uiState = MovieListUiState(
-                    movies = pagingFlow,
                     sessionState = SessionState.Guest,
                     selectedCategory = selectedCategory
                 ),
+                movies = movies,
                 onAction = { action ->
                     dispatchedAction = action
                     if (action is MovieListAction.CategorySelected) {
@@ -125,13 +127,13 @@ class MovieListUiTest {
         var connectClicked = false
 
         composeTestRule.setContent {
-            val pagingFlow = remember { flowOf(PagingData.from(sampleMovies)) }
+            val movies = remember { flowOf(PagingData.from(sampleMovies)) }.collectAsLazyPagingItems()
 
             MovieListScreen(
                 uiState = MovieListUiState(
-                    movies = pagingFlow,
                     sessionState = SessionState.Guest
                 ),
+                movies = movies,
                 onAction = { action ->
                     if (action is MovieListAction.ConnectTmdbClicked) {
                         connectClicked = true
@@ -154,14 +156,14 @@ class MovieListUiTest {
         var connectClicked = false
 
         composeTestRule.setContent {
-            val pagingFlow = remember { flowOf(PagingData.from(sampleMovies)) }
+            val movies = remember { flowOf(PagingData.from(sampleMovies)) }.collectAsLazyPagingItems()
 
             MovieListScreen(
                 uiState = MovieListUiState(
-                    movies = pagingFlow,
                     sessionState = SessionState.Guest,
                     selectedCategory = MovieCategory.FAVORITES
                 ),
+                movies = movies,
                 onAction = { action ->
                     if (action is MovieListAction.ConnectTmdbClicked) {
                         connectClicked = true
@@ -181,13 +183,13 @@ class MovieListUiTest {
         var actionDispatched: MovieListAction? = null
 
         composeTestRule.setContent {
-            val pagingFlow = remember { flowOf(PagingData.from(sampleMovies)) }
+            val movies = remember { flowOf(PagingData.from(sampleMovies)) }.collectAsLazyPagingItems()
 
             MovieListScreen(
                 uiState = MovieListUiState(
-                    movies = pagingFlow,
                     isSearchActive = false
                 ),
+                movies = movies,
                 onAction = { actionDispatched = it }
             )
         }
@@ -204,14 +206,14 @@ class MovieListUiTest {
         var actionDispatched: MovieListAction? = null
 
         composeTestRule.setContent {
-            val pagingFlow = remember { flowOf(PagingData.from(sampleMovies)) }
+            val movies = remember { flowOf(PagingData.from(sampleMovies)) }.collectAsLazyPagingItems()
 
             MovieListScreen(
                 uiState = MovieListUiState(
-                    movies = pagingFlow,
                     isSearchActive = true,
                     searchQuery = "Matrix"
                 ),
+                movies = movies,
                 onAction = { actionDispatched = it }
             )
         }
@@ -228,14 +230,14 @@ class MovieListUiTest {
         var actionDispatched: MovieListAction? = null
 
         composeTestRule.setContent {
-            val pagingFlow = remember { flowOf(PagingData.from(sampleMovies)) }
+            val movies = remember { flowOf(PagingData.from(sampleMovies)) }.collectAsLazyPagingItems()
 
             MovieListScreen(
                 uiState = MovieListUiState(
-                    movies = pagingFlow,
                     isSearchActive = true,
                     searchQuery = "Matrix"
                 ),
+                movies = movies,
                 onAction = { actionDispatched = it }
             )
         }
@@ -259,15 +261,15 @@ class MovieListUiTest {
         )
 
         composeTestRule.setContent {
-            val pagingFlow = remember { flowOf(emptyPagingData) }
+            val movies = remember { flowOf(emptyPagingData) }.collectAsLazyPagingItems()
 
             MovieListScreen(
                 uiState = MovieListUiState(
-                    movies = pagingFlow,
                     isSearchActive = true,
                     searchQuery = "Inexistente",
                     selectedCategory = MovieCategory.POPULAR
                 ),
+                movies = movies,
                 onAction = {}
             )
         }

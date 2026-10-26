@@ -22,6 +22,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.paging.LoadState
+import androidx.paging.LoadStates
+import androidx.paging.PagingData
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItems
 import com.adauto.marvel.core.designsystem.preview.DevicePreviews
@@ -43,6 +45,7 @@ import com.adauto.marvel.feature.movies.component.MovieListShimmerGrid
 import com.adauto.marvel.feature.movies.component.MovieListTopBar
 import com.adauto.marvel.feature.movies.preview.MovieListPreviewState
 import com.adauto.marvel.feature.movies.preview.MovieListUiStatePreviewParameterProvider
+import kotlinx.coroutines.flow.flowOf
 
 /**
  * Cinema Hub Movies List Screen rendering a 2-column grid of movies with UDF architecture,
@@ -52,10 +55,10 @@ import com.adauto.marvel.feature.movies.preview.MovieListUiStatePreviewParameter
 @Composable
 fun MovieListScreen(
     uiState: MovieListUiState,
+    movies: LazyPagingItems<MovieSummary>,
     onAction: (MovieListAction) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val movies = uiState.movies.collectAsLazyPagingItems()
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
 
@@ -148,7 +151,6 @@ private fun MovieListContentBody(
             }
             else -> {
                 MovieListGrid(
-                    uiState = uiState,
                     movies = movies,
                     gridState = gridState,
                     onAction = onAction,
@@ -194,15 +196,34 @@ private fun MovieListScreenPreview(
 internal fun MovieListContentPreview(
     previewState: MovieListPreviewState
 ) {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .testTag("PreviewContent")
-    ) {
-        Text(
-            text = "Cinema Hub Preview (${previewState.uiState.selectedCategory.displayName})",
-            color = MarvelColors.TextPrimary,
-            modifier = Modifier.align(Alignment.Center)
+    val pagingData = remember(previewState) {
+        val loadStates = when {
+            previewState.isLoading -> LoadStates(
+                refresh = LoadState.Loading,
+                prepend = LoadState.NotLoading(endOfPaginationReached = false),
+                append = LoadState.NotLoading(endOfPaginationReached = false)
+            )
+            previewState.errorMessage != null -> LoadStates(
+                refresh = LoadState.Error(RuntimeException(previewState.errorMessage)),
+                prepend = LoadState.NotLoading(endOfPaginationReached = false),
+                append = LoadState.NotLoading(endOfPaginationReached = false)
+            )
+            else -> LoadStates(
+                refresh = LoadState.NotLoading(endOfPaginationReached = true),
+                prepend = LoadState.NotLoading(endOfPaginationReached = true),
+                append = LoadState.NotLoading(endOfPaginationReached = true)
+            )
+        }
+        PagingData.from(
+            data = previewState.movies,
+            sourceLoadStates = loadStates
         )
     }
+    val movies = flowOf(pagingData).collectAsLazyPagingItems()
+
+    MovieListContent(
+        uiState = previewState.uiState,
+        movies = movies,
+        onAction = {}
+    )
 }

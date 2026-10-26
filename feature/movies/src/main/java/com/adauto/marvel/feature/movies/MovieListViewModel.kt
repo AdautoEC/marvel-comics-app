@@ -79,7 +79,7 @@ class MovieListViewModel @Inject constructor(
 
     val movies: Flow<PagingData<MovieSummary>> = moviesFlow.cachedIn(viewModelScope)
 
-    private val _uiState = MutableStateFlow(MovieListUiState(movies = movies))
+    private val _uiState = MutableStateFlow(MovieListUiState())
     val uiState: StateFlow<MovieListUiState> = _uiState.asStateFlow()
 
     private val _effects = Channel<MovieListEffect>(Channel.BUFFERED)

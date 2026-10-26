@@ -11,6 +11,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
+import androidx.paging.compose.collectAsLazyPagingItems
 import com.adauto.marvel.core.ui.util.CustomTabLauncher
 
 /**
@@ -25,6 +26,7 @@ fun MovieListRoute(
     viewModel: MovieListViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val movies = viewModel.movies.collectAsLazyPagingItems()
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
 
@@ -44,6 +46,7 @@ fun MovieListRoute(
 
     MovieListScreen(
         uiState = uiState,
+        movies = movies,
         onAction = viewModel::onAction,
         modifier = modifier
     )

@@ -34,9 +34,10 @@ class MovieListScreenTest {
         val restorationTester = StateRestorationTester(composeTestRule)
 
         restorationTester.setContent {
-            val pagingFlow = remember { flowOf(PagingData.from(sampleMovies)) }
+            val movies = remember { flowOf(PagingData.from(sampleMovies)) }.collectAsLazyPagingItems()
             MovieListScreen(
-                uiState = MovieListUiState(movies = pagingFlow),
+                uiState = MovieListUiState(),
+                movies = movies,
                 onAction = {}
             )
         }
@@ -51,8 +52,10 @@ class MovieListScreenTest {
     @Test
     fun movieListScreen_displaysOfflineBannerWhenOffline() {
         composeTestRule.setContent {
+            val movies = remember { flowOf(PagingData.empty<MovieSummary>()) }.collectAsLazyPagingItems()
             MovieListScreen(
                 uiState = MovieListUiState(isOffline = true),
+                movies = movies,
                 onAction = {}
             )
         }
@@ -63,8 +66,10 @@ class MovieListScreenTest {
     @Test
     fun movieListScreen_displaysAttributionFooter() {
         composeTestRule.setContent {
+            val movies = remember { flowOf(PagingData.from(sampleMovies)) }.collectAsLazyPagingItems()
             MovieListScreen(
-                uiState = MovieListUiState(attribution = "Este produto usa a API TMDB, mas não é endossado ou certificado pelo TMDB."),
+                uiState = MovieListUiState(),
+                movies = movies,
                 onAction = {}
             )
         }
@@ -77,9 +82,10 @@ class MovieListScreenTest {
         var clickedId: Int? = null
 
         composeTestRule.setContent {
-            val pagingFlow = remember { flowOf(PagingData.from(sampleMovies)) }
+            val movies = remember { flowOf(PagingData.from(sampleMovies)) }.collectAsLazyPagingItems()
             MovieListScreen(
-                uiState = MovieListUiState(movies = pagingFlow),
+                uiState = MovieListUiState(),
+                movies = movies,
                 onAction = { action ->
                     if (action is MovieListAction.MovieClicked) {
                         clickedId = action.id
@@ -110,8 +116,10 @@ class MovieListScreenTest {
         }
 
         composeTestRule.setContent {
+            val movies = pager.flow.collectAsLazyPagingItems()
             MovieListScreen(
-                uiState = MovieListUiState(movies = pager.flow),
+                uiState = MovieListUiState(),
+                movies = movies,
                 onAction = {}
             )
         }
