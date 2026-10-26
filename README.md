@@ -93,9 +93,9 @@ graph TD
 
 | Módulo | Tipo | Responsabilidade Principal |
 |---|---|---|
-| [`:app`](app) | Android App | Ponto de entrada (`CinemaApp`), Grafo de Injeção de Dependência Hilt raiz, roteamento (`CinemaNavHost`), interceptação de Deep Links (`cinemahub://tmdb-callback`), políticas de assinatura e minificação R8. |
+| [`:app`](app) | Android App | Ponto de entrada (`CinemaHubApp`), Grafo de Injeção de Dependência Hilt raiz, roteamento (`CinemaHubNavHost`), interceptação de Deep Links (`cinemahub://tmdb-callback`), políticas de assinatura e minificação R8. |
 | [`:core:model`](core/model) | Pure Kotlin/Android | Modelos puros de domínio (`MovieSummary`, `MovieDetail`, `AccountProfile`, `SessionState`, `Outcome<T>`, `DomainError`). Zero dependências de UI ou bancos de dados para máxima portabilidade. |
-| [`:core:database`](core/database) | Android Library | Camada de persistência local com Room SQLite. Entidades (`MovieEntity`, `FavoriteMovieEntity`, `WatchedMovieEntity`), DAOs com projeções `MovieWithUserData`, migrações determinísticas (`MIGRATION_2_3`) com exportação de schema. |
+| [`:core:database`](core/database) | Android Library | Camada de persistência local com Room SQLite. Entidades (`MovieEntity`, `FavoriteMovieEntity`, `WatchlistMovieEntity`), DAOs com projeções `MovieWithUserData`, migrações determinísticas (`MIGRATION_2_3`) com exportação de schema. |
 | [`:core:network`](core/network) | Android Library | Camada de comunicação remota. Retrofit 2, Sandwich `ApiResponse`, interceptadores (`TmdbAuthInterceptor`, `RedactingHttpLoggingInterceptor`), Android Keystore com AES-256-GCM para tokens de sessão, e isolamento de clientes HTTP para imagens. |
 | [`:core:data`](core/data) | Android Library | Repositórios (`MoviesRepositoryImpl`, `AuthRepositoryImpl`), Paging 3 `RemoteMediator`, monitoramento de conectividade em tempo real (`ConnectivityManagerNetworkMonitor`), sincronização bidirecional aditiva ($Local \cup Remote$). |
 | [`:core:ui`](core/ui) | Android Library | Componentes Compose reutilizáveis (`MovieCard`, `OfflineBanner`, `ErrorState`, `MovieCover`, `Shimmer`), otimizações de recomposição, utilitários de Custom Tabs e extensões de internacionalização (`MovieCategoryExtensions`). |
@@ -178,7 +178,7 @@ Todos os ViewModels seguem o padrão formal UDF com contratos explícitos:
 ### 6. Rotação Resiliente de Chaves com OkHttp Authenticator
 - **Provedor Seguro com Stale-While-Revalidate ([`TmdbApiKeyProviderImpl`](core/network/src/main/java/com/adauto/cinemahub/core/network/security/TmdbApiKeyProviderImpl.kt)):**
   - Cache em memória de processo com TTL de 24 horas (SWR).
-  - Prewarm não-bloqueante no startup (`MarvelApp.onCreate`) via `@ApplicationScope`.
+  - Prewarm não-bloqueante no startup (`CinemaHubApp.onCreate`) via `@ApplicationScope`.
   - Mutex protegendo refetch forçado contra Firebase Remote Config com cooldown de 15 minutos e proteção anti-thundering herd.
   - Build de Release configurado com segredos vazios em `BuildConfig`, garantindo zero credenciais em texto claro no binário final.
 - **Desafio de 401s Diferenciados ([`TmdbAuthenticator`](core/network/src/main/java/com/adauto/cinemahub/core/network/authenticator/TmdbAuthenticator.kt)):**
@@ -232,14 +232,18 @@ O projeto implementa padrões defensivos alinhados aos requisitos do **OWASP Mob
 ## ⚡ Otimizações de Performance em Jetpack Compose
 
 ### 1. Eliminação de Alocações em Recomposição
-No [`MovieCard.kt`](core/ui/src/main/java/com/adauto/cinemahub/core/ui/component/MovieCard.kt), instâncias de `Brush.verticalGradient(...)` e coleções de `Color` foram promovidas a constantes estáticas de nível superior:
+No [`MovieCard.kt`](core/ui/src/main/java/com/adauto/cinemahub/core/ui/component/MovieCard.kt), a criação do `Brush.verticalGradient(...)` é memorizada atrelada à cor semântica do tema (`backgroundColor = MaterialTheme.colorScheme.background`):
 ```kotlin
-private val MovieCardGradientColors = listOf(
-    Color.Transparent,
-    MarvelColors.DarkBackground.copy(alpha = 0.75f),
-    MarvelColors.DarkBackground.copy(alpha = 0.98f)
-)
-internal val MovieCardBottomGradient = Brush.verticalGradient(MovieCardGradientColors)
+val backgroundColor = MaterialTheme.colorScheme.background
+val bottomGradient = remember(backgroundColor) {
+    Brush.verticalGradient(
+        colors = listOf(
+            Color.Transparent,
+            backgroundColor.copy(alpha = 0.75f),
+            backgroundColor.copy(alpha = 0.98f)
+        )
+    )
+}
 ```
 Isso impede que milhares de objetos temporários sejam instanciados e descartados pelo Garbage Collector durante a rolagem rápida da grade.
 
