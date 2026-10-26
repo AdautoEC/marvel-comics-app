@@ -54,7 +54,8 @@ class MovieListViewModelAuthTest {
 
     @Test
     fun clicking_connect_triggers_OpenAuthUrl_effect_with_request_token() = runTest {
-        coEvery { authRepository.createRequestToken() } returns Outcome.Success("tok_456")
+        val expectedUrl = "https://www.themoviedb.org/authenticate/tok_456?redirect_to=cinemahub%3A%2F%2Fauth"
+        coEvery { authRepository.buildAuthorizationUrl() } returns Outcome.Success(expectedUrl)
 
         val viewModel = createViewModel()
 
@@ -64,10 +65,7 @@ class MovieListViewModelAuthTest {
 
             val effect = awaitItem()
             assertThat(effect).isInstanceOf(MovieListEffect.LaunchTmdbAuth::class.java)
-            assertThat((effect as MovieListEffect.LaunchTmdbAuth).authUrl)
-                .contains("themoviedb.org/authenticate/tok_456")
-            assertThat(effect.authUrl)
-                .contains("redirect_to=cinemahub://tmdb-callback")
+            assertThat((effect as MovieListEffect.LaunchTmdbAuth).authUrl).isEqualTo(expectedUrl)
         }
     }
 

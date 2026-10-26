@@ -30,7 +30,10 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withTimeoutOrNull
 import javax.inject.Inject
 import javax.inject.Singleton
+import okhttp3.HttpUrl
 
+private const val TMDB_AUTH_HOST = "www.themoviedb.org"
+private const val TMDB_REDIRECT_URI = "cinemahub://auth"
 private const val TMDB_AVATAR_BASE_URL = "https://image.tmdb.org/t/p/w200"
 private const val TOKEN_TTL_MS = 10 * 60 * 1000L // 10 minutes
 private const val LOGOUT_FLUSH_TIMEOUT_MS = 3_000L
@@ -69,6 +72,23 @@ class AuthRepositoryImpl(
     )
 
     override val sessionState: StateFlow<SessionState> = sessionManager.sessionState
+
+    override suspend fun buildAuthorizationUrl(): Outcome<String> {
+        return when (val tokenOutcome = createRequestToken()) {
+            is Outcome.Success -> {
+                val url = HttpUrl.Builder()
+                    .scheme("https")
+                    .host(TMDB_AUTH_HOST)
+                    .addPathSegment("authenticate")
+                    .addPathSegment(tokenOutcome.value)
+                    .addQueryParameter("redirect_to", TMDB_REDIRECT_URI)
+                    .build()
+                    .toString()
+                Outcome.Success(url)
+            }
+            is Outcome.Failure -> tokenOutcome
+        }
+    }
 
     override suspend fun createRequestToken(): Outcome<String> {
         return when (val response = api.createRequestToken()) {

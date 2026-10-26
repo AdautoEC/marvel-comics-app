@@ -363,7 +363,7 @@ class MovieListViewModelTest {
 
     @Test
     fun connectTmdbClicked_whenFailure_emitsShowMessageEffect() = runTest {
-        coEvery { authRepository.createRequestToken() } returns Outcome.Failure(DomainError.NoConnection)
+        coEvery { authRepository.buildAuthorizationUrl() } returns Outcome.Failure(DomainError.NoConnection)
         val viewModel = createViewModel()
 
         viewModel.effects.test {

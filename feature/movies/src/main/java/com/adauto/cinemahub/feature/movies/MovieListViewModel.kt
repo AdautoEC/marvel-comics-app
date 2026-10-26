@@ -33,8 +33,6 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-private const val TMDB_AUTH_BASE_URL = "https://www.themoviedb.org/authenticate"
-private const val TMDB_REDIRECT_URI = "cinemahub://tmdb-callback"
 private const val SEARCH_DEBOUNCE_MILLIS = 300L
 
 @HiltViewModel
@@ -160,10 +158,9 @@ class MovieListViewModel @Inject constructor(
             }
             is MovieListAction.ConnectTmdbClicked -> {
                 viewModelScope.launch {
-                    when (val result = authRepository.createRequestToken()) {
+                    when (val result = authRepository.buildAuthorizationUrl()) {
                         is Outcome.Success -> {
-                            val url = "$TMDB_AUTH_BASE_URL/${result.value}?redirect_to=$TMDB_REDIRECT_URI"
-                            _effects.send(MovieListEffect.LaunchTmdbAuth(url))
+                            _effects.send(MovieListEffect.LaunchTmdbAuth(result.value))
                         }
                         is Outcome.Failure -> {
                             val errorMessage = UiText.Resource(R.string.error_tmdb_connect_failed)
