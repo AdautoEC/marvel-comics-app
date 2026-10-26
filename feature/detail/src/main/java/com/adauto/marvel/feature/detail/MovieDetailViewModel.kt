@@ -8,6 +8,7 @@ import com.adauto.marvel.core.model.DomainError
 import com.adauto.marvel.core.model.MovieSummary
 import com.adauto.marvel.core.model.Outcome
 import com.adauto.marvel.core.model.UiText
+import com.adauto.marvel.core.ui.R
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
@@ -109,14 +110,14 @@ class MovieDetailViewModel @Inject constructor(
 
     private fun mapDomainErrorToUiText(error: DomainError): UiText {
         return when (error) {
-            is DomainError.NoConnection -> UiText.Dynamic("Sem conexão com a internet.")
-            is DomainError.Timeout -> UiText.Dynamic("A requisição demorou muito para responder.")
-            is DomainError.NotFound -> UiText.Dynamic("Filme não encontrado.")
-            is DomainError.RateLimited -> UiText.Dynamic("Limite de requisições atingido.")
-            is DomainError.InvalidKey -> UiText.Dynamic("Chave de autenticação inválida.")
-            is DomainError.KeysUnavailable -> UiText.Dynamic("Credenciais não disponíveis.")
-            is DomainError.Server -> UiText.Dynamic("Erro no servidor (${error.code}).")
-            is DomainError.Unknown -> UiText.Dynamic("Ocorreu um erro inesperado.")
+            is DomainError.NoConnection -> UiText.Resource(R.string.error_no_connection)
+            is DomainError.Timeout -> UiText.Resource(R.string.error_timeout)
+            is DomainError.NotFound -> UiText.Resource(R.string.error_not_found)
+            is DomainError.RateLimited -> UiText.Resource(R.string.error_rate_limited)
+            is DomainError.InvalidKey -> UiText.Resource(R.string.error_invalid_key)
+            is DomainError.KeysUnavailable -> UiText.Resource(R.string.error_keys_unavailable)
+            is DomainError.Server -> UiText.Resource(R.string.error_server, listOf(error.code))
+            is DomainError.Unknown -> UiText.Resource(R.string.error_unknown)
         }
     }
 }

@@ -13,6 +13,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalInspectionMode
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -21,6 +22,7 @@ import coil.request.ImageRequest
 import com.adauto.marvel.core.designsystem.preview.ThemePreviews
 import com.adauto.marvel.core.designsystem.theme.MarvelColors
 import com.adauto.marvel.core.designsystem.theme.MarvelTheme
+import com.adauto.marvel.core.ui.R
 
 /**
  * Centralized movie poster / backdrop artwork component using Coil's [AsyncImage].
@@ -49,7 +51,7 @@ fun MovieCover(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = "POSTER PREVIEW",
+                    text = stringResource(R.string.poster_preview),
                     color = MarvelColors.TextSecondary,
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Bold
@@ -76,7 +78,7 @@ private fun MovieCoverPreview() {
         Box(modifier = Modifier.size(150.dp, 225.dp)) {
             MovieCover(
                 imageUrl = "https://example.com/mock.jpg",
-                contentDescription = "Movie Cover Preview"
+                contentDescription = null
             )
         }
     }

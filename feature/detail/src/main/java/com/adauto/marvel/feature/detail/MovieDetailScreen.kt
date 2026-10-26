@@ -46,6 +46,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.path
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.compose.ui.unit.dp
@@ -55,6 +56,7 @@ import com.adauto.marvel.core.designsystem.preview.ThemePreviews
 import com.adauto.marvel.core.designsystem.theme.MarvelColors
 import com.adauto.marvel.core.designsystem.theme.MarvelTheme
 import com.adauto.marvel.core.model.MovieDetail
+import com.adauto.marvel.core.ui.R
 import com.adauto.marvel.core.ui.component.ErrorState
 import com.adauto.marvel.core.ui.component.MovieCover
 import com.adauto.marvel.core.ui.component.shimmer
@@ -263,13 +265,21 @@ private fun MovieDetailContent(
                     ) {
                         Icon(
                             imageVector = if (movie.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                            contentDescription = if (movie.isFavorite) "Favoritado" else "Favoritar",
+                            contentDescription = stringResource(
+                                if (movie.isFavorite) R.string.cd_favorite_active else R.string.cd_favorite_inactive
+                            ),
                             tint = Color.White,
                             modifier = Modifier.size(18.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = if (movie.isFavorite) "Favorito" else "Favoritar",
+                            text = stringResource(
+                                if (movie.isFavorite) {
+                                    R.string.detail_favorite_active
+                                } else {
+                                    R.string.detail_favorite_inactive
+                                }
+                            ),
                             fontWeight = FontWeight.Bold,
                             color = Color.White
                         )
@@ -288,13 +298,15 @@ private fun MovieDetailContent(
                     ) {
                         Icon(
                             imageVector = if (movie.isWatched) BookmarkIcon else BookmarkBorderIcon,
-                            contentDescription = if (movie.isWatched) "Na lista Quero Assistir" else "Quero Assistir",
+                            contentDescription = stringResource(
+                                if (movie.isWatched) R.string.cd_watchlist_active else R.string.cd_watchlist_inactive
+                            ),
                             tint = if (movie.isWatched) Color.White else MarvelColors.TextSecondary,
                             modifier = Modifier.size(18.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "Quero Assistir",
+                            text = stringResource(R.string.detail_watchlist),
                             fontWeight = FontWeight.Bold,
                             color = if (movie.isWatched) Color.White else MarvelColors.TextPrimary
                         )
@@ -306,7 +318,7 @@ private fun MovieDetailContent(
                 // Overview Synopsis
                 if (movie.overview.isNotBlank()) {
                     Text(
-                        text = "Sinopse",
+                        text = stringResource(R.string.detail_synopsis),
                         style = MaterialTheme.typography.titleMedium.copy(
                             fontWeight = FontWeight.Bold
                         ),
@@ -326,7 +338,7 @@ private fun MovieDetailContent(
                 // Genres
                 if (movie.genres.isNotEmpty()) {
                     Text(
-                        text = "Gêneros",
+                        text = stringResource(R.string.detail_genres),
                         style = MaterialTheme.typography.titleMedium.copy(
                             fontWeight = FontWeight.Bold
                         ),
@@ -359,7 +371,7 @@ private fun MovieDetailContent(
                 // Cast members
                 if (movie.cast.isNotEmpty()) {
                     Text(
-                        text = "Elenco Principal",
+                        text = stringResource(R.string.detail_cast),
                         style = MaterialTheme.typography.titleMedium.copy(
                             fontWeight = FontWeight.Bold
                         ),
@@ -423,7 +435,7 @@ private fun FloatingBackButton(
     ) {
         Icon(
             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-            contentDescription = "Voltar",
+            contentDescription = stringResource(R.string.detail_back),
             tint = MarvelColors.TextPrimary,
             modifier = Modifier.size(24.dp)
         )

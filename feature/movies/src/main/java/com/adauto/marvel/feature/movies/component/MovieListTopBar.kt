@@ -65,7 +65,7 @@ private fun SearchTopBar(
             ) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = "Fechar pesquisa",
+                    contentDescription = stringResource(R.string.cd_search_close),
                     tint = MarvelColors.TextPrimary
                 )
             }
@@ -85,7 +85,7 @@ private fun SearchTopBar(
                 ) {
                     Icon(
                         imageVector = Icons.Default.Close,
-                        contentDescription = "Limpar pesquisa",
+                        contentDescription = stringResource(R.string.cd_search_clear),
                         tint = MarvelColors.TextSecondary
                     )
                 }
@@ -150,7 +150,7 @@ private fun StandardTopBar(
         modifier = modifier,
         title = {
             Text(
-                text = "CINEMA HUB",
+                text = stringResource(R.string.app_title),
                 style = MaterialTheme.typography.titleLarge.copy(
                     fontWeight = FontWeight.Black
                 ),
@@ -166,7 +166,7 @@ private fun StandardTopBar(
             ) {
                 Icon(
                     imageVector = Icons.Default.Search,
-                    contentDescription = "Pesquisar filmes",
+                    contentDescription = stringResource(R.string.cd_search_open),
                     tint = MarvelColors.TextPrimary
                 )
             }

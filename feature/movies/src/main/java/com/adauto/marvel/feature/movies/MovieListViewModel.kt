@@ -13,6 +13,7 @@ import com.adauto.marvel.core.model.MovieSummary
 import com.adauto.marvel.core.model.Outcome
 import com.adauto.marvel.core.model.SessionState
 import com.adauto.marvel.core.model.UiText
+import com.adauto.marvel.core.ui.R
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
@@ -170,7 +171,7 @@ class MovieListViewModel @Inject constructor(
                             _effects.send(MovieListEffect.LaunchTmdbAuth(url))
                         }
                         is Outcome.Failure -> {
-                            val errorMessage = UiText.Dynamic("Não foi possível iniciar a conexão com o TMDB.")
+                            val errorMessage = UiText.Resource(R.string.error_tmdb_connect_failed)
                             _effects.send(MovieListEffect.ShowMessage(errorMessage))
                         }
                     }

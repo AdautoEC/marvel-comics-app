@@ -1,11 +1,29 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- App & Common Header -->
+    <string name="app_title">CINEMA HUB</string>
+    <string name="cd_search_open">Pesquisar filmes</string>
+    <string name="cd_search_close">Fechar pesquisa</string>
+    <string name="cd_search_clear">Limpar pesquisa</string>
+
+    <!-- Categories -->
     <string name="category_popular">Populares</string>
     <string name="category_top_rated">Mais Votados</string>
     <string name="category_favorites">Favoritos</string>
     <string name="category_watchlist">Quero Assistir</string>
 
+    <!-- User Session & Banners -->
+    <string name="session_guest">Convidado</string>
+    <string name="session_connect">Conectar</string>
+    <string name="session_connect_label">Conectar conta TMDB</string>
+    <string name="session_user_menu_label">Menu do usuário %1$s</string>
+    <string name="session_user_avatar_cd">Avatar de %1$s</string>
+    <string name="session_logout">Sair da conta</string>
+    <string name="guest_banner_message">Seus filmes estão salvos apenas neste aparelho. Conecte sua conta TMDB para sincronizar na nuvem.</string>
     <string name="offline_banner_message">Você está offline. Exibindo dados em cache.</string>
+
+    <!-- Movie Card & Grid -->
+    <string name="poster_preview">POSTER PREVIEW</string>
     <string name="movie_rating_desc">Nota</string>
     <string name="movie_favorite_add">Favoritar</string>
     <string name="movie_favorite_remove">Remover dos favoritos</string>
@@ -17,4 +35,33 @@
     <string name="empty_favorites_message">Nenhum filme favoritado ainda.\nToque no coração para salvar!</string>
     <string name="empty_watchlist_message">Nenhum filme na lista de Quero Assistir.</string>
     <string name="empty_movies_message">Nenhum filme encontrado.</string>
+
+    <!-- Movie Detail -->
+    <string name="detail_synopsis">Sinopse</string>
+    <string name="detail_genres">Gêneros</string>
+    <string name="detail_cast">Elenco Principal</string>
+    <string name="detail_back">Voltar</string>
+    <string name="detail_favorite_active">Favorito</string>
+    <string name="detail_favorite_inactive">Favoritar</string>
+    <string name="detail_watchlist">Quero Assistir</string>
+    <string name="cd_favorite_active">Favoritado</string>
+    <string name="cd_favorite_inactive">Favoritar</string>
+    <string name="cd_watchlist_active">Na lista Quero Assistir</string>
+    <string name="cd_watchlist_inactive">Quero Assistir</string>
+
+    <!-- Errors -->
+    <string name="error_generic">Ocorreu um erro</string>
+    <string name="error_retry">Tentar novamente</string>
+    <string name="error_tmdb_connect_failed">Não foi possível iniciar a conexão com o TMDB.</string>
+    <string name="error_session_expired">Sessão expirada. Faça login novamente.</string>
+    <string name="error_rate_limited">Muitas requisições. Aguarde um momento.</string>
+    <string name="error_no_connection">Sem conexão com a internet.</string>
+    <string name="error_timeout">A requisição demorou muito para responder.</string>
+    <string name="error_not_found">Filme não encontrado.</string>
+    <string name="error_invalid_key">Chave de autenticação inválida.</string>
+    <string name="error_keys_unavailable">Credenciais não disponíveis.</string>
+    <string name="error_server">Erro no servidor (%1$d).</string>
+    <string name="error_unknown">Ocorreu um erro inesperado.</string>
+    <string name="error_load_more_fallback">Erro ao carregar mais filmes.</string>
+    <string name="error_load_movies_fallback">Não foi possível carregar os filmes.</string>
 </resources>

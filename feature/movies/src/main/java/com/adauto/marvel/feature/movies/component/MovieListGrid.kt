@@ -110,7 +110,7 @@ private fun LazyGridScope.appendLoadingOrError(
     if (loadState is LoadState.Error) {
         item(span = { GridItemSpan(maxLineSpan) }) {
             ErrorState(
-                message = formatPagingError(loadState.error, "Erro ao carregar mais filmes."),
+                message = formatPagingError(loadState.error, UiText.Resource(R.string.error_load_more_fallback)),
                 onRetry = onRetry,
                 modifier = Modifier.testTag("AppendErrorState")
             )
@@ -144,7 +144,7 @@ fun MovieListErrorState(
         contentAlignment = Alignment.Center
     ) {
         ErrorState(
-            message = formatPagingError(error, "Não foi possível carregar os filmes."),
+            message = formatPagingError(error, UiText.Resource(R.string.error_load_movies_fallback)),
             onRetry = onRetry,
             modifier = Modifier.testTag("RefreshErrorState")
         )
@@ -184,15 +184,15 @@ fun MovieListEmptyState(
     }
 }
 
-internal fun formatPagingError(throwable: Throwable, fallback: String): UiText {
+internal fun formatPagingError(throwable: Throwable, fallback: UiText): UiText {
     return when (throwable) {
         is TmdbApiException -> {
             when (throwable.code) {
-                HTTP_UNAUTHORIZED -> UiText.Dynamic("Sessão expirada. Faça login novamente.")
-                HTTP_TOO_MANY_REQUESTS -> UiText.Dynamic("Muitas requisições. Aguarde um momento.")
-                else -> UiText.Dynamic(throwable.message ?: fallback)
+                HTTP_UNAUTHORIZED -> UiText.Resource(R.string.error_session_expired)
+                HTTP_TOO_MANY_REQUESTS -> UiText.Resource(R.string.error_rate_limited)
+                else -> throwable.message?.takeIf { it.isNotBlank() }?.let { UiText.Dynamic(it) } ?: fallback
             }
         }
-        else -> UiText.Dynamic(throwable.localizedMessage?.takeIf { it.isNotBlank() } ?: fallback)
+        else -> throwable.localizedMessage?.takeIf { it.isNotBlank() }?.let { UiText.Dynamic(it) } ?: fallback
     }
 }

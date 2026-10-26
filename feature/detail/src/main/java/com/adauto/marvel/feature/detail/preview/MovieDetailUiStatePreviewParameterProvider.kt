@@ -3,6 +3,7 @@ package com.adauto.marvel.feature.detail.preview
 import androidx.compose.ui.tooling.preview.PreviewParameterProvider
 import com.adauto.marvel.core.model.MovieDetail
 import com.adauto.marvel.core.model.UiText
+import com.adauto.marvel.core.ui.R
 import com.adauto.marvel.feature.detail.MovieDetailUiState
 
 class MovieDetailUiStatePreviewParameterProvider : PreviewParameterProvider<MovieDetailUiState> {
@@ -13,7 +14,7 @@ class MovieDetailUiStatePreviewParameterProvider : PreviewParameterProvider<Movi
         ),
         // 2. Error State
         MovieDetailUiState(
-            errorMessage = UiText.Dynamic("Não foi possível carregar os detalhes do filme. Verifique sua conexão.")
+            errorMessage = UiText.Resource(R.string.error_load_movies_fallback)
         ),
         // 3. Populated Movie (Active Actions: Favorito + Quero Assistir)
         MovieDetailUiState(

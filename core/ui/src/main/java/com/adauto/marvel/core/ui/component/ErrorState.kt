@@ -16,6 +16,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.PreviewParameter
@@ -25,6 +26,7 @@ import com.adauto.marvel.core.designsystem.preview.ThemePreviews
 import com.adauto.marvel.core.designsystem.theme.MarvelColors
 import com.adauto.marvel.core.designsystem.theme.MarvelTheme
 import com.adauto.marvel.core.model.UiText
+import com.adauto.marvel.core.ui.R
 import com.adauto.marvel.core.ui.preview.ErrorStatePreviewParameterProvider
 import com.adauto.marvel.core.ui.util.asString
 
@@ -36,8 +38,8 @@ fun ErrorState(
     message: String,
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
-    title: String? = "Ocorreu um erro",
-    retryLabel: String = "Tentar novamente"
+    title: String? = stringResource(R.string.error_generic),
+    retryLabel: String = stringResource(R.string.error_retry)
 ) {
     Column(
         modifier = modifier
@@ -94,8 +96,8 @@ fun ErrorState(
     message: UiText,
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
-    title: UiText? = UiText.Dynamic("Ocorreu um erro"),
-    retryLabel: String = "Tentar novamente"
+    title: UiText? = UiText.Resource(R.string.error_generic),
+    retryLabel: String = stringResource(R.string.error_retry)
 ) {
     ErrorState(
         message = message.asString(),

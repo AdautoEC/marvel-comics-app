@@ -29,6 +29,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -36,6 +37,7 @@ import com.adauto.marvel.core.designsystem.preview.DevicePreviews
 import com.adauto.marvel.core.designsystem.preview.ThemePreviews
 import com.adauto.marvel.core.designsystem.theme.MarvelColors
 import com.adauto.marvel.core.designsystem.theme.MarvelTheme
+import com.adauto.marvel.core.ui.R
 
 @Composable
 fun GuestSyncBanner(
@@ -77,7 +79,7 @@ fun GuestSyncBanner(
                     )
                     Spacer(modifier = Modifier.width(10.dp))
                     Text(
-                        text = "Seus filmes estão salvos apenas neste aparelho. Conecte sua conta TMDB para sincronizar na nuvem.",
+                        text = stringResource(R.string.guest_banner_message),
                         style = MaterialTheme.typography.bodyMedium.copy(lineHeight = 20.sp),
                         color = MarvelColors.TextPrimary,
                         modifier = Modifier.weight(1f)
@@ -97,7 +99,7 @@ fun GuestSyncBanner(
                         modifier = Modifier.testTag("GuestSyncBanner_ConnectBtn")
                     ) {
                         Text(
-                            text = "Conectar",
+                            text = stringResource(R.string.session_connect),
                             style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
                             color = Color.White
                         )

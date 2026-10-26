@@ -31,6 +31,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -39,6 +40,7 @@ import com.adauto.marvel.core.designsystem.preview.ThemePreviews
 import com.adauto.marvel.core.designsystem.theme.MarvelColors
 import com.adauto.marvel.core.designsystem.theme.MarvelTheme
 import com.adauto.marvel.core.model.SessionState
+import com.adauto.marvel.core.ui.R
 import com.adauto.marvel.core.ui.component.MovieCover
 
 @Composable
@@ -70,7 +72,7 @@ fun UserSessionPill(
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        text = "Convidado",
+                        text = stringResource(R.string.session_guest),
                         style = MaterialTheme.typography.labelMedium,
                         color = MarvelColors.TextSecondary
                     )
@@ -82,15 +84,16 @@ fun UserSessionPill(
                             .background(MarvelColors.SurfaceCard)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
+                    val connectLabel = stringResource(R.string.session_connect_label)
                     Text(
-                        text = "Conectar",
+                        text = stringResource(R.string.session_connect),
                         style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
                         color = MarvelColors.MarvelRed,
                         modifier = Modifier
                             .clip(RoundedCornerShape(4.dp))
                             .clickable(
                                 role = Role.Button,
-                                onClickLabel = "Conectar conta TMDB",
+                                onClickLabel = connectLabel,
                                 onClick = onConnectClicked
                             )
                             .testTag("UserSessionPill_ConnectBtn")
@@ -102,12 +105,13 @@ fun UserSessionPill(
             var menuExpanded by remember { mutableStateOf(false) }
 
             Box(modifier = modifier) {
+                val menuLabel = stringResource(R.string.session_user_menu_label, sessionState.username)
                 Surface(
                     modifier = Modifier
                         .clip(RoundedCornerShape(20.dp))
                         .clickable(
                             role = Role.Button,
-                            onClickLabel = "Menu do usuário ${sessionState.username}",
+                            onClickLabel = menuLabel,
                             onClick = { menuExpanded = !menuExpanded }
                         )
                         .testTag("UserSessionPill_Authenticated"),
@@ -122,7 +126,10 @@ fun UserSessionPill(
                         if (!sessionState.avatarUrl.isNullOrBlank()) {
                             MovieCover(
                                 imageUrl = sessionState.avatarUrl,
-                                contentDescription = "Avatar de ${sessionState.username}",
+                                contentDescription = stringResource(
+                                    R.string.session_user_avatar_cd,
+                                    sessionState.username
+                                ),
                                 modifier = Modifier
                                     .size(20.dp)
                                     .clip(CircleShape),
@@ -162,7 +169,7 @@ fun UserSessionPill(
                     DropdownMenuItem(
                         text = {
                             Text(
-                                text = "Sair da conta",
+                                text = stringResource(R.string.session_logout),
                                 color = MarvelColors.MarvelRed,
                                 fontWeight = FontWeight.SemiBold
                             )
