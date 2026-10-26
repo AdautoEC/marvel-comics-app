@@ -12,7 +12,6 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 import androidx.paging.PagingData
-import androidx.paging.compose.collectAsLazyPagingItems
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.adauto.marvel.core.model.MovieDetail
 import com.adauto.marvel.core.model.MovieSummary
@@ -67,11 +66,9 @@ class MarvelAppNavigationE2ETest {
         ) {
             composable<MovieListRoute> {
                 val pagingFlow = remember { flowOf(PagingData.from(listOf(sampleMovieSummary))) }
-                val pagingItems = pagingFlow.collectAsLazyPagingItems()
 
                 MovieListScreen(
-                    uiState = MovieListUiState(),
-                    movies = pagingItems,
+                    uiState = MovieListUiState(movies = pagingFlow),
                     onAction = { action ->
                         if (action is MovieListAction.MovieClicked) {
                             navController.navigate(MovieDetailRoute(action.id))

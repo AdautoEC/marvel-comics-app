@@ -48,7 +48,7 @@ class MovieListViewModelTest {
     fun setUp() {
         Dispatchers.setMain(testDispatcher)
         isOnlineFlow.value = true
-        every { moviesRepository.movies(any()) } returns emptyFlow()
+        every { moviesRepository.movies(any(), any()) } returns emptyFlow()
         every { moviesRepository.observeFavorites() } returns emptyFlow()
         every { moviesRepository.observeWatched() } returns emptyFlow()
         every { authRepository.sessionState } returns MutableStateFlow(SessionState.Guest)
@@ -218,8 +218,8 @@ class MovieListViewModelTest {
         val movie2 = MovieSummary(id = 2, title = "Pulp Fiction", posterUrl = null, voteAverage = 8.9)
         val movie3 = MovieSummary(id = 3, title = "Clube dos Cinco", posterUrl = null, voteAverage = 7.8)
 
-        every { moviesRepository.movies(MovieCategory.POPULAR) } returns flowOf(
-            PagingData.from(listOf(movie1, movie2, movie3))
+        every { moviesRepository.movies(MovieCategory.POPULAR, "clube") } returns flowOf(
+            PagingData.from(listOf(movie1, movie3))
         )
 
         val viewModel = createViewModel()
@@ -262,7 +262,17 @@ class MovieListViewModelTest {
                 }
             }
         }
-        every { moviesRepository.movies(MovieCategory.POPULAR) } answers { createPager().flow }
+        every { moviesRepository.movies(MovieCategory.POPULAR, "") } answers { createPager().flow }
+        every { moviesRepository.movies(MovieCategory.POPULAR, "Thor") } answers {
+            Pager(PagingConfig(pageSize = 2)) {
+                object : PagingSource<Int, MovieSummary>() {
+                    override fun getRefreshKey(state: PagingState<Int, MovieSummary>): Int? = null
+                    override suspend fun load(params: LoadParams<Int>): LoadResult<Int, MovieSummary> {
+                        return LoadResult.Page(data = listOf(movie2), prevKey = null, nextKey = null)
+                    }
+                }
+            }.flow
+        }
 
         val viewModel = createViewModel()
 
@@ -278,5 +288,38 @@ class MovieListViewModelTest {
             assertThat(items2).hasSize(1)
             assertThat(items2.first().title).isEqualTo("Thor")
         }
+    }
+
+    @Test
+    fun movies_whenSearchQueryActive_delegatesToRepositoryMoviesWithQuery() = runTest {
+        val thorMovie = MovieSummary(id = 2, title = "Thor", posterUrl = null, voteAverage = 7.5)
+        fun createSearchPager() = Pager(PagingConfig(pageSize = 2)) {
+            object : PagingSource<Int, MovieSummary>() {
+                override fun getRefreshKey(state: PagingState<Int, MovieSummary>): Int? = null
+                override suspend fun load(params: LoadParams<Int>): LoadResult<Int, MovieSummary> {
+                    return LoadResult.Page(data = listOf(thorMovie), prevKey = null, nextKey = null)
+                }
+            }
+        }
+        every { moviesRepository.movies(MovieCategory.POPULAR, "Thor") } answers { createSearchPager().flow }
+
+        val viewModel = createViewModel()
+        viewModel.onAction(MovieListAction.SearchQueryChanged("Thor"))
+
+        viewModel.movies.test {
+            val pagingData = awaitItem()
+            val items = flowOf(pagingData).asSnapshot()
+            assertThat(items).hasSize(1)
+            assertThat(items.first().title).isEqualTo("Thor")
+        }
+
+        io.mockk.verify { moviesRepository.movies(MovieCategory.POPULAR, "Thor") }
+    }
+
+    @Test
+    fun userMessageDismissed_clearsUserMessageFromUiState() = runTest {
+        val viewModel = createViewModel()
+        viewModel.onAction(MovieListAction.UserMessageDismissed)
+        assertThat(viewModel.uiState.value.userMessage).isNull()
     }
 }

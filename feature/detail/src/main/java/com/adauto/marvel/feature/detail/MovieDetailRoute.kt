@@ -17,12 +17,10 @@ import androidx.lifecycle.repeatOnLifecycle
  */
 @Composable
 fun MovieDetailRoute(
-    onBack: () -> Unit = {},
+    onBackClick: () -> Unit = {},
     modifier: Modifier = Modifier,
-    viewModel: MovieDetailViewModel = hiltViewModel(),
-    onBackClick: () -> Unit = onBack
+    viewModel: MovieDetailViewModel = hiltViewModel()
 ) {
-    val effectiveOnBack = if (onBackClick !== onBack) onBackClick else onBack
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val lifecycleOwner = LocalLifecycleOwner.current
 
@@ -30,7 +28,7 @@ fun MovieDetailRoute(
         lifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
             viewModel.effects.collect { effect ->
                 when (effect) {
-                    is MovieDetailEffect.NavigateBack -> effectiveOnBack()
+                    is MovieDetailEffect.NavigateBack -> onBackClick()
                 }
             }
         }
