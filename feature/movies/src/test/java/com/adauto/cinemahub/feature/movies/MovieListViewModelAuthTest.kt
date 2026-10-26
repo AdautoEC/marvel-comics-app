@@ -3,6 +3,8 @@ package com.adauto.cinemahub.feature.movies
 import app.cash.turbine.test
 import com.adauto.cinemahub.core.data.repository.AuthRepository
 import com.adauto.cinemahub.core.data.repository.MoviesRepository
+import com.adauto.cinemahub.core.data.usecase.ToggleFavoriteUseCase
+import com.adauto.cinemahub.core.data.usecase.ToggleWatchlistUseCase
 import com.adauto.cinemahub.core.data.util.NetworkMonitor
 import com.adauto.cinemahub.core.model.MovieSummary
 import com.adauto.cinemahub.core.model.Outcome
@@ -35,8 +37,16 @@ class MovieListViewModelAuthTest {
     }
 
     private val sessionStateFlow = MutableStateFlow<SessionState>(SessionState.Guest)
+    private val toggleFavoriteUseCase = ToggleFavoriteUseCase(moviesRepository)
+    private val toggleWatchlistUseCase = ToggleWatchlistUseCase(moviesRepository)
 
-    private fun createViewModel() = MovieListViewModel(moviesRepository, authRepository, networkMonitor)
+    private fun createViewModel() = MovieListViewModel(
+        moviesRepository,
+        authRepository,
+        networkMonitor,
+        toggleFavoriteUseCase,
+        toggleWatchlistUseCase
+    )
 
     @Before
     fun setUp() {
@@ -54,7 +64,8 @@ class MovieListViewModelAuthTest {
 
     @Test
     fun clicking_connect_triggers_OpenAuthUrl_effect_with_request_token() = runTest {
-        coEvery { authRepository.createRequestToken() } returns Outcome.Success("tok_456")
+        val expectedUrl = "https://www.themoviedb.org/authenticate/tok_456?redirect_to=cinemahub%3A%2F%2Fauth"
+        coEvery { authRepository.buildAuthorizationUrl() } returns Outcome.Success(expectedUrl)
 
         val viewModel = createViewModel()
 
@@ -64,10 +75,7 @@ class MovieListViewModelAuthTest {
 
             val effect = awaitItem()
             assertThat(effect).isInstanceOf(MovieListEffect.LaunchTmdbAuth::class.java)
-            assertThat((effect as MovieListEffect.LaunchTmdbAuth).authUrl)
-                .contains("themoviedb.org/authenticate/tok_456")
-            assertThat(effect.authUrl)
-                .contains("redirect_to=cinemahub://tmdb-callback")
+            assertThat((effect as MovieListEffect.LaunchTmdbAuth).authUrl).isEqualTo(expectedUrl)
         }
     }
 

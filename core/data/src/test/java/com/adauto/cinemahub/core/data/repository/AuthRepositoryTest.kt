@@ -148,6 +148,39 @@ class AuthRepositoryTest {
     }
 
     @Test
+    fun buildAuthorizationUrl_returns_encoded_url_with_token() = runTest {
+        coEvery { api.createRequestToken() } returns ApiResponse.Success(
+            TmdbRequestTokenDto(
+                success = true,
+                request_token = "req_token_123",
+                expires_at = "2026-10-23"
+            )
+        )
+
+        val outcome = authRepository.buildAuthorizationUrl()
+
+        assertThat(outcome).isInstanceOf(Outcome.Success::class.java)
+        val url = (outcome as Outcome.Success).value
+        assertThat(url).isEqualTo(
+            "https://www.themoviedb.org/authenticate/req_token_123?redirect_to=cinemahub%3A%2F%2Fauth"
+        )
+    }
+
+    @Test
+    fun buildAuthorizationUrl_returns_failure_when_token_fails() = runTest {
+        val errorResponse = Response.error<TmdbRequestTokenDto>(
+            401,
+            "Unauthorized".toResponseBody()
+        )
+        coEvery { api.createRequestToken() } returns ApiResponse.Failure.Error(errorResponse)
+
+        val outcome = authRepository.buildAuthorizationUrl()
+
+        assertThat(outcome).isInstanceOf(Outcome.Failure::class.java)
+        assertThat((outcome as Outcome.Failure).error).isEqualTo(DomainError.InvalidKey)
+    }
+
+    @Test
     fun completeAuthentication_exchanges_token_fetches_account_and_saves_session() = runTest {
         coEvery { api.createRequestToken() } returns ApiResponse.Success(
             TmdbRequestTokenDto(

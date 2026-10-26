@@ -24,6 +24,7 @@ android {
 }
 
 dependencies {
+    api(libs.kotlinx.collections.immutable)
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.runtime)
     implementation(libs.kotlinx.serialization.json)

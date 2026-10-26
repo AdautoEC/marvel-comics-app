@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -28,6 +29,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -39,7 +41,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.adauto.cinemahub.core.designsystem.theme.CinemaHubColors
+import com.adauto.cinemahub.core.designsystem.theme.CinemaHubTheme
 import com.adauto.cinemahub.core.model.MovieSummary
 import com.adauto.cinemahub.core.ui.R
 
@@ -48,16 +50,6 @@ internal val WatchedGreenColor = Color(0xFF2E7D32)
 internal val RatingPillBackground = Color.Black.copy(alpha = 0.7f)
 internal val FavoritePillBackground = Color.Black.copy(alpha = 0.5f)
 
-internal val MovieCardGradientColors = listOf(
-    Color.Transparent,
-    CinemaHubColors.DarkBackground.copy(alpha = 0.75f),
-    CinemaHubColors.DarkBackground.copy(alpha = 0.98f)
-)
-
-internal val MovieCardBottomGradient = Brush.verticalGradient(
-    colors = MovieCardGradientColors
-)
-
 @Composable
 fun MovieCard(
     movie: MovieSummary,
@@ -65,18 +57,29 @@ fun MovieCard(
     modifier: Modifier = Modifier,
     onFavoriteToggle: (() -> Unit)? = null
 ) {
+    val backgroundColor = MaterialTheme.colorScheme.background
+    val bottomGradient = remember(backgroundColor) {
+        Brush.verticalGradient(
+            colors = listOf(
+                Color.Transparent,
+                backgroundColor.copy(alpha = 0.75f),
+                backgroundColor.copy(alpha = 0.98f)
+            )
+        )
+    }
+
     Card(
         modifier = modifier
             .fillMaxWidth()
             .aspectRatio(2f / 3f)
-            .clip(RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(CinemaHubTheme.spacing.medium))
             .clickable(
                 role = Role.Button,
                 onClickLabel = stringResource(R.string.card_view_details, movie.title),
                 onClick = onClick
             ),
         elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
-        colors = CardDefaults.cardColors(containerColor = CinemaHubColors.SurfaceDark)
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
             MovieCover(
@@ -121,18 +124,38 @@ fun MovieCard(
                     IconButton(
                         onClick = onFavoriteToggle,
                         modifier = Modifier
-                            .size(32.dp)
-                            .clip(CircleShape)
-                            .background(FavoritePillBackground)
+                            .defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
+                            .size(48.dp)
                     ) {
-                        Icon(
-                            imageVector = if (movie.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                            contentDescription = stringResource(
-                                if (movie.isFavorite) R.string.movie_favorite_remove else R.string.movie_favorite_add
-                            ),
-                            tint = if (movie.isFavorite) CinemaHubColors.CinemaHubRed else Color.White,
-                            modifier = Modifier.size(16.dp)
-                        )
+                        Box(
+                            modifier = Modifier
+                                .size(32.dp)
+                                .clip(CircleShape)
+                                .background(FavoritePillBackground),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            val favoriteIcon = if (movie.isFavorite) {
+                                Icons.Default.Favorite
+                            } else {
+                                Icons.Default.FavoriteBorder
+                            }
+                            val favoriteDescRes = if (movie.isFavorite) {
+                                R.string.movie_favorite_remove
+                            } else {
+                                R.string.movie_favorite_add
+                            }
+                            val favoriteTint = if (movie.isFavorite) {
+                                MaterialTheme.colorScheme.primary
+                            } else {
+                                Color.White
+                            }
+                            Icon(
+                                imageVector = favoriteIcon,
+                                contentDescription = stringResource(favoriteDescRes),
+                                tint = favoriteTint,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
                     }
                 }
             }
@@ -142,7 +165,7 @@ fun MovieCard(
                     .fillMaxWidth()
                     .height(110.dp)
                     .align(Alignment.BottomCenter)
-                    .background(MovieCardBottomGradient)
+                    .background(bottomGradient)
             )
 
             Column(
@@ -157,7 +180,7 @@ fun MovieCard(
                     movie.releaseYear?.let { year ->
                         Text(
                             text = year,
-                            color = CinemaHubColors.CinemaHubRed,
+                            color = MaterialTheme.colorScheme.primary,
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold
                         )
@@ -199,7 +222,7 @@ fun MovieCard(
                         fontWeight = FontWeight.Bold,
                         lineHeight = 16.sp
                     ),
-                    color = CinemaHubColors.TextPrimary,
+                    color = MaterialTheme.colorScheme.onSurface,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )

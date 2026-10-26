@@ -3,6 +3,8 @@ package com.adauto.cinemahub.core.testing.data
 import com.adauto.cinemahub.core.model.AccountProfile
 import com.adauto.cinemahub.core.model.MovieDetail
 import com.adauto.cinemahub.core.model.MovieSummary
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
 
 object MovieTestData {
 
@@ -37,8 +39,8 @@ object MovieTestData {
         voteAverage: Double = 8.5,
         runtime: Int? = 120,
         releaseDate: String? = "2024-05-01",
-        genres: List<String> = listOf("Action", "Adventure"),
-        cast: List<String> = listOf("Actor One", "Actor Two"),
+        genres: ImmutableList<String> = persistentListOf("Action", "Adventure"),
+        cast: ImmutableList<String> = persistentListOf("Actor One", "Actor Two"),
         isFavorite: Boolean = false,
         isInWatchlist: Boolean = false,
     ): MovieDetail = MovieDetail(

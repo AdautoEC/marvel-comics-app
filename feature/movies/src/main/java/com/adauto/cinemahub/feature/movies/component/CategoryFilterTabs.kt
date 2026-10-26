@@ -8,8 +8,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
-import com.adauto.cinemahub.core.designsystem.theme.CinemaHubColors
+import com.adauto.cinemahub.core.designsystem.theme.CinemaHubTheme
 import com.adauto.cinemahub.core.model.MovieCategory
 import com.adauto.cinemahub.core.ui.util.titleRes
 import com.adauto.cinemahub.feature.movies.MovieListAction
@@ -23,9 +22,9 @@ fun CategoryFilterTabs(
 ) {
     ScrollableTabRow(
         selectedTabIndex = MovieCategory.entries.indexOf(uiState.selectedCategory).coerceAtLeast(0),
-        containerColor = CinemaHubColors.DarkBackground,
-        contentColor = CinemaHubColors.CinemaHubRed,
-        edgePadding = 16.dp,
+        containerColor = MaterialTheme.colorScheme.background,
+        contentColor = MaterialTheme.colorScheme.primary,
+        edgePadding = CinemaHubTheme.spacing.medium,
         divider = {},
         modifier = modifier
     ) {
@@ -40,7 +39,11 @@ fun CategoryFilterTabs(
                         style = MaterialTheme.typography.labelLarge.copy(
                             fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium
                         ),
-                        color = if (selected) CinemaHubColors.CinemaHubRed else CinemaHubColors.TextSecondary
+                        color = if (selected) {
+                            MaterialTheme.colorScheme.primary
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        }
                     )
                 }
             )

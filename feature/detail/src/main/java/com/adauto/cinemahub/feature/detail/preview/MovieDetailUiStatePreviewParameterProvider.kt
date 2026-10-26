@@ -5,6 +5,7 @@ import com.adauto.cinemahub.core.model.MovieDetail
 import com.adauto.cinemahub.core.model.UiText
 import com.adauto.cinemahub.core.ui.R
 import com.adauto.cinemahub.feature.detail.MovieDetailUiState
+import kotlinx.collections.immutable.persistentListOf
 
 class MovieDetailUiStatePreviewParameterProvider : PreviewParameterProvider<MovieDetailUiState> {
     override val values: Sequence<MovieDetailUiState> = sequenceOf(
@@ -27,8 +28,8 @@ class MovieDetailUiStatePreviewParameterProvider : PreviewParameterProvider<Movi
                 voteAverage = 8.4,
                 runtime = 139,
                 releaseDate = "1999-10-15",
-                genres = listOf("Drama", "Suspense"),
-                cast = listOf("Edward Norton", "Brad Pitt", "Helena Bonham Carter"),
+                genres = persistentListOf("Drama", "Suspense"),
+                cast = persistentListOf("Edward Norton", "Brad Pitt", "Helena Bonham Carter"),
                 isFavorite = true,
                 isInWatchlist = true
             )
@@ -44,8 +45,8 @@ class MovieDetailUiStatePreviewParameterProvider : PreviewParameterProvider<Movi
                 voteAverage = 8.8,
                 runtime = 148,
                 releaseDate = "2010-07-16",
-                genres = listOf("Ação", "Ficção Científica"),
-                cast = listOf("Leonardo DiCaprio", "Joseph Gordon-Levitt"),
+                genres = persistentListOf("Ação", "Ficção Científica"),
+                cast = persistentListOf("Leonardo DiCaprio", "Joseph Gordon-Levitt"),
                 isFavorite = false,
                 isInWatchlist = false
             )
@@ -61,8 +62,8 @@ class MovieDetailUiStatePreviewParameterProvider : PreviewParameterProvider<Movi
                 voteAverage = 6.0,
                 runtime = null,
                 releaseDate = null,
-                genres = emptyList(),
-                cast = emptyList(),
+                genres = persistentListOf(),
+                cast = persistentListOf(),
                 isFavorite = false,
                 isInWatchlist = false
             )

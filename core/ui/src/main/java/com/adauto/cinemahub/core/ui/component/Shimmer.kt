@@ -6,42 +6,35 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.State
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.dp
 import com.adauto.cinemahub.core.designsystem.preview.ThemePreviews
-import com.adauto.cinemahub.core.designsystem.theme.CinemaHubColors
 import com.adauto.cinemahub.core.designsystem.theme.CinemaHubTheme
 
 /**
- * Creates an animated linear gradient brush for shimmer effects.
- * Uses theme tokens ([CinemaHubColors.SurfaceDark] and [CinemaHubColors.SurfaceCard]),
- * avoiding raw or hardcoded light gray colors.
+ * Creates an animated shimmer progress state.
+ * Reading this state inside draw phase (e.g. [drawWithCache] / onDrawBehind) prevents
+ * recomposition churn on every animation frame.
  */
 @Composable
-fun rememberShimmerBrush(
-    colors: List<Color> = listOf(
-        CinemaHubColors.SurfaceDark,
-        CinemaHubColors.SurfaceCard,
-        CinemaHubColors.SurfaceDark
-    ),
-    durationMillis: Int = 1200
-): Brush {
+fun rememberShimmerProgress(durationMillis: Int = 1200): State<Float> {
     val transition = rememberInfiniteTransition(label = "ShimmerTransition")
-    val translateAnimation by transition.animateFloat(
+    return transition.animateFloat(
         initialValue = 0f,
         targetValue = 1000f,
         animationSpec = infiniteRepeatable(
@@ -50,45 +43,72 @@ fun rememberShimmerBrush(
         ),
         label = "ShimmerTranslateAnimation"
     )
-
-    return Brush.linearGradient(
-        colors = colors,
-        start = Offset(x = translateAnimation - 300f, y = translateAnimation - 300f),
-        end = Offset(x = translateAnimation, y = translateAnimation)
-    )
 }
 
 /**
- * Applies an animated shimmer brush background to the modifier.
+ * Applies an animated shimmer brush background reading animation progress in draw phase.
+ */
+fun Modifier.shimmer(
+    progress: State<Float>,
+    colors: List<Color>,
+    shape: Shape = RoundedCornerShape(0.dp)
+): Modifier = this
+    .clip(shape)
+    .drawWithCache {
+        onDrawBehind {
+            val offset = progress.value
+            val brush = Brush.linearGradient(
+                colors = colors,
+                start = Offset(x = offset - 300f, y = offset - 300f),
+                end = Offset(x = offset, y = offset)
+            )
+            drawRect(brush = brush)
+        }
+    }
+
+/**
+ * Applies an animated shimmer brush using theme colorScheme and an optional progress state.
  */
 @Composable
 fun Modifier.shimmer(
-    colors: List<Color> = listOf(
-        CinemaHubColors.SurfaceDark,
-        CinemaHubColors.SurfaceCard,
-        CinemaHubColors.SurfaceDark
-    ),
+    progress: State<Float>,
     shape: Shape = RoundedCornerShape(0.dp)
-): Modifier {
-    val brush = rememberShimmerBrush(colors = colors)
-    return this.clip(shape).background(brush)
-}
+): Modifier = this.shimmer(
+    progress = progress,
+    colors = listOf(
+        MaterialTheme.colorScheme.surface,
+        MaterialTheme.colorScheme.surfaceVariant,
+        MaterialTheme.colorScheme.surface
+    ),
+    shape = shape
+)
+
+/**
+ * Applies an animated shimmer brush using theme colorScheme and a self-contained progress state.
+ */
+@Composable
+fun Modifier.shimmer(
+    shape: Shape = RoundedCornerShape(0.dp)
+): Modifier = this.shimmer(
+    progress = rememberShimmerProgress(),
+    shape = shape
+)
 
 /**
  * Placeholder skeleton card matching the 2:3 aspect ratio and rounded corners of [MovieCard].
+ * Accepts an optional shared [progress] state to synchronize all cards without recompositions.
  */
 @Composable
 fun ShimmerMovieCard(
     modifier: Modifier = Modifier,
-    shape: Shape = RoundedCornerShape(16.dp)
+    shape: Shape = RoundedCornerShape(16.dp),
+    progress: State<Float> = rememberShimmerProgress()
 ) {
-    val brush = rememberShimmerBrush()
     Box(
         modifier = modifier
             .fillMaxWidth()
             .aspectRatio(2f / 3f)
-            .clip(shape)
-            .background(brush)
+            .shimmer(shape = shape, progress = progress)
     )
 }
 

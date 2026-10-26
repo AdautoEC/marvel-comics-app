@@ -35,7 +35,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.adauto.cinemahub.core.designsystem.preview.DevicePreviews
 import com.adauto.cinemahub.core.designsystem.preview.ThemePreviews
-import com.adauto.cinemahub.core.designsystem.theme.CinemaHubColors
 import com.adauto.cinemahub.core.designsystem.theme.CinemaHubTheme
 import com.adauto.cinemahub.core.ui.R
 
@@ -54,11 +53,11 @@ fun GuestSyncBanner(
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp)
+                .padding(horizontal = CinemaHubTheme.spacing.medium, vertical = 8.dp)
                 .testTag("GuestSyncBanner"),
             shape = RoundedCornerShape(12.dp),
-            color = CinemaHubColors.SurfaceDark,
-            border = BorderStroke(1.dp, CinemaHubColors.CinemaHubRed.copy(alpha = 0.4f))
+            color = MaterialTheme.colorScheme.surface,
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.4f))
         ) {
             Column(
                 modifier = Modifier
@@ -72,7 +71,7 @@ fun GuestSyncBanner(
                     Icon(
                         imageVector = Icons.Default.Info,
                         contentDescription = null,
-                        tint = CinemaHubColors.CinemaHubRed,
+                        tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier
                             .size(20.dp)
                             .padding(top = 2.dp)
@@ -81,7 +80,7 @@ fun GuestSyncBanner(
                     Text(
                         text = stringResource(R.string.guest_banner_message),
                         style = MaterialTheme.typography.bodyMedium.copy(lineHeight = 20.sp),
-                        color = CinemaHubColors.TextPrimary,
+                        color = MaterialTheme.colorScheme.onSurface,
                         modifier = Modifier.weight(1f)
                     )
                 }
@@ -94,7 +93,7 @@ fun GuestSyncBanner(
                 ) {
                     Button(
                         onClick = onConnectClicked,
-                        colors = ButtonDefaults.buttonColors(containerColor = CinemaHubColors.CinemaHubRed),
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
                         shape = RoundedCornerShape(8.dp),
                         modifier = Modifier.testTag("GuestSyncBanner_ConnectBtn")
                     ) {

@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -24,7 +25,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.adauto.cinemahub.core.designsystem.preview.ThemePreviews
-import com.adauto.cinemahub.core.designsystem.theme.CinemaHubColors
 import com.adauto.cinemahub.core.designsystem.theme.CinemaHubTheme
 import com.adauto.cinemahub.core.ui.R
 
@@ -46,22 +46,25 @@ fun OfflineBanner(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(CinemaHubColors.SurfaceCard)
-                .padding(horizontal = 16.dp, vertical = 8.dp),
+                .background(MaterialTheme.colorScheme.surfaceVariant)
+                .padding(
+                    horizontal = CinemaHubTheme.spacing.medium,
+                    vertical = CinemaHubTheme.spacing.small
+                ),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.Center
         ) {
             Icon(
                 imageVector = Icons.Default.Warning,
                 contentDescription = null,
-                tint = CinemaHubColors.CinemaHubRed,
+                tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier
                     .size(16.dp)
-                    .padding(end = 4.dp)
+                    .padding(end = CinemaHubTheme.spacing.extraSmall)
             )
             Text(
                 text = message,
-                color = CinemaHubColors.TextSecondary,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Medium
             )

@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -30,7 +31,6 @@ import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItems
 import com.adauto.cinemahub.core.designsystem.preview.DevicePreviews
 import com.adauto.cinemahub.core.designsystem.preview.ThemePreviews
-import com.adauto.cinemahub.core.designsystem.theme.CinemaHubColors
 import com.adauto.cinemahub.core.designsystem.theme.CinemaHubTheme
 import com.adauto.cinemahub.core.model.MovieCategory
 import com.adauto.cinemahub.core.model.MovieSummary
@@ -90,7 +90,7 @@ internal fun MovieListContent(
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
-        containerColor = CinemaHubColors.DarkBackground
+        containerColor = MaterialTheme.colorScheme.background
     ) { paddingValues ->
         MovieListContentBody(
             uiState = uiState,

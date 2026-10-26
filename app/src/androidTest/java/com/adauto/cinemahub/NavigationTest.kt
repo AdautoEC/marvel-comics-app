@@ -24,6 +24,7 @@ import com.adauto.cinemahub.feature.movies.MovieListScreen
 import com.adauto.cinemahub.feature.movies.MovieListUiState
 import com.adauto.cinemahub.navigation.MovieDetailRoute
 import com.adauto.cinemahub.navigation.MovieListRoute
+import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.flow.flowOf
 import org.junit.Rule
 import org.junit.Test
@@ -52,7 +53,7 @@ class NavigationTest {
         releaseDate = "1999-10-15",
         voteAverage = 8.8,
         runtime = 139,
-        genres = listOf("Drama"),
+        genres = persistentListOf("Drama"),
         isFavorite = false,
         isInWatchlist = false
     )

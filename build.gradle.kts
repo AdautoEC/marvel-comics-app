@@ -63,6 +63,20 @@ subprojects {
         apply(plugin = "org.jetbrains.kotlinx.kover")
     }
 
+    pluginManager.withPlugin("org.jetbrains.kotlin.plugin.compose") {
+        configure<org.jetbrains.kotlin.compose.compiler.gradle.ComposeCompilerGradlePluginExtension> {
+            val stabilityFile = rootDir.resolve("app/stability_config.conf")
+            if (stabilityFile.exists()) {
+                stabilityConfigurationFile.set(stabilityFile)
+            }
+            if (project.findProperty("composeCompilerReports") == "true") {
+                val reportsDir = layout.buildDirectory.dir("compose_compiler")
+                metricsDestination.set(reportsDir)
+                reportsDestination.set(reportsDir)
+            }
+        }
+    }
+
     tasks.withType<io.gitlab.arturbosch.detekt.Detekt>().configureEach {
         buildUponDefaultConfig = true
         config.setFrom(files("$rootDir/config/detekt/detekt.yml"))

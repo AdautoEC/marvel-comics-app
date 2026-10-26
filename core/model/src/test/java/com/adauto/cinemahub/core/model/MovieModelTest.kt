@@ -1,6 +1,7 @@
 package com.adauto.cinemahub.core.model
 
 import com.google.common.truth.Truth.assertThat
+import kotlinx.collections.immutable.persistentListOf
 import org.junit.Test
 
 class MovieModelTest {
@@ -37,8 +38,8 @@ class MovieModelTest {
             voteAverage = 8.4,
             runtime = 139,
             releaseDate = "1999-10-15",
-            genres = listOf("Drama", "Thriller"),
-            cast = listOf("Brad Pitt", "Edward Norton", "Helena Bonham Carter"),
+            genres = persistentListOf("Drama", "Thriller"),
+            cast = persistentListOf("Brad Pitt", "Edward Norton", "Helena Bonham Carter"),
             isFavorite = true,
             isInWatchlist = true
         )

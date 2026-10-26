@@ -17,11 +17,16 @@ class FakeAuthRepository(
     override val sessionState: StateFlow<SessionState> = _sessionState.asStateFlow()
 
     var requestTokenResult: Outcome<String> = Outcome.Success("fake_request_token_123")
+    var authorizationUrlResult: Outcome<String> = Outcome.Success(
+        "https://www.themoviedb.org/authenticate/fake_request_token_123?redirect_to=cinemahub%3A%2F%2Fauth"
+    )
     var completeAuthResult: Outcome<AccountProfile> = Outcome.Success(MovieTestData.createAccountProfile())
 
     fun setSessionState(state: SessionState) {
         _sessionState.value = state
     }
+
+    override suspend fun buildAuthorizationUrl(): Outcome<String> = authorizationUrlResult
 
     override suspend fun createRequestToken(): Outcome<String> = requestTokenResult
 
