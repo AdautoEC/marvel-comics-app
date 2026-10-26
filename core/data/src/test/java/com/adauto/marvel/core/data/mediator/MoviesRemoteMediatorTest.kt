@@ -9,6 +9,7 @@ import androidx.room.withTransaction
 import com.adauto.marvel.core.database.MarvelDatabase
 import com.adauto.marvel.core.database.dao.MovieDao
 import com.adauto.marvel.core.database.dao.MovieRemoteKeysDao
+import com.adauto.marvel.core.database.entity.MovieEntity
 import com.adauto.marvel.core.database.entity.MovieRemoteKeysEntity
 import com.adauto.marvel.core.database.model.MovieWithUserData
 import com.adauto.marvel.core.network.api.TmdbApi
@@ -21,6 +22,7 @@ import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.mockkStatic
+import io.mockk.slot
 import kotlinx.coroutines.test.runTest
 import org.junit.Before
 import org.junit.Test
@@ -185,5 +187,34 @@ class MoviesRemoteMediatorTest {
         val success = result as RemoteMediator.MediatorResult.Success
         assertThat(success.endOfPaginationReached).isTrue()
         coVerify(exactly = 0) { api.getPopularMovies(any()) }
+    }
+
+    @Test
+    fun load_whenPageSizeIsSmallerThanTmdbPageSize_computesPositionBasedOnTmdbConstant() = runTest {
+        coEvery { remoteKeysDao.getKey("POPULAR") } returns MovieRemoteKeysEntity(
+            label = "POPULAR",
+            nextPage = 2,
+            totalPages = 5,
+            updatedAt = fixedClock.millis()
+        )
+        val movieDto = TmdbMovieDto(id = 100, title = "M100", overview = "O", voteAverage = 8.0, releaseDate = "2024")
+        coEvery { api.getPopularMovies(page = 2) } returns ApiResponse.Success(
+            TmdbPageResponseDto(page = 2, results = listOf(movieDto), totalPages = 5, totalResults = 100)
+        )
+
+        // Paging config has pageSize = 10 (smaller than TMDB 20)
+        val stateWithSmallPage = PagingState<Int, MovieWithUserData>(
+            pages = emptyList(),
+            anchorPosition = null,
+            config = PagingConfig(pageSize = 10),
+            leadingPlaceholderCount = 0
+        )
+
+        mediator.load(LoadType.APPEND, stateWithSmallPage)
+
+        val insertedSlot = slot<List<MovieEntity>>()
+        coVerify(atLeast = 1) { movieDao.upsertAll(capture(insertedSlot)) }
+        // Page 2 start position must be (2 - 1) * 20 = 20, NOT (2 - 1) * 10 = 10
+        assertThat(insertedSlot.captured.first().position).isEqualTo(20)
     }
 }

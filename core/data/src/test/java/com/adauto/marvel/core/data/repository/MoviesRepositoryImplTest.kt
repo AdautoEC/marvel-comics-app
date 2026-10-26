@@ -149,7 +149,8 @@ class MoviesRepositoryImplTest {
                     target = SyncOutboxWorker.TARGET_FAVORITE,
                     desired = true,
                     attempts = 0,
-                    version = 1
+                    version = 1,
+                    createdAt = 1_700_000_000_000L
                 )
             )
         }
@@ -263,7 +264,8 @@ class MoviesRepositoryImplTest {
                     target = SyncOutboxWorker.TARGET_WATCHLIST,
                     desired = true,
                     attempts = 0,
-                    version = 1
+                    version = 1,
+                    createdAt = 1_700_000_000_000L
                 )
             )
         }

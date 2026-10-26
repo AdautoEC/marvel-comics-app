@@ -10,6 +10,7 @@ import com.adauto.marvel.core.database.dao.SyncOutboxDao
 import com.adauto.marvel.core.database.dao.WatchedDao
 import com.adauto.marvel.core.database.migrations.MIGRATION_2_3
 import com.adauto.marvel.core.database.migrations.MIGRATION_3_4
+import com.adauto.marvel.core.database.migrations.MIGRATION_4_5
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -31,7 +32,7 @@ object DatabaseModule {
             MarvelDatabase::class.java,
             "marvel.db"
         )
-            .addMigrations(MIGRATION_2_3, MIGRATION_3_4)
+            .addMigrations(MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
             .fallbackToDestructiveMigrationFrom(1)
             .build()
     }
