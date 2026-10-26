@@ -44,7 +44,6 @@ private const val HTTP_TOO_MANY_REQUESTS = 429
 
 @Composable
 fun MovieListGrid(
-    uiState: MovieListUiState,
     movies: LazyPagingItems<MovieSummary>,
     gridState: LazyGridState,
     onAction: (MovieListAction) -> Unit,
@@ -80,13 +79,10 @@ fun MovieListGrid(
 
         appendLoadingOrError(loadState = movies.loadState.append, onRetry = { movies.retry() })
 
-        if (uiState.attribution != null) {
-            item(span = { GridItemSpan(maxLineSpan) }) {
-                AttributionFooter(
-                    text = uiState.attribution,
-                    modifier = Modifier.testTag("AttributionFooter")
-                )
-            }
+        item(span = { GridItemSpan(maxLineSpan) }) {
+            AttributionFooter(
+                modifier = Modifier.testTag("AttributionFooter")
+            )
         }
     }
 }

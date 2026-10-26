@@ -10,10 +10,13 @@ import app.cash.turbine.test
 import com.adauto.marvel.core.data.repository.AuthRepository
 import com.adauto.marvel.core.data.repository.MoviesRepository
 import com.adauto.marvel.core.data.util.NetworkMonitor
+import com.adauto.marvel.core.model.DomainError
 import com.adauto.marvel.core.model.MovieCategory
 import com.adauto.marvel.core.model.MovieSummary
+import com.adauto.marvel.core.model.Outcome
 import com.adauto.marvel.core.model.SessionState
 import com.google.common.truth.Truth.assertThat
+import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
@@ -305,6 +308,7 @@ class MovieListViewModelTest {
 
         val viewModel = createViewModel()
         viewModel.onAction(MovieListAction.SearchQueryChanged("Thor"))
+        testScheduler.advanceTimeBy(300)
 
         viewModel.movies.test {
             val pagingData = awaitItem()
@@ -317,9 +321,55 @@ class MovieListViewModelTest {
     }
 
     @Test
-    fun userMessageDismissed_clearsUserMessageFromUiState() = runTest {
+    fun searchQueryChanged_rapidKeystrokes_debouncesPagerQueriesBy300ms() = runTest {
+        every { moviesRepository.movies(any(), any()) } returns flowOf(PagingData.from(emptyList()))
         val viewModel = createViewModel()
-        viewModel.onAction(MovieListAction.UserMessageDismissed)
-        assertThat(viewModel.uiState.value.userMessage).isNull()
+
+        viewModel.movies.test {
+            awaitItem() // Initial load for empty query
+
+            // 5 rapid keystrokes with 20ms intervals (total 100ms < 300ms)
+            viewModel.onAction(MovieListAction.SearchQueryChanged("D"))
+            testScheduler.advanceTimeBy(20)
+            viewModel.onAction(MovieListAction.SearchQueryChanged("Du"))
+            testScheduler.advanceTimeBy(20)
+            viewModel.onAction(MovieListAction.SearchQueryChanged("Dun"))
+            testScheduler.advanceTimeBy(20)
+            viewModel.onAction(MovieListAction.SearchQueryChanged("Duna"))
+            testScheduler.advanceTimeBy(20)
+            viewModel.onAction(MovieListAction.SearchQueryChanged("Dunas"))
+
+            // Advance by 150ms (total from last stroke: 150ms < 300ms) - debounce should not have fired yet
+            testScheduler.advanceTimeBy(150)
+            io.mockk.verify(exactly = 0) { moviesRepository.movies(MovieCategory.POPULAR, "D") }
+            io.mockk.verify(exactly = 0) { moviesRepository.movies(MovieCategory.POPULAR, "Du") }
+            io.mockk.verify(exactly = 0) { moviesRepository.movies(MovieCategory.POPULAR, "Dun") }
+            io.mockk.verify(exactly = 0) { moviesRepository.movies(MovieCategory.POPULAR, "Duna") }
+            io.mockk.verify(exactly = 0) { moviesRepository.movies(MovieCategory.POPULAR, "Dunas") }
+
+            // Advance past 300ms from the last keystroke (160ms -> total 310ms > 300ms)
+            testScheduler.advanceTimeBy(160)
+
+            awaitItem() // PagingData for debounced query "Dunas"
+
+            io.mockk.verify(exactly = 1) { moviesRepository.movies(MovieCategory.POPULAR, "Dunas") }
+            io.mockk.verify(exactly = 0) { moviesRepository.movies(MovieCategory.POPULAR, "D") }
+            io.mockk.verify(exactly = 0) { moviesRepository.movies(MovieCategory.POPULAR, "Du") }
+            io.mockk.verify(exactly = 0) { moviesRepository.movies(MovieCategory.POPULAR, "Dun") }
+            io.mockk.verify(exactly = 0) { moviesRepository.movies(MovieCategory.POPULAR, "Duna") }
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun connectTmdbClicked_whenFailure_emitsShowMessageEffect() = runTest {
+        coEvery { authRepository.createRequestToken() } returns Outcome.Failure(DomainError.NoConnection)
+        val viewModel = createViewModel()
+
+        viewModel.effects.test {
+            viewModel.onAction(MovieListAction.ConnectTmdbClicked)
+            val effect = awaitItem()
+            assertThat(effect).isInstanceOf(MovieListEffect.ShowMessage::class.java)
+        }
     }
 }

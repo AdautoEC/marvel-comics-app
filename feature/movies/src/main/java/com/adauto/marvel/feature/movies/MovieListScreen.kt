@@ -15,13 +15,17 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.paging.LoadState
+import androidx.paging.LoadStates
+import androidx.paging.PagingData
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItems
 import com.adauto.marvel.core.designsystem.preview.DevicePreviews
@@ -33,7 +37,6 @@ import com.adauto.marvel.core.model.MovieSummary
 import com.adauto.marvel.core.model.SessionState
 import com.adauto.marvel.core.ui.component.AttributionFooter
 import com.adauto.marvel.core.ui.component.OfflineBanner
-import com.adauto.marvel.core.ui.util.asString
 import com.adauto.marvel.feature.movies.component.CategoryFilterTabs
 import com.adauto.marvel.feature.movies.component.GuestSyncBanner
 import com.adauto.marvel.feature.movies.component.MovieListEmptyState
@@ -43,6 +46,7 @@ import com.adauto.marvel.feature.movies.component.MovieListShimmerGrid
 import com.adauto.marvel.feature.movies.component.MovieListTopBar
 import com.adauto.marvel.feature.movies.preview.MovieListPreviewState
 import com.adauto.marvel.feature.movies.preview.MovieListUiStatePreviewParameterProvider
+import kotlinx.coroutines.flow.flowOf
 
 /**
  * Cinema Hub Movies List Screen rendering a 2-column grid of movies with UDF architecture,
@@ -52,20 +56,11 @@ import com.adauto.marvel.feature.movies.preview.MovieListUiStatePreviewParameter
 @Composable
 fun MovieListScreen(
     uiState: MovieListUiState,
+    movies: LazyPagingItems<MovieSummary>,
     onAction: (MovieListAction) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    snackbarHostState: SnackbarHostState = remember { SnackbarHostState() }
 ) {
-    val movies = uiState.movies.collectAsLazyPagingItems()
-    val snackbarHostState = remember { SnackbarHostState() }
-    val context = LocalContext.current
-
-    LaunchedEffect(uiState.userMessage) {
-        uiState.userMessage?.let { message ->
-            snackbarHostState.showSnackbar(message.asString(context))
-            onAction(MovieListAction.UserMessageDismissed)
-        }
-    }
-
     MovieListContent(
         uiState = uiState,
         movies = movies,
@@ -118,11 +113,18 @@ private fun MovieListContentBody(
     onAction: (MovieListAction) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val isRefreshing = uiState.isRefreshing ||
-        (movies.loadState.refresh is LoadState.Loading && movies.itemCount > 0)
+    var isPullToRefreshing by remember { mutableStateOf(false) }
+    LaunchedEffect(movies.loadState.refresh) {
+        if (movies.loadState.refresh !is LoadState.Loading) {
+            isPullToRefreshing = false
+        }
+    }
+    val isRefreshing = uiState.isRefreshing || isPullToRefreshing
+
     PullToRefreshBox(
         isRefreshing = isRefreshing,
         onRefresh = {
+            isPullToRefreshing = true
             onAction(MovieListAction.RefreshRequested)
             movies.refresh()
         },
@@ -148,7 +150,6 @@ private fun MovieListContentBody(
             }
             else -> {
                 MovieListGrid(
-                    uiState = uiState,
                     movies = movies,
                     gridState = gridState,
                     onAction = onAction,
@@ -194,15 +195,34 @@ private fun MovieListScreenPreview(
 internal fun MovieListContentPreview(
     previewState: MovieListPreviewState
 ) {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .testTag("PreviewContent")
-    ) {
-        Text(
-            text = "Cinema Hub Preview (${previewState.uiState.selectedCategory.displayName})",
-            color = MarvelColors.TextPrimary,
-            modifier = Modifier.align(Alignment.Center)
+    val pagingData = remember(previewState) {
+        val loadStates = when {
+            previewState.isLoading -> LoadStates(
+                refresh = LoadState.Loading,
+                prepend = LoadState.NotLoading(endOfPaginationReached = false),
+                append = LoadState.NotLoading(endOfPaginationReached = false)
+            )
+            previewState.errorMessage != null -> LoadStates(
+                refresh = LoadState.Error(RuntimeException(previewState.errorMessage)),
+                prepend = LoadState.NotLoading(endOfPaginationReached = false),
+                append = LoadState.NotLoading(endOfPaginationReached = false)
+            )
+            else -> LoadStates(
+                refresh = LoadState.NotLoading(endOfPaginationReached = true),
+                prepend = LoadState.NotLoading(endOfPaginationReached = true),
+                append = LoadState.NotLoading(endOfPaginationReached = true)
+            )
+        }
+        PagingData.from(
+            data = previewState.movies,
+            sourceLoadStates = loadStates
         )
     }
+    val movies = flowOf(pagingData).collectAsLazyPagingItems()
+
+    MovieListContent(
+        uiState = previewState.uiState,
+        movies = movies,
+        onAction = {}
+    )
 }
