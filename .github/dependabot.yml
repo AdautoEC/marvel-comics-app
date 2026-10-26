@@ -1,0 +1,47 @@
+version: 2
+updates:
+  - package-ecosystem: "gradle"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "America/Sao_Paulo"
+    open-pull-requests-limit: 10
+    groups:
+      core-frameworks:
+        patterns:
+          - "com.android.*"
+          - "org.jetbrains.kotlin*"
+          - "com.google.devtools.ksp*"
+          - "androidx.compose.*"
+          - "com.google.dagger*"
+          - "androidx.room*"
+          - "androidx.paging*"
+          - "androidx.work*"
+          - "androidx.lifecycle*"
+      firebase:
+        patterns:
+          - "com.google.firebase*"
+          - "com.google.android.play*"
+      image-loading:
+        patterns:
+          - "io.coil-kt*"
+      networking:
+        patterns:
+          - "com.squareup.retrofit2*"
+          - "com.squareup.okhttp3*"
+          - "com.github.skydoves*"
+          - "org.jetbrains.kotlinx:kotlinx-serialization*"
+      testing:
+        patterns:
+          - "junit*"
+          - "io.mockk*"
+          - "app.cash.turbine*"
+          - "com.google.truth*"
+          - "org.robolectric*"
+      tooling:
+        patterns:
+          - "io.gitlab.arturbosch.detekt*"
+          - "com.diffplug.spotless*"
+          - "org.jetbrains.kotlinx.kover*"
