@@ -64,8 +64,7 @@ dependencies {
     testImplementation(libs.androidx.compose.ui.test.junit4)
     testImplementation(libs.androidx.test.ext.junit)
     testImplementation(libs.androidx.test.core)
-
-    debugImplementation(libs.androidx.compose.ui.test.manifest)
+    testImplementation(libs.androidx.compose.ui.test.manifest)
     testImplementation(libs.paging.testing)
 
     debugImplementation(libs.androidx.compose.ui.test.manifest)

@@ -7,7 +7,6 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
-import com.adauto.cinemahub.core.model.MovieDetail
 import com.adauto.cinemahub.core.model.UiText
 import com.adauto.cinemahub.core.testing.data.MovieTestData
 import org.junit.Assert.assertEquals
