@@ -9,6 +9,8 @@ import androidx.paging.testing.asSnapshot
 import app.cash.turbine.test
 import com.adauto.cinemahub.core.data.repository.AuthRepository
 import com.adauto.cinemahub.core.data.repository.MoviesRepository
+import com.adauto.cinemahub.core.data.usecase.ToggleFavoriteUseCase
+import com.adauto.cinemahub.core.data.usecase.ToggleWatchlistUseCase
 import com.adauto.cinemahub.core.data.util.NetworkMonitor
 import com.adauto.cinemahub.core.model.DomainError
 import com.adauto.cinemahub.core.model.MovieCategory
@@ -44,8 +46,16 @@ class MovieListViewModelTest {
     private val networkMonitor: NetworkMonitor = mockk {
         every { isOnline } returns isOnlineFlow
     }
+    private val toggleFavoriteUseCase = ToggleFavoriteUseCase(moviesRepository)
+    private val toggleWatchlistUseCase = ToggleWatchlistUseCase(moviesRepository)
 
-    private fun createViewModel() = MovieListViewModel(moviesRepository, authRepository, networkMonitor)
+    private fun createViewModel() = MovieListViewModel(
+        moviesRepository,
+        authRepository,
+        networkMonitor,
+        toggleFavoriteUseCase,
+        toggleWatchlistUseCase
+    )
 
     @Before
     fun setUp() {

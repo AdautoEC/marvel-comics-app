@@ -3,6 +3,8 @@ package com.adauto.cinemahub.feature.movies
 import app.cash.turbine.test
 import com.adauto.cinemahub.core.data.repository.AuthRepository
 import com.adauto.cinemahub.core.data.repository.MoviesRepository
+import com.adauto.cinemahub.core.data.usecase.ToggleFavoriteUseCase
+import com.adauto.cinemahub.core.data.usecase.ToggleWatchlistUseCase
 import com.adauto.cinemahub.core.data.util.NetworkMonitor
 import com.adauto.cinemahub.core.model.MovieSummary
 import com.adauto.cinemahub.core.model.Outcome
@@ -35,8 +37,16 @@ class MovieListViewModelAuthTest {
     }
 
     private val sessionStateFlow = MutableStateFlow<SessionState>(SessionState.Guest)
+    private val toggleFavoriteUseCase = ToggleFavoriteUseCase(moviesRepository)
+    private val toggleWatchlistUseCase = ToggleWatchlistUseCase(moviesRepository)
 
-    private fun createViewModel() = MovieListViewModel(moviesRepository, authRepository, networkMonitor)
+    private fun createViewModel() = MovieListViewModel(
+        moviesRepository,
+        authRepository,
+        networkMonitor,
+        toggleFavoriteUseCase,
+        toggleWatchlistUseCase
+    )
 
     @Before
     fun setUp() {

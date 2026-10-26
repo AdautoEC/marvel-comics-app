@@ -2,6 +2,8 @@ package com.adauto.cinemahub.feature.detail
 
 import androidx.lifecycle.SavedStateHandle
 import app.cash.turbine.test
+import com.adauto.cinemahub.core.data.usecase.ToggleFavoriteUseCase
+import com.adauto.cinemahub.core.data.usecase.ToggleWatchlistUseCase
 import com.adauto.cinemahub.core.model.Outcome
 import com.adauto.cinemahub.core.testing.data.MovieTestData
 import com.adauto.cinemahub.core.testing.repository.FakeMoviesRepository
@@ -24,6 +26,8 @@ class MovieDetailViewModelTest {
     val mainDispatcherRule = MainDispatcherRule(testDispatcher)
 
     private lateinit var moviesRepository: FakeMoviesRepository
+    private lateinit var toggleFavoriteUseCase: ToggleFavoriteUseCase
+    private lateinit var toggleWatchlistUseCase: ToggleWatchlistUseCase
     private val sampleMovie = MovieTestData.createMovieDetail(
         id = 101,
         title = "Inception",
@@ -41,13 +45,23 @@ class MovieDetailViewModelTest {
     @Before
     fun setUp() {
         moviesRepository = FakeMoviesRepository()
+        toggleFavoriteUseCase = ToggleFavoriteUseCase(moviesRepository)
+        toggleWatchlistUseCase = ToggleWatchlistUseCase(moviesRepository)
         moviesRepository.movieDetails[101] = Outcome.Success(sampleMovie)
+    }
+
+    private fun createViewModel(movieId: Int = 101): MovieDetailViewModel {
+        return MovieDetailViewModel(
+            moviesRepository = moviesRepository,
+            toggleFavoriteUseCase = toggleFavoriteUseCase,
+            toggleWatchlistUseCase = toggleWatchlistUseCase,
+            savedStateHandle = SavedStateHandle(mapOf("movieId" to movieId))
+        )
     }
 
     @Test
     fun loadDetail_onInit_updatesUiStateWithMovie() = runTest {
-        val savedStateHandle = SavedStateHandle(mapOf("movieId" to 101))
-        val viewModel = MovieDetailViewModel(moviesRepository, savedStateHandle)
+        val viewModel = createViewModel()
 
         testDispatcher.scheduler.advanceUntilIdle()
 
@@ -59,8 +73,7 @@ class MovieDetailViewModelTest {
 
     @Test
     fun backClicked_emitsNavigateBackEffect() = runTest {
-        val savedStateHandle = SavedStateHandle(mapOf("movieId" to 101))
-        val viewModel = MovieDetailViewModel(moviesRepository, savedStateHandle)
+        val viewModel = createViewModel()
 
         viewModel.effects.test {
             viewModel.onAction(MovieDetailAction.BackClicked)
@@ -71,8 +84,7 @@ class MovieDetailViewModelTest {
 
     @Test
     fun favoriteToggled_callsRepositoryToggleFavorite_andUpdatesState() = runTest {
-        val savedStateHandle = SavedStateHandle(mapOf("movieId" to 101))
-        val viewModel = MovieDetailViewModel(moviesRepository, savedStateHandle)
+        val viewModel = createViewModel()
 
         testDispatcher.scheduler.advanceUntilIdle()
 
@@ -87,8 +99,7 @@ class MovieDetailViewModelTest {
 
     @Test
     fun watchlistToggled_callsRepositoryToggleWatchlist_andUpdatesState() = runTest {
-        val savedStateHandle = SavedStateHandle(mapOf("movieId" to 101))
-        val viewModel = MovieDetailViewModel(moviesRepository, savedStateHandle)
+        val viewModel = createViewModel()
 
         testDispatcher.scheduler.advanceUntilIdle()
 

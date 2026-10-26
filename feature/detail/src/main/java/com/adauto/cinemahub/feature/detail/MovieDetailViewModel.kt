@@ -4,8 +4,9 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.adauto.cinemahub.core.data.repository.MoviesRepository
+import com.adauto.cinemahub.core.data.usecase.ToggleFavoriteUseCase
+import com.adauto.cinemahub.core.data.usecase.ToggleWatchlistUseCase
 import com.adauto.cinemahub.core.model.DomainError
-import com.adauto.cinemahub.core.model.MovieSummary
 import com.adauto.cinemahub.core.model.Outcome
 import com.adauto.cinemahub.core.model.UiText
 import com.adauto.cinemahub.core.ui.R
@@ -23,6 +24,8 @@ import javax.inject.Inject
 @HiltViewModel
 class MovieDetailViewModel @Inject constructor(
     private val moviesRepository: MoviesRepository,
+    private val toggleFavoriteUseCase: ToggleFavoriteUseCase,
+    private val toggleWatchlistUseCase: ToggleWatchlistUseCase,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
@@ -51,31 +54,15 @@ class MovieDetailViewModel @Inject constructor(
             }
             is MovieDetailAction.FavoriteToggled -> {
                 val current = _uiState.value.movie ?: return
-                val summary = MovieSummary(
-                    id = current.id,
-                    title = current.title,
-                    posterUrl = current.posterUrl,
-                    voteAverage = current.voteAverage,
-                    releaseDate = current.releaseDate,
-                    isFavorite = current.isFavorite
-                )
                 viewModelScope.launch {
-                    moviesRepository.toggleFavorite(summary)
+                    toggleFavoriteUseCase(current)
                     _uiState.update { it.copy(movie = current.copy(isFavorite = !current.isFavorite)) }
                 }
             }
             is MovieDetailAction.WatchlistToggled -> {
                 val current = _uiState.value.movie ?: return
-                val summary = MovieSummary(
-                    id = current.id,
-                    title = current.title,
-                    posterUrl = current.posterUrl,
-                    voteAverage = current.voteAverage,
-                    releaseDate = current.releaseDate,
-                    isInWatchlist = current.isInWatchlist
-                )
                 viewModelScope.launch {
-                    moviesRepository.toggleWatchlist(summary)
+                    toggleWatchlistUseCase(current)
                     _uiState.update { it.copy(movie = current.copy(isInWatchlist = !current.isInWatchlist)) }
                 }
             }

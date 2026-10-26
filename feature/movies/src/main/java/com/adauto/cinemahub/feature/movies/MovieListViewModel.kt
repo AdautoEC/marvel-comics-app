@@ -7,6 +7,8 @@ import androidx.paging.cachedIn
 import androidx.paging.filter
 import com.adauto.cinemahub.core.data.repository.AuthRepository
 import com.adauto.cinemahub.core.data.repository.MoviesRepository
+import com.adauto.cinemahub.core.data.usecase.ToggleFavoriteUseCase
+import com.adauto.cinemahub.core.data.usecase.ToggleWatchlistUseCase
 import com.adauto.cinemahub.core.data.util.NetworkMonitor
 import com.adauto.cinemahub.core.model.MovieCategory
 import com.adauto.cinemahub.core.model.MovieSummary
@@ -39,7 +41,9 @@ private const val SEARCH_DEBOUNCE_MILLIS = 300L
 class MovieListViewModel @Inject constructor(
     private val moviesRepository: MoviesRepository,
     private val authRepository: AuthRepository,
-    private val networkMonitor: NetworkMonitor
+    private val networkMonitor: NetworkMonitor,
+    private val toggleFavoriteUseCase: ToggleFavoriteUseCase,
+    private val toggleWatchlistUseCase: ToggleWatchlistUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(MovieListUiState())
@@ -148,12 +152,12 @@ class MovieListViewModel @Inject constructor(
             }
             is MovieListAction.FavoriteToggled -> {
                 viewModelScope.launch {
-                    moviesRepository.toggleFavorite(action.movie)
+                    toggleFavoriteUseCase(action.movie)
                 }
             }
             is MovieListAction.WatchlistToggled -> {
                 viewModelScope.launch {
-                    moviesRepository.toggleWatchlist(action.movie)
+                    toggleWatchlistUseCase(action.movie)
                 }
             }
             is MovieListAction.ConnectTmdbClicked -> {
