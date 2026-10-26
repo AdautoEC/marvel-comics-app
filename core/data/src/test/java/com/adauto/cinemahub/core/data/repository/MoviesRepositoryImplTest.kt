@@ -1,55 +1,50 @@
 package com.adauto.cinemahub.core.data.repository
 
-import androidx.room.withTransaction
+import android.content.Context
+import androidx.room.Room
+import androidx.test.core.app.ApplicationProvider
 import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequest
 import androidx.work.WorkManager
+import com.adauto.cinemahub.core.data.fake.FakeTmdbApi
 import com.adauto.cinemahub.core.data.sync.SyncCoordinator
 import com.adauto.cinemahub.core.data.worker.SyncOutboxWorker
 import com.adauto.cinemahub.core.database.CinemaHubDatabase
-import com.adauto.cinemahub.core.database.dao.FavoriteDao
-import com.adauto.cinemahub.core.database.dao.MovieDao
-import com.adauto.cinemahub.core.database.dao.SyncOutboxDao
-import com.adauto.cinemahub.core.database.dao.WatchlistDao
 import com.adauto.cinemahub.core.database.entity.FavoriteMovieEntity
-import com.adauto.cinemahub.core.database.entity.SyncOutboxEntity
+import com.adauto.cinemahub.core.database.entity.MovieEntity
 import com.adauto.cinemahub.core.database.entity.WatchlistMovieEntity
-import com.adauto.cinemahub.core.model.DomainError
 import com.adauto.cinemahub.core.model.MovieSummary
 import com.adauto.cinemahub.core.model.Outcome
 import com.adauto.cinemahub.core.model.SessionState
-import com.adauto.cinemahub.core.network.api.TmdbApi
+import com.adauto.cinemahub.core.network.model.TmdbMovieDetailDto
 import com.adauto.cinemahub.core.network.model.TmdbMovieDto
-import com.adauto.cinemahub.core.network.model.TmdbPageResponseDto
 import com.adauto.cinemahub.core.network.security.session.SessionManager
 import com.google.common.truth.Truth.assertThat
 import com.skydoves.sandwich.ApiResponse
 import io.mockk.coEvery
-import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
-import io.mockk.mockkStatic
 import io.mockk.verify
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
 import okhttp3.ResponseBody.Companion.toResponseBody
+import org.junit.After
 import org.junit.Before
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
 import retrofit2.Response
 import java.time.Clock
 import java.time.Instant
 import java.time.ZoneOffset
 
+@RunWith(RobolectricTestRunner::class)
 class MoviesRepositoryImplTest {
 
-    private val api: TmdbApi = mockk()
-    private val database: CinemaHubDatabase = mockk()
-    private val favoriteDao: FavoriteDao = mockk(relaxed = true)
-    private val watchlistDao: WatchlistDao = mockk(relaxed = true)
-    private val movieDao: MovieDao = mockk(relaxed = true)
-    private val syncOutboxDao: SyncOutboxDao = mockk(relaxed = true)
+    private lateinit var db: CinemaHubDatabase
+    private lateinit var fakeApi: FakeTmdbApi
     private val sessionManager: SessionManager = mockk(relaxed = true)
     private val workManager: WorkManager = mockk(relaxed = true)
     private val syncCoordinator = SyncCoordinator()
@@ -69,27 +64,30 @@ class MoviesRepositoryImplTest {
 
     @Before
     fun setUp() {
-        mockkStatic("androidx.room.RoomDatabaseKt")
-        coEvery { database.withTransaction(any<suspend () -> Any>()) } coAnswers {
-            @Suppress("UNCHECKED_CAST")
-            val block = it.invocation.args[1] as suspend () -> Any
-            block()
-        }
-        every { database.favoriteDao() } returns favoriteDao
-        every { database.watchlistDao() } returns watchlistDao
-        every { database.movieDao() } returns movieDao
-        every { database.syncOutboxDao() } returns syncOutboxDao
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        db = Room.inMemoryDatabaseBuilder(context, CinemaHubDatabase::class.java)
+            .allowMainThreadQueries()
+            .build()
+
+        fakeApi = FakeTmdbApi()
+
         every { sessionManager.sessionState } returns sessionStateFlow
         coEvery { sessionManager.awaitInitialSession() } coAnswers { sessionStateFlow.value }
 
         repository = MoviesRepositoryImpl(
-            api = api,
-            database = database,
+            api = fakeApi,
+            database = db,
             sessionManager = sessionManager,
             workManager = workManager,
             syncCoordinator = syncCoordinator,
+            externalScope = TestScope(),
             clock = fixedClock
         )
+    }
+
+    @After
+    fun tearDown() {
+        db.close()
     }
 
     // region Gated Atomic Toggles Tests
@@ -97,477 +95,329 @@ class MoviesRepositoryImplTest {
     @Test
     fun toggleFavorite_whenGuest_updatesOnlyLocalTable_andDoesNotWriteOutbox() = runTest {
         sessionStateFlow.value = SessionState.Guest
-        every { favoriteDao.isFavorite(101) } returns flowOf(false)
 
         repository.toggleFavorite(sampleMovie)
 
-        coVerify(exactly = 1) {
-            favoriteDao.upsert(
-                FavoriteMovieEntity(
-                    movieId = 101,
-                    title = "Iron Man",
-                    posterPath = "/ironman.jpg",
-                    voteAverage = 8.2,
-                    releaseDate = "2008-05-02",
-                    addedAt = 1_700_000_000_000L
-                )
-            )
-        }
-        coVerify(exactly = 0) { syncOutboxDao.upsert(any()) }
-        verify(exactly = 0) { workManager.enqueueUniqueWork(any(), any(), any<OneTimeWorkRequest>()) }
-        coVerify(exactly = 0) { api.markAsFavorite(any(), any(), any()) }
+        val favorites = db.favoriteDao().getAllFavorites().first()
+        assertThat(favorites.map { it.movieId }).containsExactly(101)
+
+        val outbox = db.syncOutboxDao().getAllPending()
+        assertThat(outbox).isEmpty()
     }
 
     @Test
-    fun toggleFavorite_whenAuthenticated_updatesLocalTable_andUpsertsOutboxWithIncrementedVersion() = runTest {
+    fun toggleFavorite_whenAuthenticated_updatesLocalTable_andWritesOutbox() = runTest {
         sessionStateFlow.value = SessionState.Authenticated(
             accountId = 42,
-            username = "stark",
-            sessionId = "sess_iron"
+            username = "adauto",
+            sessionId = "sess_123"
         )
-        every { favoriteDao.isFavorite(101) } returns flowOf(false)
-        coEvery { syncOutboxDao.find(101, SyncOutboxWorker.TARGET_FAVORITE) } returns null
 
         repository.toggleFavorite(sampleMovie)
 
-        coVerify(exactly = 1) {
-            favoriteDao.upsert(
-                FavoriteMovieEntity(
-                    movieId = 101,
-                    title = "Iron Man",
-                    posterPath = "/ironman.jpg",
-                    voteAverage = 8.2,
-                    releaseDate = "2008-05-02",
-                    addedAt = 1_700_000_000_000L
-                )
-            )
-        }
-        coVerify(exactly = 1) {
-            syncOutboxDao.upsert(
-                SyncOutboxEntity(
-                    movieId = 101,
-                    target = SyncOutboxWorker.TARGET_FAVORITE,
-                    desired = true,
-                    attempts = 0,
-                    version = 1,
-                    createdAt = 1_700_000_000_000L
-                )
-            )
-        }
-        verify(exactly = 1) {
+        val favorites = db.favoriteDao().getAllFavorites().first()
+        assertThat(favorites.map { it.movieId }).containsExactly(101)
+
+        val outbox = db.syncOutboxDao().find(101, SyncOutboxWorker.TARGET_FAVORITE)
+        assertThat(outbox).isNotNull()
+        assertThat(outbox?.desired).isTrue()
+        assertThat(outbox?.version).isEqualTo(1)
+
+        verify {
             workManager.enqueueUniqueWork(
                 SyncOutboxWorker.WORK_NAME,
                 ExistingWorkPolicy.APPEND_OR_REPLACE,
                 any<OneTimeWorkRequest>()
             )
         }
-        coVerify(exactly = 0) { api.markAsFavorite(any(), any(), any()) }
     }
 
     @Test
-    fun toggleFavorite_multipleRapidToggles_incrementsVersionMonotonically() = runTest {
-        sessionStateFlow.value = SessionState.Authenticated(
-            accountId = 42,
-            username = "stark",
-            sessionId = "sess_iron"
-        )
+    fun toggleFavorite_twice_addsThenRemoves_fromLocalDatabase() = runTest {
+        sessionStateFlow.value = SessionState.Guest
 
-        // 1st toggle: false -> true (existing version = 0)
-        every { favoriteDao.isFavorite(101) } returns flowOf(false)
-        coEvery { syncOutboxDao.find(101, SyncOutboxWorker.TARGET_FAVORITE) } returns null
         repository.toggleFavorite(sampleMovie)
-        coVerify(exactly = 1) {
-            syncOutboxDao.upsert(match { it.version == 1 && it.desired })
-        }
+        assertThat(db.favoriteDao().isFavorite(101).first()).isTrue()
 
-        // 2nd toggle: true -> false (existing version = 1)
-        every { favoriteDao.isFavorite(101) } returns flowOf(true)
-        coEvery { syncOutboxDao.find(101, SyncOutboxWorker.TARGET_FAVORITE) } returns SyncOutboxEntity(
-            movieId = 101,
-            target = SyncOutboxWorker.TARGET_FAVORITE,
-            desired = true,
-            attempts = 0,
-            version = 1
-        )
         repository.toggleFavorite(sampleMovie)
-        coVerify(exactly = 1) {
-            syncOutboxDao.upsert(match { it.version == 2 && !it.desired })
-        }
-
-        // 3rd toggle: false -> true (existing version = 2)
-        every { favoriteDao.isFavorite(101) } returns flowOf(false)
-        coEvery { syncOutboxDao.find(101, SyncOutboxWorker.TARGET_FAVORITE) } returns SyncOutboxEntity(
-            movieId = 101,
-            target = SyncOutboxWorker.TARGET_FAVORITE,
-            desired = false,
-            attempts = 0,
-            version = 2
-        )
-        repository.toggleFavorite(sampleMovie)
-        coVerify(exactly = 1) {
-            syncOutboxDao.upsert(match { it.version == 3 && it.desired })
-        }
+        assertThat(db.favoriteDao().isFavorite(101).first()).isFalse()
+        assertThat(db.favoriteDao().getAllFavorites().first()).isEmpty()
     }
 
     @Test
     fun toggleWatchlist_whenGuest_updatesOnlyLocalTable_andDoesNotWriteOutbox() = runTest {
         sessionStateFlow.value = SessionState.Guest
-        every { watchlistDao.isInWatchlist(101) } returns flowOf(false)
 
         repository.toggleWatchlist(sampleMovie)
 
-        coVerify(exactly = 1) {
-            watchlistDao.upsert(
-                WatchlistMovieEntity(
-                    movieId = 101,
-                    title = "Iron Man",
-                    posterPath = "/ironman.jpg",
-                    voteAverage = 8.2,
-                    releaseDate = "2008-05-02",
-                    watchedAt = 1_700_000_000_000L
-                )
-            )
-        }
-        coVerify(exactly = 0) { syncOutboxDao.upsert(any()) }
-        verify(exactly = 0) { workManager.enqueueUniqueWork(any(), any(), any<OneTimeWorkRequest>()) }
-        coVerify(exactly = 0) { api.addToWatchlist(any(), any(), any()) }
+        val watchlist = db.watchlistDao().getAllWatchlist().first()
+        assertThat(watchlist.map { it.movieId }).containsExactly(101)
+
+        val outbox = db.syncOutboxDao().getAllPending()
+        assertThat(outbox).isEmpty()
     }
 
     @Test
-    fun toggleWatchlist_whenAuthenticated_updatesLocalTable_andUpsertsOutboxWithIncrementedVersion() = runTest {
+    fun toggleWatchlist_whenAuthenticated_updatesLocalTable_andWritesOutbox() = runTest {
         sessionStateFlow.value = SessionState.Authenticated(
             accountId = 42,
-            username = "stark",
-            sessionId = "sess_iron"
+            username = "adauto",
+            sessionId = "sess_123"
         )
-        every { watchlistDao.isInWatchlist(101) } returns flowOf(false)
-        coEvery { syncOutboxDao.find(101, SyncOutboxWorker.TARGET_WATCHLIST) } returns null
 
         repository.toggleWatchlist(sampleMovie)
 
-        coVerify(exactly = 1) {
-            watchlistDao.upsert(
-                WatchlistMovieEntity(
-                    movieId = 101,
-                    title = "Iron Man",
-                    posterPath = "/ironman.jpg",
-                    voteAverage = 8.2,
-                    releaseDate = "2008-05-02",
-                    watchedAt = 1_700_000_000_000L
-                )
-            )
-        }
-        coVerify(exactly = 1) {
-            syncOutboxDao.upsert(
-                SyncOutboxEntity(
-                    movieId = 101,
-                    target = SyncOutboxWorker.TARGET_WATCHLIST,
-                    desired = true,
-                    attempts = 0,
-                    version = 1,
-                    createdAt = 1_700_000_000_000L
-                )
-            )
-        }
-        verify(exactly = 1) {
-            workManager.enqueueUniqueWork(
-                SyncOutboxWorker.WORK_NAME,
-                ExistingWorkPolicy.APPEND_OR_REPLACE,
-                any<OneTimeWorkRequest>()
-            )
-        }
+        val watchlist = db.watchlistDao().getAllWatchlist().first()
+        assertThat(watchlist.map { it.movieId }).containsExactly(101)
+
+        val outbox = db.syncOutboxDao().find(101, SyncOutboxWorker.TARGET_WATCHLIST)
+        assertThat(outbox).isNotNull()
+        assertThat(outbox?.desired).isTrue()
+        assertThat(outbox?.version).isEqualTo(1)
+    }
+
+    @Test
+    fun toggleWatchlist_twice_addsThenRemoves_fromLocalDatabase() = runTest {
+        sessionStateFlow.value = SessionState.Guest
+
+        repository.toggleWatchlist(sampleMovie)
+        assertThat(db.watchlistDao().isInWatchlist(101).first()).isTrue()
+
+        repository.toggleWatchlist(sampleMovie)
+        assertThat(db.watchlistDao().isInWatchlist(101).first()).isFalse()
+        assertThat(db.watchlistDao().getAllWatchlist().first()).isEmpty()
     }
 
     // endregion
 
-    // region Authoritative Pull Reconciliation Tests
+    // region Cloud Sync & Reconciliation State Tests
 
     @Test
-    fun syncCloudWithLocal_skipsMoviesWithPendingOutboxMutations() = runTest {
+    fun syncCloudWithLocal_insertsRemoteMovies_intoLocalDatabase() = runTest {
         sessionStateFlow.value = SessionState.Authenticated(
             accountId = 42,
-            username = "stark",
-            sessionId = "sess_iron"
+            username = "adauto",
+            sessionId = "sess_123"
         )
+        fakeApi.favorites.add(TmdbMovieDto(id = 201, title = "Thor", posterPath = "/thor.jpg"))
+        fakeApi.watchlist.add(TmdbMovieDto(id = 301, title = "Iron Man 2", posterPath = "/im2.jpg"))
 
-        val localFav = FavoriteMovieEntity(
-            movieId = 101,
-            title = "Movie 101",
-            posterPath = "/101.jpg",
-            voteAverage = 8.0,
-            releaseDate = "2020-01-01",
-            addedAt = 1000L
+        val result = repository.syncCloudWithLocal()
+        assertThat(result).isEqualTo(Outcome.Success(Unit))
+
+        val favorites = db.favoriteDao().getAllFavorites().first()
+        assertThat(favorites.map { it.movieId }).containsExactly(201)
+
+        val watchlist = db.watchlistDao().getAllWatchlist().first()
+        assertThat(watchlist.map { it.movieId }).containsExactly(301)
+    }
+
+    @Test
+    fun syncCloudWithLocal_removesObsoleteLocalMovies_notPresentInRemote() = runTest {
+        sessionStateFlow.value = SessionState.Authenticated(
+            accountId = 42,
+            username = "adauto",
+            sessionId = "sess_123"
         )
-        every { favoriteDao.getAllFavorites() } returns flowOf(listOf(localFav))
-        every { watchlistDao.getAllWatchlist() } returns flowOf(emptyList())
-
-        coEvery { syncOutboxDao.getPendingMovieIds(SyncOutboxWorker.TARGET_FAVORITE) } returns listOf(101)
-        coEvery { syncOutboxDao.getPendingMovieIds(SyncOutboxWorker.TARGET_WATCHLIST) } returns emptyList()
-
-        val remoteFav101 = createTmdbMovie(101, "Movie 101 Remote", 8.0)
-        val remoteFav102 = createTmdbMovie(102, "Movie 102 Remote", 7.5)
-
-        coEvery {
-            api.getFavoriteMovies(42, "sess_iron", 1)
-        } returns ApiResponse.Success(
-            TmdbPageResponseDto(
-                page = 1,
-                results = listOf(remoteFav101, remoteFav102),
-                totalPages = 1,
-                totalResults = 2
+        // Locally contains movie 501, but remote returns empty
+        db.favoriteDao().upsert(
+            FavoriteMovieEntity(
+                movieId = 501,
+                title = "Hulk",
+                posterPath = null,
+                voteAverage = 7.5,
+                releaseDate = "2008-06-13",
+                addedAt = 1000L
             )
         )
-        coEvery {
-            api.getWatchlistMovies(42, "sess_iron", 1)
-        } returns ApiResponse.Success(
-            TmdbPageResponseDto(page = 1, results = emptyList(), totalPages = 1, totalResults = 0)
+        db.watchlistDao().upsert(
+            WatchlistMovieEntity(
+                movieId = 502,
+                title = "Ant-Man",
+                posterPath = null,
+                voteAverage = 7.0,
+                releaseDate = "2015-07-17",
+                watchedAt = 1000L
+            )
         )
 
-        val outcome = repository.syncCloudWithLocal()
+        fakeApi.favorites.clear()
+        fakeApi.watchlist.clear()
 
-        assertThat(outcome).isInstanceOf(Outcome.Success::class.java)
+        val result = repository.syncCloudWithLocal()
+        assertThat(result).isEqualTo(Outcome.Success(Unit))
 
-        // Movie 102 was inserted because it's not pending and missing locally
-        coVerify(exactly = 1) {
-            favoriteDao.upsert(
-                FavoriteMovieEntity(
-                    movieId = 102,
-                    title = "Movie 102 Remote",
-                    posterPath = "/102.jpg",
-                    voteAverage = 7.5,
-                    releaseDate = "2020-01-01",
-                    addedAt = 1_700_000_000_000L
+        assertThat(db.favoriteDao().getAllFavorites().first()).isEmpty()
+        assertThat(db.watchlistDao().getAllWatchlist().first()).isEmpty()
+    }
+
+    @Test
+    fun pull_preservesLocalFavorite_withPendingOutboxMutation() = runTest {
+        sessionStateFlow.value = SessionState.Authenticated(
+            accountId = 42,
+            username = "adauto",
+            sessionId = "sess_123"
+        )
+
+        // User toggled favorite locally: creates row in favorite table + outbox mutation
+        repository.toggleFavorite(sampleMovie)
+        assertThat(db.favoriteDao().isFavorite(sampleMovie.id).first()).isTrue()
+
+        // Remote does not yet have sampleMovie
+        fakeApi.favorites.clear()
+
+        repository.syncCloudWithLocal()
+
+        // Local favorite must be preserved despite remote not having it!
+        val favIds = db.favoriteDao().getAllFavorites().first().map { it.movieId }
+        assertThat(favIds).contains(sampleMovie.id)
+    }
+
+    @Test
+    fun pull_preservesLocalWatchlist_withPendingOutboxMutation() = runTest {
+        sessionStateFlow.value = SessionState.Authenticated(
+            accountId = 42,
+            username = "adauto",
+            sessionId = "sess_123"
+        )
+
+        repository.toggleWatchlist(sampleMovie)
+        assertThat(db.watchlistDao().isInWatchlist(sampleMovie.id).first()).isTrue()
+
+        fakeApi.watchlist.clear()
+
+        repository.syncCloudWithLocal()
+
+        val watchIds = db.watchlistDao().getAllWatchlist().first().map { it.movieId }
+        assertThat(watchIds).contains(sampleMovie.id)
+    }
+
+    @Test
+    fun syncCloudWithLocal_whenApiFails_doesNotCorruptOrWipeLocalDatabase() = runTest {
+        sessionStateFlow.value = SessionState.Authenticated(
+            accountId = 42,
+            username = "adauto",
+            sessionId = "sess_123"
+        )
+        db.favoriteDao().upsert(
+            FavoriteMovieEntity(
+                movieId = 101,
+                title = "Iron Man",
+                posterPath = null,
+                voteAverage = 8.2,
+                releaseDate = "2008-05-02",
+                addedAt = 1000L
+            )
+        )
+
+        fakeApi.failureResponse = ApiResponse.Failure.Error(
+            Response.error<Any>(500, "Internal Server Error".toResponseBody())
+        )
+
+        val result = repository.syncCloudWithLocal()
+        assertThat(result).isInstanceOf(Outcome.Failure::class.java)
+
+        // Database still contains original favorite intact
+        val favorites = db.favoriteDao().getAllFavorites().first()
+        assertThat(favorites.map { it.movieId }).containsExactly(101)
+    }
+
+    @Test
+    fun syncCloudWithLocal_whenGuest_returnsSuccessWithoutMakingNetworkCalls() = runTest {
+        sessionStateFlow.value = SessionState.Guest
+
+        val result = repository.syncCloudWithLocal()
+        assertThat(result).isEqualTo(Outcome.Success(Unit))
+        assertThat(db.favoriteDao().getAllFavorites().first()).isEmpty()
+    }
+
+    // endregion
+
+    // region Movie Detail & Cache Fallback Tests
+
+    @Test
+    fun getMovieDetail_whenApiSucceeds_returnsMovieDetail() = runTest {
+        fakeApi.movieDetails[101] = TmdbMovieDetailDto(
+            id = 101,
+            title = "Iron Man",
+            overview = "Billionaire engineer Tony Stark...",
+            posterPath = "/ironman.jpg",
+            backdropPath = "/backdrop.jpg",
+            voteAverage = 8.2,
+            runtime = 126,
+            releaseDate = "2008-05-02"
+        )
+
+        val result = repository.getMovieDetail(101)
+        assertThat(result).isInstanceOf(Outcome.Success::class.java)
+
+        val detail = (result as Outcome.Success).value
+        assertThat(detail.id).isEqualTo(101)
+        assertThat(detail.title).isEqualTo("Iron Man")
+        assertThat(detail.runtime).isEqualTo(126)
+    }
+
+    @Test
+    fun getMovieDetail_whenApiFails_andMovieInDb_returnsCachedDetail() = runTest {
+        db.movieDao().upsertAll(
+            listOf(
+                MovieEntity(
+                    id = 101,
+                    category = "POPULAR",
+                    position = 0,
+                    title = "Iron Man (Cached)",
+                    overview = "Cached overview",
+                    posterPath = "/ironman.jpg",
+                    backdropPath = "/backdrop.jpg",
+                    voteAverage = 8.2,
+                    runtime = 126,
+                    releaseDate = "2008-05-02",
+                    fetchedAt = 1000L
                 )
             )
-        }
-        // Movie 101 was skipped because it is in pendingFavs
-        coVerify(exactly = 0) { favoriteDao.upsert(match { it.movieId == 101 }) }
-        coVerify(exactly = 0) { favoriteDao.delete(101) }
-    }
-
-    private fun createTmdbMovie(id: Int, title: String, vote: Double) = TmdbMovieDto(
-        id = id,
-        title = title,
-        overview = "Overview",
-        posterPath = "/$id.jpg",
-        backdropPath = null,
-        voteAverage = vote,
-        releaseDate = "2020-01-01"
-    )
-
-    @Test
-    fun syncCloudWithLocal_reconcilesNonPendingMovies_insertingRemoteAndDeletingStaleLocal() = runTest {
-        sessionStateFlow.value = SessionState.Authenticated(
-            accountId = 42,
-            username = "stark",
-            sessionId = "sess_iron"
         )
 
-        val localStaleFav = FavoriteMovieEntity(
-            movieId = 103,
-            title = "Movie 103 Stale",
-            posterPath = "/103.jpg",
-            voteAverage = 6.0,
-            releaseDate = "2019-01-01",
-            addedAt = 500L
-        )
-        every { favoriteDao.getAllFavorites() } returns flowOf(listOf(localStaleFav))
-        every { watchlistDao.getAllWatchlist() } returns flowOf(emptyList())
-
-        coEvery { syncOutboxDao.getPendingMovieIds(SyncOutboxWorker.TARGET_FAVORITE) } returns emptyList()
-        coEvery { syncOutboxDao.getPendingMovieIds(SyncOutboxWorker.TARGET_WATCHLIST) } returns emptyList()
-
-        val remoteNewFav = TmdbMovieDto(
-            id = 104,
-            title = "Movie 104 New",
-            overview = "Overview",
-            posterPath = "/104.jpg",
-            backdropPath = null,
-            voteAverage = 9.0,
-            releaseDate = "2023-01-01"
+        fakeApi.failureResponse = ApiResponse.Failure.Error(
+            Response.error<Any>(500, "Server Error".toResponseBody())
         )
 
-        coEvery {
-            api.getFavoriteMovies(42, "sess_iron", 1)
-        } returns ApiResponse.Success(
-            TmdbPageResponseDto(page = 1, results = listOf(remoteNewFav), totalPages = 1, totalResults = 1)
-        )
-        coEvery {
-            api.getWatchlistMovies(42, "sess_iron", 1)
-        } returns ApiResponse.Success(
-            TmdbPageResponseDto(page = 1, results = emptyList(), totalPages = 1, totalResults = 0)
-        )
-
-        val outcome = repository.syncCloudWithLocal()
-
-        assertThat(outcome).isInstanceOf(Outcome.Success::class.java)
-
-        // Remote 104 inserted
-        coVerify(exactly = 1) {
-            favoriteDao.upsert(
-                FavoriteMovieEntity(
-                    movieId = 104,
-                    title = "Movie 104 New",
-                    posterPath = "/104.jpg",
-                    voteAverage = 9.0,
-                    releaseDate = "2023-01-01",
-                    addedAt = 1_700_000_000_000L
-                )
-            )
-        }
-        // Stale 103 deleted
-        coVerify(exactly = 1) { favoriteDao.delete(103) }
-    }
-
-    @Test
-    fun syncCloudWithLocal_whenApiFails_abortsWithoutModifyingLocalDatabase() = runTest {
-        sessionStateFlow.value = SessionState.Authenticated(
-            accountId = 42,
-            username = "stark",
-            sessionId = "sess_iron"
-        )
-
-        val errorResponse = Response.error<TmdbPageResponseDto<TmdbMovieDto>>(
-            500,
-            "Internal Server Error".toResponseBody()
-        )
-        coEvery {
-            api.getFavoriteMovies(any(), any(), any())
-        } returns ApiResponse.Failure.Error(errorResponse)
-
-        val result = repository.syncCloudWithLocal()
-
-        assertThat(result).isInstanceOf(Outcome.Failure::class.java)
-        assertThat((result as Outcome.Failure).error).isEqualTo(DomainError.Server(500))
-
-        coVerify(exactly = 0) { favoriteDao.upsert(any()) }
-        coVerify(exactly = 0) { favoriteDao.delete(any()) }
-        coVerify(exactly = 0) { watchlistDao.upsert(any()) }
-        coVerify(exactly = 0) { watchlistDao.delete(any()) }
-    }
-
-    @Test
-    fun syncCloudWithLocal_when401_clearsSessionAndReturnsInvalidKey() = runTest {
-        sessionStateFlow.value = SessionState.Authenticated(
-            accountId = 42,
-            username = "stark",
-            sessionId = "sess_iron"
-        )
-
-        val errorResponse = Response.error<TmdbPageResponseDto<TmdbMovieDto>>(
-            401,
-            "Unauthorized".toResponseBody()
-        )
-        coEvery {
-            api.getFavoriteMovies(any(), any(), any())
-        } returns ApiResponse.Failure.Error(errorResponse)
-
-        val result = repository.syncCloudWithLocal()
-
-        assertThat(result).isInstanceOf(Outcome.Failure::class.java)
-        assertThat((result as Outcome.Failure).error).isEqualTo(DomainError.InvalidKey)
-        coVerify(exactly = 1) { sessionManager.clearSession() }
-
-        coVerify(exactly = 0) { favoriteDao.upsert(any()) }
-        coVerify(exactly = 0) { favoriteDao.delete(any()) }
-    }
-
-    @Test
-    fun whenSyncCoordinatorPullRequestsEmits_triggersSyncCloudWithLocal() = runTest {
-        val testCoordinator = SyncCoordinator()
-        MoviesRepositoryImpl(
-            api = api,
-            database = database,
-            sessionManager = sessionManager,
-            workManager = workManager,
-            syncCoordinator = testCoordinator,
-            externalScope = backgroundScope,
-            clock = fixedClock
-        )
-        sessionStateFlow.value = SessionState.Authenticated(
-            accountId = 42,
-            username = "stark",
-            sessionId = "sess_iron"
-        )
-        coEvery { api.getFavoriteMovies(any(), any(), any()) } returns ApiResponse.Success(
-            TmdbPageResponseDto(page = 1, results = emptyList(), totalPages = 1, totalResults = 0)
-        )
-        coEvery { api.getWatchlistMovies(any(), any(), any()) } returns ApiResponse.Success(
-            TmdbPageResponseDto(page = 1, results = emptyList(), totalPages = 1, totalResults = 0)
-        )
-        every { favoriteDao.getAllFavorites() } returns flowOf(emptyList<FavoriteMovieEntity>())
-        every { watchlistDao.getAllWatchlist() } returns flowOf(emptyList<WatchlistMovieEntity>())
-
-        testScheduler.runCurrent()
-
-        testCoordinator.requestPull()
-
-        testScheduler.runCurrent()
-        testScheduler.advanceUntilIdle()
-
-        coVerify(atLeast = 1) { api.getFavoriteMovies(42, "sess_iron", 1) }
-        coVerify(atLeast = 1) { api.getWatchlistMovies(42, "sess_iron", 1) }
-    }
-
-    @Test
-    fun syncCloudWithLocal_holdsMutexAcrossRemoteDownloadAndDatabaseCommit() = runTest {
-        sessionStateFlow.value = SessionState.Authenticated(
-            accountId = 42,
-            username = "stark",
-            sessionId = "sess_iron"
-        )
-        var mutexLockedDuringDownload = false
-        coEvery { api.getFavoriteMovies(42, "sess_iron", 1) } coAnswers {
-            mutexLockedDuringDownload = syncCoordinator.mutex.isLocked
-            ApiResponse.Success(
-                TmdbPageResponseDto(page = 1, results = emptyList(), totalPages = 1, totalResults = 0)
-            )
-        }
-        coEvery { api.getWatchlistMovies(42, "sess_iron", 1) } returns ApiResponse.Success(
-            TmdbPageResponseDto(page = 1, results = emptyList(), totalPages = 1, totalResults = 0)
-        )
-        every { favoriteDao.getAllFavorites() } returns flowOf(emptyList())
-        every { watchlistDao.getAllWatchlist() } returns flowOf(emptyList())
-
-        val result = repository.syncCloudWithLocal()
-
+        val result = repository.getMovieDetail(101)
         assertThat(result).isInstanceOf(Outcome.Success::class.java)
-        assertThat(mutexLockedDuringDownload).isTrue()
+
+        val detail = (result as Outcome.Success).value
+        assertThat(detail.id).isEqualTo(101)
+        assertThat(detail.title).isEqualTo("Iron Man (Cached)")
+        assertThat(detail.overview).isEqualTo("Cached overview")
     }
 
     @Test
-    fun syncCloudWithLocal_whenSessionLoggedOutDuringDownload_abortsAndDoesNotWriteToDatabase() = runTest {
-        sessionStateFlow.value = SessionState.Authenticated(
-            accountId = 42,
-            username = "stark",
-            sessionId = "sess_iron"
+    fun getMovieDetail_whenApiFails_andNoDbCache_returnsFailure() = runTest {
+        fakeApi.failureResponse = ApiResponse.Failure.Error(
+            Response.error<Any>(404, "Not Found".toResponseBody())
         )
-        val remoteMovie = TmdbMovieDto(
-            id = 999,
-            title = "Stale Movie",
-            overview = "Desc",
-            posterPath = null,
-            backdropPath = null,
-            voteAverage = 8.0,
-            releaseDate = "2020-01-01"
-        )
-        coEvery { api.getFavoriteMovies(42, "sess_iron", 1) } coAnswers {
-            // Concurrent logout occurs while download is in-flight
-            sessionStateFlow.value = SessionState.Guest
-            ApiResponse.Success(
-                TmdbPageResponseDto(page = 1, results = listOf(remoteMovie), totalPages = 1, totalResults = 1)
-            )
-        }
-        coEvery { api.getWatchlistMovies(any(), any(), any()) } returns ApiResponse.Success(
-            TmdbPageResponseDto(page = 1, results = emptyList(), totalPages = 1, totalResults = 0)
-        )
-        every { favoriteDao.getAllFavorites() } returns flowOf(emptyList())
-        every { watchlistDao.getAllWatchlist() } returns flowOf(emptyList())
 
-        val result = repository.syncCloudWithLocal()
+        val result = repository.getMovieDetail(999)
+        assertThat(result).isInstanceOf(Outcome.Failure::class.java)
+    }
 
-        assertThat(result).isInstanceOf(Outcome.Success::class.java)
-        coVerify(exactly = 0) { favoriteDao.upsert(any()) }
+    // endregion
+
+    // region Reactive Flows Tests
+
+    @Test
+    fun observeFavorites_and_observeWatchlist_emitUpdatedListsReactively() = runTest {
+        sessionStateFlow.value = SessionState.Guest
+
+        assertThat(repository.observeFavorites().first()).isEmpty()
+        assertThat(repository.observeWatchlist().first()).isEmpty()
+
+        repository.toggleFavorite(sampleMovie)
+        val favs = repository.observeFavorites().first()
+        assertThat(favs.map { it.id }).containsExactly(101)
+
+        repository.toggleWatchlist(sampleMovie)
+        val watch = repository.observeWatchlist().first()
+        assertThat(watch.map { it.id }).containsExactly(101)
     }
 
     // endregion

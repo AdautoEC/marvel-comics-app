@@ -25,6 +25,7 @@ android {
     }
 
     testOptions {
+        unitTests.isIncludeAndroidResources = true
         unitTests.isReturnDefaultValues = true
     }
 }
@@ -51,6 +52,9 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
 
     testImplementation(libs.junit)
+    testImplementation(libs.robolectric)
+    testImplementation(libs.androidx.test.core)
+    testImplementation(libs.room.testing)
     testImplementation(libs.mockk)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.truth)
