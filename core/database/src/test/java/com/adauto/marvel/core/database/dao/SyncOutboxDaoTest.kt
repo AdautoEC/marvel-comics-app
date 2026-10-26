@@ -92,32 +92,35 @@ class SyncOutboxDaoTest {
     }
 
     @Test
-    fun getAllPending_ordersByVersionAscending() = runTest {
+    fun getAllPending_ordersByCreatedAtAscendingRegardlessOfVersion() = runTest {
         val first = SyncOutboxEntity(
             movieId = 1,
             target = SyncOutboxEntity.TARGET_FAVORITE,
             desired = true,
-            version = 1
+            version = 5,
+            createdAt = 1000L
         )
         val second = SyncOutboxEntity(
             movieId = 2,
             target = SyncOutboxEntity.TARGET_WATCHLIST,
             desired = true,
-            version = 5
+            version = 1,
+            createdAt = 2000L
         )
         val third = SyncOutboxEntity(
             movieId = 3,
             target = SyncOutboxEntity.TARGET_FAVORITE,
             desired = false,
-            version = 2
+            version = 2,
+            createdAt = 3000L
         )
 
         syncOutboxDao.upsert(second)
-        syncOutboxDao.upsert(first)
         syncOutboxDao.upsert(third)
+        syncOutboxDao.upsert(first)
 
         val all = syncOutboxDao.getAllPending()
-        assertThat(all.map { it.movieId }).containsExactly(1, 3, 2).inOrder()
+        assertThat(all.map { it.movieId }).containsExactly(1, 2, 3).inOrder()
     }
 
     @Test

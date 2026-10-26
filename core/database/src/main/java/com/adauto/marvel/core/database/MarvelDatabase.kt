@@ -21,7 +21,7 @@ import com.adauto.marvel.core.database.entity.WatchedMovieEntity
         SyncOutboxEntity::class,
         MovieRemoteKeysEntity::class
     ],
-    version = 4,
+    version = 5,
     exportSchema = true
 )
 abstract class MarvelDatabase : RoomDatabase() {

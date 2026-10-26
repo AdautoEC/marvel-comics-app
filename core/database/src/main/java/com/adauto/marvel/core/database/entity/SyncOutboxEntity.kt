@@ -15,7 +15,9 @@ data class SyncOutboxEntity(
     val attempts: Int = 0,
     val lastError: String? = null,
     @ColumnInfo(defaultValue = "1")
-    val version: Int = 1
+    val version: Int = 1,
+    @ColumnInfo(defaultValue = "0")
+    val createdAt: Long = 0L
 ) {
     companion object {
         const val TARGET_FAVORITE = "FAVORITE"
