@@ -26,6 +26,10 @@ class MoviesRemoteMediator(
     private val cacheTtlHours: Long = 6L
 ) : RemoteMediator<Int, MovieWithUserData>() {
 
+    companion object {
+        const val TMDB_PAGE_SIZE = 20
+    }
+
     override suspend fun initialize(): InitializeAction {
         val remoteKey = database.movieRemoteKeysDao().getKey(category)
             ?: return InitializeAction.LAUNCH_INITIAL_REFRESH
@@ -60,7 +64,7 @@ class MoviesRemoteMediator(
                 val isEnd = page >= data.totalPages || data.results.isEmpty()
                 val nextPage = if (isEnd) null else page + 1
 
-                val startPosition = (page - 1) * state.config.pageSize
+                val startPosition = (page - 1) * TMDB_PAGE_SIZE
                 val entities = data.results.mapIndexed { index, dto ->
                     dto.toMovieEntity(category = category, position = startPosition + index, fetchedAt = now)
                 }

@@ -156,24 +156,32 @@ class AuthRepositoryImpl(
         if (localFavorites.isNotEmpty() || localWatched.isNotEmpty()) {
             database.withTransaction {
                 for (fav in localFavorites) {
+                    val existing = database.syncOutboxDao().find(fav.movieId, SyncOutboxWorker.TARGET_FAVORITE)
+                    val nextVersion = (existing?.version ?: 0) + 1
+                    val creationTime = existing?.createdAt?.takeIf { it > 0 } ?: fav.addedAt
                     database.syncOutboxDao().upsert(
                         SyncOutboxEntity(
                             movieId = fav.movieId,
                             target = SyncOutboxWorker.TARGET_FAVORITE,
                             desired = true,
                             attempts = 0,
-                            version = 1
+                            version = nextVersion,
+                            createdAt = creationTime
                         )
                     )
                 }
                 for (watch in localWatched) {
+                    val existing = database.syncOutboxDao().find(watch.movieId, SyncOutboxWorker.TARGET_WATCHLIST)
+                    val nextVersion = (existing?.version ?: 0) + 1
+                    val creationTime = existing?.createdAt?.takeIf { it > 0 } ?: watch.watchedAt
                     database.syncOutboxDao().upsert(
                         SyncOutboxEntity(
                             movieId = watch.movieId,
                             target = SyncOutboxWorker.TARGET_WATCHLIST,
                             desired = true,
                             attempts = 0,
-                            version = 1
+                            version = nextVersion,
+                            createdAt = creationTime
                         )
                     )
                 }
