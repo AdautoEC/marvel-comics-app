@@ -2,6 +2,6 @@
 <SmellBaseline>
   <ManuallySuppressedIssues></ManuallySuppressedIssues>
   <CurrentIssues>
-    <ID>MatchingDeclarationName:Color.kt$MarvelColors</ID>
+    <ID>MatchingDeclarationName:Color.kt$CinemaHubColors</ID>
   </CurrentIssues>
 </SmellBaseline>

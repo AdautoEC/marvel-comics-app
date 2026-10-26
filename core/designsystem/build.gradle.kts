@@ -5,7 +5,7 @@ plugins {
 }
 
 android {
-    namespace = "com.adauto.marvel.core.designsystem"
+    namespace = "com.adauto.cinemahub.core.designsystem"
     compileSdk = 35
 
     defaultConfig {
