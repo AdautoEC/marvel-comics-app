@@ -21,9 +21,9 @@ firebaseBom = "35.1.0"
 playIntegrity = "1.6.0"
 datastore = "1.1.1"
 junit = "4.13.2"
-mockk = "1.13.13"
-turbine = "1.2.0"
-truth = "1.4.4"
+mockk = "1.14.11"
+turbine = "1.2.1"
+truth = "1.4.5"
 detekt = "1.23.8"
 spotless = "7.0.0.BETA4"
 kover = "0.9.11"
@@ -102,7 +102,7 @@ truth = { group = "com.google.truth", name = "truth", version.ref = "truth" }
 androidx-test-core = { group = "androidx.test", name = "core", version = "1.6.1" }
 androidx-test-ext-junit = { group = "androidx.test.ext", name = "junit", version = "1.2.1" }
 androidx-test-runner = { group = "androidx.test", name = "runner", version = "1.6.2" }
-robolectric = { group = "org.robolectric", name = "robolectric", version = "4.14.1" }
+robolectric = { group = "org.robolectric", name = "robolectric", version = "4.17" }
 room-testing = { group = "androidx.room", name = "room-testing", version.ref = "room" }
 androidx-benchmark-macro = { group = "androidx.benchmark", name = "benchmark-macro-junit4", version.ref = "androidx-benchmark" }
 androidx-uiautomator = { group = "androidx.test.uiautomator", name = "uiautomator", version.ref = "androidx-uiautomator" }
