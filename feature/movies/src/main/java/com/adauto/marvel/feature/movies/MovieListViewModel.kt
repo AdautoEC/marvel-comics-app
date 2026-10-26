@@ -15,6 +15,7 @@ import com.adauto.marvel.core.model.SessionState
 import com.adauto.marvel.core.model.UiText
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
@@ -22,6 +23,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.receiveAsFlow
@@ -31,6 +34,7 @@ import javax.inject.Inject
 
 private const val TMDB_AUTH_BASE_URL = "https://www.themoviedb.org/authenticate"
 private const val TMDB_REDIRECT_URI = "cinemahub://tmdb-callback"
+private const val SEARCH_DEBOUNCE_MILLIS = 300L
 
 @HiltViewModel
 class MovieListViewModel @Inject constructor(
@@ -39,14 +43,19 @@ class MovieListViewModel @Inject constructor(
     private val networkMonitor: NetworkMonitor
 ) : ViewModel() {
 
-    private val _selectedCategory = MutableStateFlow(MovieCategory.POPULAR)
-    private val _searchQuery = MutableStateFlow("")
-    private val _isSearchActive = MutableStateFlow(false)
+    private val _uiState = MutableStateFlow(MovieListUiState())
+    val uiState: StateFlow<MovieListUiState> = _uiState.asStateFlow()
+
+    private val categoryFlow = _uiState.map { it.selectedCategory }.distinctUntilChanged()
+    private val queryFlow = _uiState.map { it.searchQuery.trim() }.distinctUntilChanged()
+
+    @OptIn(FlowPreview::class)
+    private val debouncedQuery = queryFlow.debounce { if (it.isEmpty()) 0L else SEARCH_DEBOUNCE_MILLIS }
 
     @OptIn(ExperimentalCoroutinesApi::class)
     internal val moviesFlow: Flow<PagingData<MovieSummary>> = combine(
-        _selectedCategory,
-        _searchQuery
+        categoryFlow,
+        debouncedQuery
     ) { category, query ->
         category to query
     }.flatMapLatest { (category, query) ->
@@ -78,9 +87,6 @@ class MovieListViewModel @Inject constructor(
     }
 
     val movies: Flow<PagingData<MovieSummary>> = moviesFlow.cachedIn(viewModelScope)
-
-    private val _uiState = MutableStateFlow(MovieListUiState())
-    val uiState: StateFlow<MovieListUiState> = _uiState.asStateFlow()
 
     private val _effects = Channel<MovieListEffect>(Channel.BUFFERED)
     val effects: Flow<MovieListEffect> = _effects.receiveAsFlow()
@@ -116,9 +122,6 @@ class MovieListViewModel @Inject constructor(
                 }
             }
             is MovieListAction.CategorySelected -> {
-                _searchQuery.value = ""
-                _isSearchActive.value = false
-                _selectedCategory.value = action.category
                 _uiState.update {
                     it.copy(
                         selectedCategory = action.category,
@@ -128,15 +131,10 @@ class MovieListViewModel @Inject constructor(
                 }
             }
             is MovieListAction.SearchQueryChanged -> {
-                _searchQuery.value = action.query
                 _uiState.update { it.copy(searchQuery = action.query) }
             }
             is MovieListAction.ToggleSearchClicked -> {
                 val nextActive = !_uiState.value.isSearchActive
-                _isSearchActive.value = nextActive
-                if (!nextActive) {
-                    _searchQuery.value = ""
-                }
                 _uiState.update {
                     it.copy(
                         isSearchActive = nextActive,
@@ -173,7 +171,6 @@ class MovieListViewModel @Inject constructor(
                         }
                         is Outcome.Failure -> {
                             val errorMessage = UiText.Dynamic("Não foi possível iniciar a conexão com o TMDB.")
-                            _uiState.update { it.copy(userMessage = errorMessage) }
                             _effects.send(MovieListEffect.ShowMessage(errorMessage))
                         }
                     }
@@ -183,9 +180,6 @@ class MovieListViewModel @Inject constructor(
                 viewModelScope.launch {
                     authRepository.logout()
                 }
-            }
-            is MovieListAction.UserMessageDismissed -> {
-                _uiState.update { it.copy(userMessage = null) }
             }
         }
     }

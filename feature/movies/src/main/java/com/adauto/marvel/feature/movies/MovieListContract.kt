@@ -13,8 +13,7 @@ data class MovieListUiState(
     val selectedCategory: MovieCategory = MovieCategory.POPULAR,
     val sessionState: SessionState = SessionState.Guest,
     val searchQuery: String = "",
-    val isSearchActive: Boolean = false,
-    val userMessage: UiText? = null
+    val isSearchActive: Boolean = false
 )
 
 sealed interface MovieListAction {
@@ -28,7 +27,6 @@ sealed interface MovieListAction {
     data object LogoutClicked : MovieListAction
     data class SearchQueryChanged(val query: String) : MovieListAction
     data object ToggleSearchClicked : MovieListAction
-    data object UserMessageDismissed : MovieListAction
 }
 
 sealed interface MovieListEffect {

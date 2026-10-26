@@ -18,7 +18,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.paging.LoadState
@@ -35,7 +34,6 @@ import com.adauto.marvel.core.model.MovieSummary
 import com.adauto.marvel.core.model.SessionState
 import com.adauto.marvel.core.ui.component.AttributionFooter
 import com.adauto.marvel.core.ui.component.OfflineBanner
-import com.adauto.marvel.core.ui.util.asString
 import com.adauto.marvel.feature.movies.component.CategoryFilterTabs
 import com.adauto.marvel.feature.movies.component.GuestSyncBanner
 import com.adauto.marvel.feature.movies.component.MovieListEmptyState
@@ -57,18 +55,9 @@ fun MovieListScreen(
     uiState: MovieListUiState,
     movies: LazyPagingItems<MovieSummary>,
     onAction: (MovieListAction) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    snackbarHostState: SnackbarHostState = remember { SnackbarHostState() }
 ) {
-    val snackbarHostState = remember { SnackbarHostState() }
-    val context = LocalContext.current
-
-    LaunchedEffect(uiState.userMessage) {
-        uiState.userMessage?.let { message ->
-            snackbarHostState.showSnackbar(message.asString(context))
-            onAction(MovieListAction.UserMessageDismissed)
-        }
-    }
-
     MovieListContent(
         uiState = uiState,
         movies = movies,
@@ -121,8 +110,7 @@ private fun MovieListContentBody(
     onAction: (MovieListAction) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val isRefreshing = uiState.isRefreshing ||
-        (movies.loadState.refresh is LoadState.Loading && movies.itemCount > 0)
+    val isRefreshing = uiState.isRefreshing
     PullToRefreshBox(
         isRefreshing = isRefreshing,
         onRefresh = {
