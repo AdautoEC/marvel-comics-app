@@ -7,7 +7,11 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.paging.Pager
+import androidx.paging.PagingConfig
 import androidx.paging.PagingData
+import androidx.paging.PagingSource
+import androidx.paging.PagingState
 import androidx.paging.compose.collectAsLazyPagingItems
 import com.adauto.marvel.core.model.MovieSummary
 import kotlinx.coroutines.flow.flowOf
@@ -31,10 +35,8 @@ class MovieListScreenTest {
 
         restorationTester.setContent {
             val pagingFlow = remember { flowOf(PagingData.from(sampleMovies)) }
-            val pagingItems = pagingFlow.collectAsLazyPagingItems()
             MovieListScreen(
-                uiState = MovieListUiState(),
-                movies = pagingItems,
+                uiState = MovieListUiState(movies = pagingFlow),
                 onAction = {}
             )
         }
@@ -49,11 +51,8 @@ class MovieListScreenTest {
     @Test
     fun movieListScreen_displaysOfflineBannerWhenOffline() {
         composeTestRule.setContent {
-            val pagingFlow = remember { flowOf(PagingData.from(sampleMovies)) }
-            val pagingItems = pagingFlow.collectAsLazyPagingItems()
             MovieListScreen(
                 uiState = MovieListUiState(isOffline = true),
-                movies = pagingItems,
                 onAction = {}
             )
         }
@@ -64,11 +63,8 @@ class MovieListScreenTest {
     @Test
     fun movieListScreen_displaysAttributionFooter() {
         composeTestRule.setContent {
-            val pagingFlow = remember { flowOf(PagingData.from(sampleMovies)) }
-            val pagingItems = pagingFlow.collectAsLazyPagingItems()
             MovieListScreen(
                 uiState = MovieListUiState(attribution = "Este produto usa a API TMDB, mas não é endossado ou certificado pelo TMDB."),
-                movies = pagingItems,
                 onAction = {}
             )
         }
@@ -82,10 +78,8 @@ class MovieListScreenTest {
 
         composeTestRule.setContent {
             val pagingFlow = remember { flowOf(PagingData.from(sampleMovies)) }
-            val pagingItems = pagingFlow.collectAsLazyPagingItems()
             MovieListScreen(
-                uiState = MovieListUiState(),
-                movies = pagingItems,
+                uiState = MovieListUiState(movies = pagingFlow),
                 onAction = { action ->
                     if (action is MovieListAction.MovieClicked) {
                         clickedId = action.id
@@ -96,5 +90,32 @@ class MovieListScreenTest {
 
         composeTestRule.onNodeWithText("Clube da Luta").performClick()
         assertEquals(101, clickedId)
+    }
+
+    @Test
+    fun movieListScreen_rendersPlaceholderShimmer_whenItemIsNull() {
+        val pager = Pager(PagingConfig(pageSize = 1, enablePlaceholders = true)) {
+            object : PagingSource<Int, MovieSummary>() {
+                override fun getRefreshKey(state: PagingState<Int, MovieSummary>): Int? = null
+                override suspend fun load(params: LoadParams<Int>): LoadResult<Int, MovieSummary> {
+                    return LoadResult.Page(
+                        data = listOf(sampleMovies[0]),
+                        prevKey = null,
+                        nextKey = null,
+                        itemsBefore = 0,
+                        itemsAfter = 1
+                    )
+                }
+            }
+        }
+
+        composeTestRule.setContent {
+            MovieListScreen(
+                uiState = MovieListUiState(movies = pager.flow),
+                onAction = {}
+            )
+        }
+
+        composeTestRule.onNodeWithTag("MovieCardPlaceholder_1").assertIsDisplayed()
     }
 }

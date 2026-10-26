@@ -39,9 +39,6 @@ class MovieListViewModel @Inject constructor(
     private val networkMonitor: NetworkMonitor
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(MovieListUiState())
-    val uiState: StateFlow<MovieListUiState> = _uiState.asStateFlow()
-
     private val _selectedCategory = MutableStateFlow(MovieCategory.POPULAR)
     private val _searchQuery = MutableStateFlow("")
     private val _isSearchActive = MutableStateFlow(false)
@@ -53,24 +50,37 @@ class MovieListViewModel @Inject constructor(
     ) { category, query ->
         category to query
     }.flatMapLatest { (category, query) ->
-        val baseFlow = when (category) {
-            MovieCategory.FAVORITES -> moviesRepository.observeFavorites().map { PagingData.from(it) }
-            MovieCategory.WATCHLIST -> moviesRepository.observeWatched().map { PagingData.from(it) }
-            else -> moviesRepository.movies(category)
-        }
         val trimmed = query.trim()
-        if (trimmed.isBlank()) {
-            baseFlow
-        } else {
-            baseFlow.map { pagingData ->
-                pagingData.filter { movie ->
-                    movie.title.contains(trimmed, ignoreCase = true)
+        when {
+            trimmed.isBlank() -> {
+                when (category) {
+                    MovieCategory.FAVORITES -> moviesRepository.observeFavorites().map { PagingData.from(it) }
+                    MovieCategory.WATCHLIST -> moviesRepository.observeWatched().map { PagingData.from(it) }
+                    else -> moviesRepository.movies(category)
                 }
+            }
+            category == MovieCategory.FAVORITES -> {
+                moviesRepository.observeFavorites().map { list ->
+                    val filtered = list.filter { it.title.contains(trimmed, ignoreCase = true) }
+                    PagingData.from(filtered)
+                }
+            }
+            category == MovieCategory.WATCHLIST -> {
+                moviesRepository.observeWatched().map { list ->
+                    val filtered = list.filter { it.title.contains(trimmed, ignoreCase = true) }
+                    PagingData.from(filtered)
+                }
+            }
+            else -> {
+                moviesRepository.movies(category, trimmed)
             }
         }
     }
 
     val movies: Flow<PagingData<MovieSummary>> = moviesFlow.cachedIn(viewModelScope)
+
+    private val _uiState = MutableStateFlow(MovieListUiState(movies = movies))
+    val uiState: StateFlow<MovieListUiState> = _uiState.asStateFlow()
 
     private val _effects = Channel<MovieListEffect>(Channel.BUFFERED)
     val effects: Flow<MovieListEffect> = _effects.receiveAsFlow()
@@ -162,11 +172,9 @@ class MovieListViewModel @Inject constructor(
                             _effects.send(MovieListEffect.LaunchTmdbAuth(url))
                         }
                         is Outcome.Failure -> {
-                            _effects.send(
-                                MovieListEffect.ShowMessage(
-                                    UiText.Dynamic("Não foi possível iniciar a conexão com o TMDB.")
-                                )
-                            )
+                            val errorMessage = UiText.Dynamic("Não foi possível iniciar a conexão com o TMDB.")
+                            _uiState.update { it.copy(userMessage = errorMessage) }
+                            _effects.send(MovieListEffect.ShowMessage(errorMessage))
                         }
                     }
                 }
@@ -175,6 +183,9 @@ class MovieListViewModel @Inject constructor(
                 viewModelScope.launch {
                     authRepository.logout()
                 }
+            }
+            is MovieListAction.UserMessageDismissed -> {
+                _uiState.update { it.copy(userMessage = null) }
             }
         }
     }
