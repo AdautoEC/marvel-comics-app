@@ -15,7 +15,10 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
@@ -110,10 +113,18 @@ private fun MovieListContentBody(
     onAction: (MovieListAction) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val isRefreshing = uiState.isRefreshing
+    var isPullToRefreshing by remember { mutableStateOf(false) }
+    LaunchedEffect(movies.loadState.refresh) {
+        if (movies.loadState.refresh !is LoadState.Loading) {
+            isPullToRefreshing = false
+        }
+    }
+    val isRefreshing = uiState.isRefreshing || isPullToRefreshing
+
     PullToRefreshBox(
         isRefreshing = isRefreshing,
         onRefresh = {
+            isPullToRefreshing = true
             onAction(MovieListAction.RefreshRequested)
             movies.refresh()
         },
