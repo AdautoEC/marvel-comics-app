@@ -1,5 +1,9 @@
 package com.adauto.cinemahub.feature.movies
 
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
@@ -19,9 +23,11 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 import java.io.IOException
 
 @RunWith(RobolectricTestRunner::class)
+@Config(qualifiers = "w412dp-h915dp-xxhdpi")
 class MovieListScreenRobolectricTest {
 
     @get:Rule
@@ -216,5 +222,25 @@ class MovieListScreenRobolectricTest {
         }
 
         composeTestRule.onNodeWithText("Tentar novamente").assertIsDisplayed()
+    }
+
+    @Test
+    fun movieListScreen_clickableItemsHaveAccessibilitySemantics() {
+        composeTestRule.setContent {
+            val movies = flowOf(PagingData.from(sampleMovies)).collectAsLazyPagingItems()
+            MovieListScreen(
+                uiState = MovieListUiState(),
+                movies = movies,
+                onAction = {}
+            )
+        }
+
+        composeTestRule.onNodeWithTag("MovieCard_101").assert(
+            SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button)
+        )
+
+        composeTestRule.onNodeWithTag("UserSessionPill_ConnectBtn").assert(
+            SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button)
+        )
     }
 }

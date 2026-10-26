@@ -25,7 +25,7 @@ import androidx.paging.LoadState
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.itemContentType
 import androidx.paging.compose.itemKey
-import com.adauto.cinemahub.core.designsystem.theme.CinemaHubColors
+import com.adauto.cinemahub.core.designsystem.theme.CinemaHubTheme
 import com.adauto.cinemahub.core.model.MovieCategory
 import com.adauto.cinemahub.core.model.MovieSummary
 import com.adauto.cinemahub.core.model.TmdbApiException
@@ -35,6 +35,7 @@ import com.adauto.cinemahub.core.ui.component.AttributionFooter
 import com.adauto.cinemahub.core.ui.component.ErrorState
 import com.adauto.cinemahub.core.ui.component.MovieCard
 import com.adauto.cinemahub.core.ui.component.ShimmerMovieCard
+import com.adauto.cinemahub.core.ui.component.rememberShimmerProgress
 import com.adauto.cinemahub.core.ui.util.titleRes
 import com.adauto.cinemahub.feature.movies.MovieListAction
 import com.adauto.cinemahub.feature.movies.MovieListUiState
@@ -49,12 +50,13 @@ fun MovieListGrid(
     onAction: (MovieListAction) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val shimmerProgress = rememberShimmerProgress()
     LazyVerticalGrid(
-        columns = GridCells.Fixed(2),
+        columns = GridCells.Adaptive(minSize = 160.dp),
         state = gridState,
-        contentPadding = PaddingValues(16.dp),
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+        contentPadding = PaddingValues(CinemaHubTheme.spacing.medium),
+        horizontalArrangement = Arrangement.spacedBy(CinemaHubTheme.spacing.medium),
+        verticalArrangement = Arrangement.spacedBy(CinemaHubTheme.spacing.medium),
         modifier = modifier.testTag("MovieListGrid")
     ) {
         items(
@@ -72,6 +74,7 @@ fun MovieListGrid(
                 )
             } else {
                 ShimmerMovieCard(
+                    progress = shimmerProgress,
                     modifier = Modifier.testTag("MovieCardPlaceholder_$index")
                 )
             }
@@ -96,11 +99,11 @@ private fun LazyGridScope.appendLoadingOrError(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp),
+                    .padding(CinemaHubTheme.spacing.medium),
                 contentAlignment = Alignment.Center
             ) {
                 CircularProgressIndicator(
-                    color = CinemaHubColors.CinemaHubRed,
+                    color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.testTag("AppendLoadingIndicator")
                 )
             }
@@ -120,15 +123,16 @@ private fun LazyGridScope.appendLoadingOrError(
 
 @Composable
 fun MovieListShimmerGrid(modifier: Modifier = Modifier) {
+    val shimmerProgress = rememberShimmerProgress()
     LazyVerticalGrid(
-        columns = GridCells.Fixed(2),
-        contentPadding = PaddingValues(16.dp),
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+        columns = GridCells.Adaptive(minSize = 160.dp),
+        contentPadding = PaddingValues(CinemaHubTheme.spacing.medium),
+        horizontalArrangement = Arrangement.spacedBy(CinemaHubTheme.spacing.medium),
+        verticalArrangement = Arrangement.spacedBy(CinemaHubTheme.spacing.medium),
         modifier = modifier.testTag("MovieListShimmerGrid")
     ) {
         items(6) {
-            ShimmerMovieCard()
+            ShimmerMovieCard(progress = shimmerProgress)
         }
     }
 }
@@ -140,7 +144,7 @@ fun MovieListErrorState(
     modifier: Modifier = Modifier
 ) {
     Box(
-        modifier = modifier.padding(16.dp),
+        modifier = modifier.padding(CinemaHubTheme.spacing.medium),
         contentAlignment = Alignment.Center
     ) {
         ErrorState(
@@ -159,7 +163,7 @@ fun MovieListEmptyState(
     Box(
         modifier = modifier
             .verticalScroll(rememberScrollState())
-            .padding(16.dp),
+            .padding(CinemaHubTheme.spacing.medium),
         contentAlignment = Alignment.Center
     ) {
         val emptyMessage = when {
@@ -178,7 +182,7 @@ fun MovieListEmptyState(
         Text(
             text = emptyMessage,
             style = MaterialTheme.typography.bodyLarge,
-            color = CinemaHubColors.TextSecondary,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.testTag("EmptyStateText")
         )
     }
