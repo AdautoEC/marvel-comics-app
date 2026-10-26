@@ -10,10 +10,10 @@ import com.adauto.marvel.core.data.worker.SyncOutboxWorker
 import com.adauto.marvel.core.database.MarvelDatabase
 import com.adauto.marvel.core.database.dao.FavoriteDao
 import com.adauto.marvel.core.database.dao.SyncOutboxDao
-import com.adauto.marvel.core.database.dao.WatchedDao
+import com.adauto.marvel.core.database.dao.WatchlistDao
 import com.adauto.marvel.core.database.entity.FavoriteMovieEntity
 import com.adauto.marvel.core.database.entity.SyncOutboxEntity
-import com.adauto.marvel.core.database.entity.WatchedMovieEntity
+import com.adauto.marvel.core.database.entity.WatchlistMovieEntity
 import com.adauto.marvel.core.model.AccountProfile
 import com.adauto.marvel.core.model.DomainError
 import com.adauto.marvel.core.model.Outcome
@@ -53,7 +53,7 @@ class AuthRepositoryTest {
     private val sessionManager: SessionManager = mockk(relaxed = true)
     private val database: MarvelDatabase = mockk()
     private val favoriteDao: FavoriteDao = mockk(relaxed = true)
-    private val watchedDao: WatchedDao = mockk(relaxed = true)
+    private val watchlistDao: WatchlistDao = mockk(relaxed = true)
     private val syncOutboxDao: SyncOutboxDao = mockk(relaxed = true)
     private val moviesRepository: MoviesRepository = mockk(relaxed = true)
     private val authPreferences: AuthPreferencesStorage = mockk(relaxed = true)
@@ -73,10 +73,10 @@ class AuthRepositoryTest {
             block()
         }
         every { database.favoriteDao() } returns favoriteDao
-        every { database.watchedDao() } returns watchedDao
+        every { database.watchlistDao() } returns watchlistDao
         every { database.syncOutboxDao() } returns syncOutboxDao
         every { favoriteDao.getAllFavorites() } returns flowOf(emptyList())
-        every { watchedDao.getAllWatched() } returns flowOf(emptyList())
+        every { watchlistDao.getAllWatchlist() } returns flowOf(emptyList())
         every { sessionManager.sessionState } returns MutableStateFlow<SessionState>(SessionState.Guest)
 
         var pendingTokenStorage: Pair<String, Long>? = null
@@ -468,7 +468,7 @@ class AuthRepositoryTest {
 
         assertThat(result).isInstanceOf(Outcome.Success::class.java)
         coVerify(exactly = 0) { favoriteDao.clearAll() }
-        coVerify(exactly = 0) { watchedDao.clearAll() }
+        coVerify(exactly = 0) { watchlistDao.clearAll() }
         coVerify(exactly = 0) { syncOutboxDao.clearAll() }
         coVerify(exactly = 1) { authPreferences.saveLastAccountId("42") }
         verify(exactly = 1) {
@@ -502,7 +502,7 @@ class AuthRepositoryTest {
 
         assertThat(result).isInstanceOf(Outcome.Success::class.java)
         coVerify(exactly = 1) { favoriteDao.clearAll() }
-        coVerify(exactly = 1) { watchedDao.clearAll() }
+        coVerify(exactly = 1) { watchlistDao.clearAll() }
         coVerify(exactly = 1) { syncOutboxDao.clearAll() }
         coVerify(exactly = 1) { authPreferences.saveLastAccountId("42") }
         verify(exactly = 1) {
@@ -518,7 +518,7 @@ class AuthRepositoryTest {
     fun completeAuthentication_stagesGuestFavoritesAndWatchlistIntoOutbox() = runTest {
         coEvery { authPreferences.getLastAccountId() } returns null
         every { favoriteDao.getAllFavorites() } returns flowOf(listOf(sampleFavEntity(101)))
-        every { watchedDao.getAllWatched() } returns flowOf(listOf(sampleWatchEntity(202)))
+        every { watchlistDao.getAllWatchlist() } returns flowOf(listOf(sampleWatchEntity(202)))
 
         coEvery { api.createRequestToken() } returns ApiResponse.Success(
             TmdbRequestTokenDto(success = true, request_token = "tok_guest", expires_at = "2026-10-23")
@@ -574,7 +574,7 @@ class AuthRepositoryTest {
     fun completeAuthentication_stagesGuestDataWithMonotonicVersionIncrement() = runTest {
         coEvery { authPreferences.getLastAccountId() } returns null
         every { favoriteDao.getAllFavorites() } returns flowOf(listOf(sampleFavEntity(101).copy(addedAt = 12345L)))
-        every { watchedDao.getAllWatched() } returns flowOf(listOf(sampleWatchEntity(202).copy(watchedAt = 67890L)))
+        every { watchlistDao.getAllWatchlist() } returns flowOf(listOf(sampleWatchEntity(202).copy(watchedAt = 67890L)))
 
         // Pre-existing outbox row for favorite 101 with version 3
         coEvery { syncOutboxDao.find(101, SyncOutboxWorker.TARGET_FAVORITE) } returns SyncOutboxEntity(
@@ -642,7 +642,7 @@ class AuthRepositoryTest {
         addedAt = 1000L
     )
 
-    private fun sampleWatchEntity(id: Int) = WatchedMovieEntity(
+    private fun sampleWatchEntity(id: Int) = WatchlistMovieEntity(
         movieId = id,
         title = "Watch $id",
         posterPath = null,

@@ -2,7 +2,7 @@ package com.adauto.marvel.core.data.mapper
 
 import com.adauto.marvel.core.database.entity.FavoriteMovieEntity
 import com.adauto.marvel.core.database.entity.MovieEntity
-import com.adauto.marvel.core.database.entity.WatchedMovieEntity
+import com.adauto.marvel.core.database.entity.WatchlistMovieEntity
 import com.adauto.marvel.core.network.model.TmdbCastDto
 import com.adauto.marvel.core.network.model.TmdbCreditsDto
 import com.adauto.marvel.core.network.model.TmdbGenreDto
@@ -50,13 +50,13 @@ class MovieMappersTest {
             fetchedAt = 1000L
         )
 
-        val summary = entity.toMovieSummary(isFavorite = true, isWatched = false)
+        val summary = entity.toMovieSummary(isFavorite = true, isInWatchlist = false)
 
         assertThat(summary.id).isEqualTo(550)
         assertThat(summary.posterUrl).isEqualTo("https://image.tmdb.org/t/p/w500/poster.jpg")
         assertThat(summary.backdropUrl).isEqualTo("https://image.tmdb.org/t/p/w780/backdrop.jpg")
         assertThat(summary.isFavorite).isTrue()
-        assertThat(summary.isWatched).isFalse()
+        assertThat(summary.isInWatchlist).isFalse()
     }
 
     @Test
@@ -74,13 +74,13 @@ class MovieMappersTest {
             credits = TmdbCreditsDto(listOf(TmdbCastDto(1, "Brad Pitt", "Tyler Durden")))
         )
 
-        val detail = dto.toMovieDetail(isFavorite = true, isWatched = true)
+        val detail = dto.toMovieDetail(isFavorite = true, isInWatchlist = true)
 
         assertThat(detail.id).isEqualTo(550)
         assertThat(detail.genres).containsExactly("Drama")
         assertThat(detail.cast).containsExactly("Brad Pitt")
         assertThat(detail.isFavorite).isTrue()
-        assertThat(detail.isWatched).isTrue()
+        assertThat(detail.isInWatchlist).isTrue()
     }
 
     @Test
@@ -99,7 +99,7 @@ class MovieMappersTest {
         assertThat(favSummary.isFavorite).isTrue()
         assertThat(favSummary.posterUrl).isEqualTo("https://image.tmdb.org/t/p/w500/inception.jpg")
 
-        val watched = WatchedMovieEntity(
+        val watched = WatchlistMovieEntity(
             movieId = 102,
             title = "Interstellar",
             posterPath = "/interstellar.jpg",
@@ -110,7 +110,7 @@ class MovieMappersTest {
 
         val watchedSummary = watched.toMovieSummary()
         assertThat(watchedSummary.id).isEqualTo(102)
-        assertThat(watchedSummary.isWatched).isTrue()
+        assertThat(watchedSummary.isInWatchlist).isTrue()
         assertThat(watchedSummary.posterUrl).isEqualTo("https://image.tmdb.org/t/p/w500/interstellar.jpg")
     }
 }

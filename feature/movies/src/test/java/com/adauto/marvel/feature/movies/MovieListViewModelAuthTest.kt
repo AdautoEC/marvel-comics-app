@@ -43,7 +43,7 @@ class MovieListViewModelAuthTest {
         Dispatchers.setMain(testDispatcher)
         every { moviesRepository.movies(any()) } returns emptyFlow()
         every { moviesRepository.observeFavorites() } returns emptyFlow()
-        every { moviesRepository.observeWatched() } returns emptyFlow()
+        every { moviesRepository.observeWatchlist() } returns emptyFlow()
         every { authRepository.sessionState } returns sessionStateFlow
     }
 

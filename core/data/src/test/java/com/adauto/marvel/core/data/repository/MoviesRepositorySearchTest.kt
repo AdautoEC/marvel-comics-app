@@ -6,7 +6,7 @@ import com.adauto.marvel.core.database.MarvelDatabase
 import com.adauto.marvel.core.database.dao.FavoriteDao
 import com.adauto.marvel.core.database.dao.MovieDao
 import com.adauto.marvel.core.database.dao.SyncOutboxDao
-import com.adauto.marvel.core.database.dao.WatchedDao
+import com.adauto.marvel.core.database.dao.WatchlistDao
 import com.adauto.marvel.core.database.model.MovieWithUserData
 import com.adauto.marvel.core.model.MovieCategory
 import com.adauto.marvel.core.model.SessionState
@@ -30,7 +30,7 @@ class MoviesRepositorySearchTest {
     private val api: TmdbApi = mockk(relaxed = true)
     private val database: MarvelDatabase = mockk()
     private val favoriteDao: FavoriteDao = mockk(relaxed = true)
-    private val watchedDao: WatchedDao = mockk(relaxed = true)
+    private val watchlistDao: WatchlistDao = mockk(relaxed = true)
     private val movieDao: MovieDao = mockk(relaxed = true)
     private val syncOutboxDao: SyncOutboxDao = mockk(relaxed = true)
     private val sessionManager: SessionManager = mockk(relaxed = true)
@@ -45,7 +45,7 @@ class MoviesRepositorySearchTest {
     fun setUp() {
         every { database.movieDao() } returns movieDao
         every { database.favoriteDao() } returns favoriteDao
-        every { database.watchedDao() } returns watchedDao
+        every { database.watchlistDao() } returns watchlistDao
         every { database.syncOutboxDao() } returns syncOutboxDao
         every { sessionManager.sessionState } returns sessionStateFlow
 

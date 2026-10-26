@@ -163,7 +163,7 @@ fun MovieCard(
                         )
                     }
 
-                    if (movie.isWatched) {
+                    if (movie.isInWatchlist) {
                         Spacer(modifier = Modifier.width(6.dp))
                         Surface(
                             shape = RoundedCornerShape(4.dp),

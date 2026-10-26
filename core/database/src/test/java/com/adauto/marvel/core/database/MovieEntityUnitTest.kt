@@ -2,7 +2,7 @@ package com.adauto.marvel.core.database
 
 import com.adauto.marvel.core.database.entity.FavoriteMovieEntity
 import com.adauto.marvel.core.database.entity.MovieEntity
-import com.adauto.marvel.core.database.entity.WatchedMovieEntity
+import com.adauto.marvel.core.database.entity.WatchlistMovieEntity
 import com.google.common.truth.Truth.assertThat
 import org.junit.Test
 
@@ -51,8 +51,8 @@ class MovieEntityUnitTest {
     }
 
     @Test
-    fun watchedMovieEntity_creationAndEquality() {
-        val watched = WatchedMovieEntity(
+    fun watchlistMovieEntity_creationAndEquality() {
+        val watchlist = WatchlistMovieEntity(
             movieId = 550,
             title = "Fight Club",
             posterPath = "/poster.jpg",
@@ -61,8 +61,8 @@ class MovieEntityUnitTest {
             watchedAt = 2000L
         )
 
-        assertThat(watched.movieId).isEqualTo(550)
-        assertThat(watched.title).isEqualTo("Fight Club")
-        assertThat(watched.watchedAt).isEqualTo(2000L)
+        assertThat(watchlist.movieId).isEqualTo(550)
+        assertThat(watchlist.title).isEqualTo("Fight Club")
+        assertThat(watchlist.watchedAt).isEqualTo(2000L)
     }
 }

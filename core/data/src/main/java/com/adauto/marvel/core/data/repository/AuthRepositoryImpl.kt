@@ -119,7 +119,7 @@ class AuthRepositoryImpl(
             database.withTransaction {
                 database.syncOutboxDao().clearAll()
                 database.favoriteDao().clearAll()
-                database.watchedDao().clearAll()
+                database.watchlistDao().clearAll()
             }
         }
 
@@ -151,7 +151,7 @@ class AuthRepositoryImpl(
 
     private suspend fun stageGuestDataIntoOutbox() {
         val localFavorites = database.favoriteDao().getAllFavorites().first()
-        val localWatched = database.watchedDao().getAllWatched().first()
+        val localWatched = database.watchlistDao().getAllWatchlist().first()
 
         if (localFavorites.isNotEmpty() || localWatched.isNotEmpty()) {
             database.withTransaction {
@@ -225,7 +225,7 @@ class AuthRepositoryImpl(
         database.withTransaction {
             database.syncOutboxDao().clearAll()
             database.favoriteDao().clearAll()
-            database.watchedDao().clearAll()
+            database.watchlistDao().clearAll()
         }
         authPreferences.clearLastAccountId()
     }

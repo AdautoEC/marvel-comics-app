@@ -22,13 +22,13 @@ class MovieCardModelTest {
             voteAverage = 8.46,
             releaseDate = "2026-07-29",
             isFavorite = true,
-            isWatched = true
+            isInWatchlist = true
         )
 
         assertThat(movie.ratingFormatted).isEqualTo("8.5")
         assertThat(movie.releaseYear).isEqualTo("2026")
         assertThat(movie.isFavorite).isTrue()
-        assertThat(movie.isWatched).isTrue()
+        assertThat(movie.isInWatchlist).isTrue()
     }
 
     @Test

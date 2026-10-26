@@ -2,7 +2,7 @@ package com.adauto.marvel.core.data.mapper
 
 import com.adauto.marvel.core.database.entity.FavoriteMovieEntity
 import com.adauto.marvel.core.database.entity.MovieEntity
-import com.adauto.marvel.core.database.entity.WatchedMovieEntity
+import com.adauto.marvel.core.database.entity.WatchlistMovieEntity
 import com.adauto.marvel.core.model.MovieDetail
 import com.adauto.marvel.core.model.MovieSummary
 import com.adauto.marvel.core.network.model.TmdbMovieDetailDto
@@ -35,7 +35,7 @@ fun TmdbMovieDto.toMovieEntity(
 
 fun MovieEntity.toMovieSummary(
     isFavorite: Boolean = false,
-    isWatched: Boolean = false
+    isInWatchlist: Boolean = false
 ): MovieSummary {
     return MovieSummary(
         id = id,
@@ -45,13 +45,13 @@ fun MovieEntity.toMovieSummary(
         voteAverage = voteAverage,
         releaseDate = releaseDate,
         isFavorite = isFavorite,
-        isWatched = isWatched
+        isInWatchlist = isInWatchlist
     )
 }
 
 fun TmdbMovieDetailDto.toMovieDetail(
     isFavorite: Boolean = false,
-    isWatched: Boolean = false
+    isInWatchlist: Boolean = false
 ): MovieDetail {
     return MovieDetail(
         id = id,
@@ -65,7 +65,7 @@ fun TmdbMovieDetailDto.toMovieDetail(
         genres = genres.map { it.name },
         cast = credits?.cast?.map { it.name } ?: emptyList(),
         isFavorite = isFavorite,
-        isWatched = isWatched
+        isInWatchlist = isInWatchlist
     )
 }
 
@@ -78,11 +78,11 @@ fun FavoriteMovieEntity.toMovieSummary(): MovieSummary {
         voteAverage = voteAverage,
         releaseDate = releaseDate,
         isFavorite = true,
-        isWatched = false
+        isInWatchlist = false
     )
 }
 
-fun WatchedMovieEntity.toMovieSummary(): MovieSummary {
+fun WatchlistMovieEntity.toMovieSummary(): MovieSummary {
     return MovieSummary(
         id = movieId,
         title = title,
@@ -91,6 +91,6 @@ fun WatchedMovieEntity.toMovieSummary(): MovieSummary {
         voteAverage = voteAverage,
         releaseDate = releaseDate,
         isFavorite = false,
-        isWatched = true
+        isInWatchlist = true
     )
 }

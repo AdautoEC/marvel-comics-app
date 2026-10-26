@@ -30,7 +30,7 @@ class MovieDetailUiStatePreviewParameterProvider : PreviewParameterProvider<Movi
                 genres = listOf("Drama", "Suspense"),
                 cast = listOf("Edward Norton", "Brad Pitt", "Helena Bonham Carter"),
                 isFavorite = true,
-                isWatched = true
+                isInWatchlist = true
             )
         ),
         // 4. Populated Movie (Inactive Actions)
@@ -47,7 +47,7 @@ class MovieDetailUiStatePreviewParameterProvider : PreviewParameterProvider<Movi
                 genres = listOf("Ação", "Ficção Científica"),
                 cast = listOf("Leonardo DiCaprio", "Joseph Gordon-Levitt"),
                 isFavorite = false,
-                isWatched = false
+                isInWatchlist = false
             )
         ),
         // 5. Populated Movie Minimal (No Overview, No Genres, No Cast)
@@ -64,7 +64,7 @@ class MovieDetailUiStatePreviewParameterProvider : PreviewParameterProvider<Movi
                 genres = emptyList(),
                 cast = emptyList(),
                 isFavorite = false,
-                isWatched = false
+                isInWatchlist = false
             )
         )
     )

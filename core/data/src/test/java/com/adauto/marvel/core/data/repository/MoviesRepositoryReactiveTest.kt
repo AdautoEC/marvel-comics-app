@@ -11,7 +11,7 @@ import com.adauto.marvel.core.database.MarvelDatabase
 import com.adauto.marvel.core.database.dao.FavoriteDao
 import com.adauto.marvel.core.database.dao.MovieDao
 import com.adauto.marvel.core.database.dao.MovieRemoteKeysDao
-import com.adauto.marvel.core.database.dao.WatchedDao
+import com.adauto.marvel.core.database.dao.WatchlistDao
 import com.adauto.marvel.core.database.entity.MovieEntity
 import com.adauto.marvel.core.database.model.MovieWithUserData
 import com.adauto.marvel.core.model.MovieCategory
@@ -35,7 +35,7 @@ class MoviesRepositoryReactiveTest {
     private val database: MarvelDatabase = mockk()
     private val movieDao: MovieDao = mockk(relaxed = true)
     private val favoriteDao: FavoriteDao = mockk(relaxed = true)
-    private val watchedDao: WatchedDao = mockk(relaxed = true)
+    private val watchlistDao: WatchlistDao = mockk(relaxed = true)
     private val movieRemoteKeysDao: MovieRemoteKeysDao = mockk(relaxed = true)
     private val sessionManager: SessionManager = mockk(relaxed = true)
     private val workManager: WorkManager = mockk(relaxed = true)
@@ -64,7 +64,7 @@ class MoviesRepositoryReactiveTest {
         )
         every { database.movieDao() } returns movieDao
         every { database.favoriteDao() } returns favoriteDao
-        every { database.watchedDao() } returns watchedDao
+        every { database.watchlistDao() } returns watchlistDao
         every { database.movieRemoteKeysDao() } returns movieRemoteKeysDao
 
         repository = MoviesRepositoryImpl(
@@ -82,7 +82,7 @@ class MoviesRepositoryReactiveTest {
         category: String = "POPULAR",
         position: Int = 0,
         isFavorite: Boolean = false,
-        isWatched: Boolean = false
+        isInWatchlist: Boolean = false
     ): MovieWithUserData {
         return MovieWithUserData(
             movie = MovieEntity(
@@ -98,17 +98,17 @@ class MoviesRepositoryReactiveTest {
                 fetchedAt = 1000L
             ),
             isFavorite = isFavorite,
-            isWatched = isWatched
+            isInWatchlist = isInWatchlist
         )
     }
 
     @Test
     fun movies_mapsProjectionDirectlyWithoutQueryingFavoriteOrWatchedDaos() = runTest {
         val testData = listOf(
-            createMovieWithUserData(id = 1, position = 0, isFavorite = false, isWatched = false),
-            createMovieWithUserData(id = 2, position = 1, isFavorite = true, isWatched = false),
-            createMovieWithUserData(id = 3, position = 2, isFavorite = false, isWatched = true),
-            createMovieWithUserData(id = 4, position = 3, isFavorite = true, isWatched = true)
+            createMovieWithUserData(id = 1, position = 0, isFavorite = false, isInWatchlist = false),
+            createMovieWithUserData(id = 2, position = 1, isFavorite = true, isInWatchlist = false),
+            createMovieWithUserData(id = 3, position = 2, isFavorite = false, isInWatchlist = true),
+            createMovieWithUserData(id = 4, position = 3, isFavorite = true, isInWatchlist = true)
         )
 
         val pagingSourceFactory = testData.asPagingSourceFactory()
@@ -120,22 +120,22 @@ class MoviesRepositoryReactiveTest {
 
         assertThat(snapshot[0].id).isEqualTo(1)
         assertThat(snapshot[0].isFavorite).isFalse()
-        assertThat(snapshot[0].isWatched).isFalse()
+        assertThat(snapshot[0].isInWatchlist).isFalse()
 
         assertThat(snapshot[1].id).isEqualTo(2)
         assertThat(snapshot[1].isFavorite).isTrue()
-        assertThat(snapshot[1].isWatched).isFalse()
+        assertThat(snapshot[1].isInWatchlist).isFalse()
 
         assertThat(snapshot[2].id).isEqualTo(3)
         assertThat(snapshot[2].isFavorite).isFalse()
-        assertThat(snapshot[2].isWatched).isTrue()
+        assertThat(snapshot[2].isInWatchlist).isTrue()
 
         assertThat(snapshot[3].id).isEqualTo(4)
         assertThat(snapshot[3].isFavorite).isTrue()
-        assertThat(snapshot[3].isWatched).isTrue()
+        assertThat(snapshot[3].isInWatchlist).isTrue()
 
         // Verify N+1 queries were completely eliminated
         coVerify(exactly = 0) { favoriteDao.isFavorite(any()) }
-        coVerify(exactly = 0) { watchedDao.isWatched(any()) }
+        coVerify(exactly = 0) { watchlistDao.isInWatchlist(any()) }
     }
 }

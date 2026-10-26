@@ -20,7 +20,7 @@ import com.adauto.marvel.core.data.worker.SyncOutboxWorker
 import com.adauto.marvel.core.database.MarvelDatabase
 import com.adauto.marvel.core.database.entity.FavoriteMovieEntity
 import com.adauto.marvel.core.database.entity.SyncOutboxEntity
-import com.adauto.marvel.core.database.entity.WatchedMovieEntity
+import com.adauto.marvel.core.database.entity.WatchlistMovieEntity
 import com.adauto.marvel.core.model.DomainError
 import com.adauto.marvel.core.model.MovieCategory
 import com.adauto.marvel.core.model.MovieDetail
@@ -96,21 +96,21 @@ class MoviesRepositoryImpl @Inject constructor(
 
         return pager.flow.map { pagingData ->
             pagingData.map { item ->
-                item.movie.toMovieSummary(isFavorite = item.isFavorite, isWatched = item.isWatched)
+                item.movie.toMovieSummary(isFavorite = item.isFavorite, isInWatchlist = item.isInWatchlist)
             }
         }
     }
 
     override suspend fun getMovieDetail(id: Int): Outcome<MovieDetail> {
         val isFav = database.favoriteDao().isFavorite(id).first()
-        val isWatch = database.watchedDao().isWatched(id).first()
+        val isWatch = database.watchlistDao().isInWatchlist(id).first()
 
         val cachedEntity = database.movieDao().getMovieById(id)
 
         val apiResponse = api.getMovieDetail(movieId = id)
         return when (apiResponse) {
             is ApiResponse.Success -> {
-                Outcome.Success(apiResponse.data.toMovieDetail(isFavorite = isFav, isWatched = isWatch))
+                Outcome.Success(apiResponse.data.toMovieDetail(isFavorite = isFav, isInWatchlist = isWatch))
             }
             is ApiResponse.Failure.Error -> {
                 if (cachedEntity != null) {
@@ -125,7 +125,7 @@ class MoviesRepositoryImpl @Inject constructor(
                             runtime = cachedEntity.runtime,
                             releaseDate = cachedEntity.releaseDate,
                             isFavorite = isFav,
-                            isWatched = isWatch
+                            isInWatchlist = isWatch
                         )
                     )
                 } else {
@@ -145,7 +145,7 @@ class MoviesRepositoryImpl @Inject constructor(
                             runtime = cachedEntity.runtime,
                             releaseDate = cachedEntity.releaseDate,
                             isFavorite = isFav,
-                            isWatched = isWatch
+                            isInWatchlist = isWatch
                         )
                     )
                 } else {
@@ -232,13 +232,13 @@ class MoviesRepositoryImpl @Inject constructor(
     }
 
     private suspend fun mutateLocalWatchlist(movie: MovieSummary): Boolean {
-        val isWatch = database.watchedDao().isWatched(movie.id).first()
+        val isWatch = database.watchlistDao().isInWatchlist(movie.id).first()
         val newWatchState = !isWatch
         if (isWatch) {
-            database.watchedDao().delete(movie.id)
+            database.watchlistDao().delete(movie.id)
         } else {
-            database.watchedDao().upsert(
-                WatchedMovieEntity(
+            database.watchlistDao().upsert(
+                WatchlistMovieEntity(
                     movieId = movie.id,
                     title = movie.title,
                     posterPath = movie.posterUrl?.substringAfter("w500"),
@@ -249,10 +249,6 @@ class MoviesRepositoryImpl @Inject constructor(
             )
         }
         return newWatchState
-    }
-
-    override suspend fun toggleWatched(movie: MovieSummary) {
-        toggleWatchlist(movie)
     }
 
     private fun enqueueSyncOutboxWorker() {
@@ -393,14 +389,14 @@ class MoviesRepositoryImpl @Inject constructor(
 
     private suspend fun reconcileWatchlist(remoteWatchlist: List<TmdbMovieDto>) {
         val pendingWatch = database.syncOutboxDao().getPendingMovieIds(SyncOutboxWorker.TARGET_WATCHLIST).toSet()
-        val localWatchList = database.watchedDao().getAllWatched().first()
+        val localWatchList = database.watchlistDao().getAllWatchlist().first()
         val localWatchMap = localWatchList.associateBy { it.movieId }
         val remoteWatchMap = remoteWatchlist.associateBy { it.id }
 
         for (remoteMovie in remoteWatchlist) {
             if (remoteMovie.id !in pendingWatch && !localWatchMap.containsKey(remoteMovie.id)) {
-                database.watchedDao().upsert(
-                    WatchedMovieEntity(
+                database.watchlistDao().upsert(
+                    WatchlistMovieEntity(
                         movieId = remoteMovie.id,
                         title = remoteMovie.title,
                         posterPath = remoteMovie.posterPath,
@@ -414,7 +410,7 @@ class MoviesRepositoryImpl @Inject constructor(
 
         for (localWatch in localWatchList) {
             if (localWatch.movieId !in pendingWatch && !remoteWatchMap.containsKey(localWatch.movieId)) {
-                database.watchedDao().delete(localWatch.movieId)
+                database.watchlistDao().delete(localWatch.movieId)
             }
         }
     }
@@ -425,13 +421,13 @@ class MoviesRepositoryImpl @Inject constructor(
         }
     }
 
-    override fun observeWatched(): Flow<List<MovieSummary>> {
-        return database.watchedDao().getAllWatched().map { list ->
+    override fun observeWatchlist(): Flow<List<MovieSummary>> {
+        return database.watchlistDao().getAllWatchlist().map { list ->
             list.map { it.toMovieSummary() }
         }
     }
 
     override fun isFavorite(id: Int): Flow<Boolean> = database.favoriteDao().isFavorite(id)
 
-    override fun isWatched(id: Int): Flow<Boolean> = database.watchedDao().isWatched(id)
+    override fun isInWatchlist(id: Int): Flow<Boolean> = database.watchlistDao().isInWatchlist(id)
 }

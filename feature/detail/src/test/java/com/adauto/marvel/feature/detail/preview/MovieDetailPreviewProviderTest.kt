@@ -23,13 +23,13 @@ class MovieDetailPreviewProviderTest {
         assertThat(values[2].movie).isNotNull()
         assertThat(values[2].movie?.title).isEqualTo("Clube da Luta")
         assertThat(values[2].movie?.isFavorite).isTrue()
-        assertThat(values[2].movie?.isWatched).isTrue()
+        assertThat(values[2].movie?.isInWatchlist).isTrue()
 
         // 4. Populated Movie (Inactive Actions)
         assertThat(values[3].movie).isNotNull()
         assertThat(values[3].movie?.title).isEqualTo("Inception")
         assertThat(values[3].movie?.isFavorite).isFalse()
-        assertThat(values[3].movie?.isWatched).isFalse()
+        assertThat(values[3].movie?.isInWatchlist).isFalse()
 
         // 5. Populated Movie Minimal
         assertThat(values[4].movie).isNotNull()

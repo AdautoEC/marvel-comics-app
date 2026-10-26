@@ -15,13 +15,13 @@ class MovieModelTest {
             voteAverage = 8.433,
             releaseDate = "1999-10-15",
             isFavorite = true,
-            isWatched = false
+            isInWatchlist = false
         )
 
         assertThat(movie.id).isEqualTo(550)
         assertThat(movie.title).isEqualTo("Fight Club")
         assertThat(movie.isFavorite).isTrue()
-        assertThat(movie.isWatched).isFalse()
+        assertThat(movie.isInWatchlist).isFalse()
         assertThat(movie.ratingFormatted).isEqualTo("8.4")
         assertThat(movie.releaseYear).isEqualTo("1999")
     }
@@ -40,14 +40,14 @@ class MovieModelTest {
             genres = listOf("Drama", "Thriller"),
             cast = listOf("Brad Pitt", "Edward Norton", "Helena Bonham Carter"),
             isFavorite = true,
-            isWatched = true
+            isInWatchlist = true
         )
 
         assertThat(detail.runtimeFormatted).isEqualTo("139 min")
         assertThat(detail.genres).containsExactly("Drama", "Thriller")
         assertThat(detail.cast).hasSize(3)
         assertThat(detail.isFavorite).isTrue()
-        assertThat(detail.isWatched).isTrue()
+        assertThat(detail.isInWatchlist).isTrue()
     }
 
     @Test

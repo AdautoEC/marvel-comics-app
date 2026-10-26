@@ -12,7 +12,7 @@ import com.adauto.marvel.core.data.sync.SyncEventBus
 import com.adauto.marvel.core.database.MarvelDatabase
 import com.adauto.marvel.core.database.dao.FavoriteDao
 import com.adauto.marvel.core.database.dao.SyncOutboxDao
-import com.adauto.marvel.core.database.dao.WatchedDao
+import com.adauto.marvel.core.database.dao.WatchlistDao
 import com.adauto.marvel.core.database.entity.SyncOutboxEntity
 import com.adauto.marvel.core.model.SessionState
 import com.adauto.marvel.core.network.api.TmdbApi
@@ -45,7 +45,7 @@ class SyncOutboxWorkerTest {
     private val database: MarvelDatabase = mockk()
     private val syncOutboxDao: SyncOutboxDao = mockk(relaxed = true)
     private val favoriteDao: FavoriteDao = mockk(relaxed = true)
-    private val watchedDao: WatchedDao = mockk(relaxed = true)
+    private val watchlistDao: WatchlistDao = mockk(relaxed = true)
     private val api: TmdbApi = mockk()
     private val sessionManager: SessionManager = mockk(relaxed = true)
     private val workManager: WorkManager = mockk(relaxed = true)
@@ -73,7 +73,7 @@ class SyncOutboxWorkerTest {
         every { WorkManager.getInstance(any()) } returns workManager
         every { database.syncOutboxDao() } returns syncOutboxDao
         every { database.favoriteDao() } returns favoriteDao
-        every { database.watchedDao() } returns watchedDao
+        every { database.watchlistDao() } returns watchlistDao
         every { sessionManager.sessionState } returns sessionStateFlow
         coEvery { sessionManager.awaitInitialSession() } coAnswers { sessionStateFlow.value }
 
@@ -378,7 +378,7 @@ class SyncOutboxWorkerTest {
 
             assertThat(result).isEqualTo(Result.success())
             coVerify(exactly = 1) {
-                watchedDao.delete(TEST_MOVIE_ID)
+                watchlistDao.delete(TEST_MOVIE_ID)
             }
             val event = awaitItem()
             assertThat(event.movieId).isEqualTo(TEST_MOVIE_ID)

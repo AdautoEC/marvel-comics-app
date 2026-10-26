@@ -65,7 +65,7 @@ class MovieListViewModel @Inject constructor(
             trimmed.isBlank() -> {
                 when (category) {
                     MovieCategory.FAVORITES -> moviesRepository.observeFavorites().map { PagingData.from(it) }
-                    MovieCategory.WATCHLIST -> moviesRepository.observeWatched().map { PagingData.from(it) }
+                    MovieCategory.WATCHLIST -> moviesRepository.observeWatchlist().map { PagingData.from(it) }
                     else -> moviesRepository.movies(category)
                 }
             }
@@ -76,7 +76,7 @@ class MovieListViewModel @Inject constructor(
                 }
             }
             category == MovieCategory.WATCHLIST -> {
-                moviesRepository.observeWatched().map { list ->
+                moviesRepository.observeWatchlist().map { list ->
                     val filtered = list.filter { it.title.contains(trimmed, ignoreCase = true) }
                     PagingData.from(filtered)
                 }
@@ -156,11 +156,6 @@ class MovieListViewModel @Inject constructor(
             is MovieListAction.WatchlistToggled -> {
                 viewModelScope.launch {
                     moviesRepository.toggleWatchlist(action.movie)
-                }
-            }
-            is MovieListAction.WatchedToggled -> {
-                viewModelScope.launch {
-                    moviesRepository.toggleWatched(action.movie)
                 }
             }
             is MovieListAction.ConnectTmdbClicked -> {

@@ -16,7 +16,7 @@ data class MovieDetail(
     val genres: List<String> = emptyList(),
     val cast: List<String> = emptyList(),
     val isFavorite: Boolean = false,
-    val isWatched: Boolean = false
+    val isInWatchlist: Boolean = false
 ) {
     val ratingFormatted: String
         get() = String.format(Locale.US, "%.1f", voteAverage)

@@ -37,7 +37,7 @@ class MovieListUiStatePreviewParameterProvider : PreviewParameterProvider<MovieL
                     voteAverage = 8.4,
                     releaseDate = "1999-10-15",
                     isFavorite = true,
-                    isWatched = true
+                    isInWatchlist = true
                 ),
                 MovieSummary(
                     id = 2,
@@ -46,7 +46,7 @@ class MovieListUiStatePreviewParameterProvider : PreviewParameterProvider<MovieL
                     voteAverage = 8.8,
                     releaseDate = "2010-07-16",
                     isFavorite = false,
-                    isWatched = false
+                    isInWatchlist = false
                 ),
                 MovieSummary(
                     id = 3,
@@ -55,7 +55,7 @@ class MovieListUiStatePreviewParameterProvider : PreviewParameterProvider<MovieL
                     voteAverage = 8.6,
                     releaseDate = "2014-11-07",
                     isFavorite = false,
-                    isWatched = false
+                    isInWatchlist = false
                 )
             )
         ),
@@ -70,7 +70,7 @@ class MovieListUiStatePreviewParameterProvider : PreviewParameterProvider<MovieL
                     voteAverage = 8.4,
                     releaseDate = "1999-10-15",
                     isFavorite = true,
-                    isWatched = true
+                    isInWatchlist = true
                 )
             )
         ),

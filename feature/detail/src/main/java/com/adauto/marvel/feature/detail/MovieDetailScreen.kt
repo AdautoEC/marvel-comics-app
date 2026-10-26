@@ -292,23 +292,27 @@ private fun MovieDetailContent(
                             .weight(1f)
                             .testTag("WatchlistButton"),
                         colors = ButtonDefaults.outlinedButtonColors(
-                            containerColor = if (movie.isWatched) Color(0xFF1B5E20) else Color.Transparent
+                            containerColor = if (movie.isInWatchlist) Color(0xFF1B5E20) else Color.Transparent
                         ),
                         shape = RoundedCornerShape(12.dp)
                     ) {
                         Icon(
-                            imageVector = if (movie.isWatched) BookmarkIcon else BookmarkBorderIcon,
+                            imageVector = if (movie.isInWatchlist) BookmarkIcon else BookmarkBorderIcon,
                             contentDescription = stringResource(
-                                if (movie.isWatched) R.string.cd_watchlist_active else R.string.cd_watchlist_inactive
+                                if (movie.isInWatchlist) {
+                                    R.string.cd_watchlist_active
+                                } else {
+                                    R.string.cd_watchlist_inactive
+                                }
                             ),
-                            tint = if (movie.isWatched) Color.White else MarvelColors.TextSecondary,
+                            tint = if (movie.isInWatchlist) Color.White else MarvelColors.TextSecondary,
                             modifier = Modifier.size(18.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             text = stringResource(R.string.detail_watchlist),
                             fontWeight = FontWeight.Bold,
-                            color = if (movie.isWatched) Color.White else MarvelColors.TextPrimary
+                            color = if (movie.isInWatchlist) Color.White else MarvelColors.TextPrimary
                         )
                     }
                 }

@@ -10,10 +10,10 @@ import com.adauto.marvel.core.database.MarvelDatabase
 import com.adauto.marvel.core.database.dao.FavoriteDao
 import com.adauto.marvel.core.database.dao.MovieDao
 import com.adauto.marvel.core.database.dao.SyncOutboxDao
-import com.adauto.marvel.core.database.dao.WatchedDao
+import com.adauto.marvel.core.database.dao.WatchlistDao
 import com.adauto.marvel.core.database.entity.FavoriteMovieEntity
 import com.adauto.marvel.core.database.entity.SyncOutboxEntity
-import com.adauto.marvel.core.database.entity.WatchedMovieEntity
+import com.adauto.marvel.core.database.entity.WatchlistMovieEntity
 import com.adauto.marvel.core.model.DomainError
 import com.adauto.marvel.core.model.MovieSummary
 import com.adauto.marvel.core.model.Outcome
@@ -47,7 +47,7 @@ class MoviesRepositoryImplTest {
     private val api: TmdbApi = mockk()
     private val database: MarvelDatabase = mockk()
     private val favoriteDao: FavoriteDao = mockk(relaxed = true)
-    private val watchedDao: WatchedDao = mockk(relaxed = true)
+    private val watchlistDao: WatchlistDao = mockk(relaxed = true)
     private val movieDao: MovieDao = mockk(relaxed = true)
     private val syncOutboxDao: SyncOutboxDao = mockk(relaxed = true)
     private val sessionManager: SessionManager = mockk(relaxed = true)
@@ -76,7 +76,7 @@ class MoviesRepositoryImplTest {
             block()
         }
         every { database.favoriteDao() } returns favoriteDao
-        every { database.watchedDao() } returns watchedDao
+        every { database.watchlistDao() } returns watchlistDao
         every { database.movieDao() } returns movieDao
         every { database.syncOutboxDao() } returns syncOutboxDao
         every { sessionManager.sessionState } returns sessionStateFlow
@@ -212,13 +212,13 @@ class MoviesRepositoryImplTest {
     @Test
     fun toggleWatchlist_whenGuest_updatesOnlyLocalTable_andDoesNotWriteOutbox() = runTest {
         sessionStateFlow.value = SessionState.Guest
-        every { watchedDao.isWatched(101) } returns flowOf(false)
+        every { watchlistDao.isInWatchlist(101) } returns flowOf(false)
 
         repository.toggleWatchlist(sampleMovie)
 
         coVerify(exactly = 1) {
-            watchedDao.upsert(
-                WatchedMovieEntity(
+            watchlistDao.upsert(
+                WatchlistMovieEntity(
                     movieId = 101,
                     title = "Iron Man",
                     posterPath = "/ironman.jpg",
@@ -240,14 +240,14 @@ class MoviesRepositoryImplTest {
             username = "stark",
             sessionId = "sess_iron"
         )
-        every { watchedDao.isWatched(101) } returns flowOf(false)
+        every { watchlistDao.isInWatchlist(101) } returns flowOf(false)
         coEvery { syncOutboxDao.find(101, SyncOutboxWorker.TARGET_WATCHLIST) } returns null
 
         repository.toggleWatchlist(sampleMovie)
 
         coVerify(exactly = 1) {
-            watchedDao.upsert(
-                WatchedMovieEntity(
+            watchlistDao.upsert(
+                WatchlistMovieEntity(
                     movieId = 101,
                     title = "Iron Man",
                     posterPath = "/ironman.jpg",
@@ -299,7 +299,7 @@ class MoviesRepositoryImplTest {
             addedAt = 1000L
         )
         every { favoriteDao.getAllFavorites() } returns flowOf(listOf(localFav))
-        every { watchedDao.getAllWatched() } returns flowOf(emptyList())
+        every { watchlistDao.getAllWatchlist() } returns flowOf(emptyList())
 
         coEvery { syncOutboxDao.getPendingMovieIds(SyncOutboxWorker.TARGET_FAVORITE) } returns listOf(101)
         coEvery { syncOutboxDao.getPendingMovieIds(SyncOutboxWorker.TARGET_WATCHLIST) } returns emptyList()
@@ -372,7 +372,7 @@ class MoviesRepositoryImplTest {
             addedAt = 500L
         )
         every { favoriteDao.getAllFavorites() } returns flowOf(listOf(localStaleFav))
-        every { watchedDao.getAllWatched() } returns flowOf(emptyList())
+        every { watchlistDao.getAllWatchlist() } returns flowOf(emptyList())
 
         coEvery { syncOutboxDao.getPendingMovieIds(SyncOutboxWorker.TARGET_FAVORITE) } returns emptyList()
         coEvery { syncOutboxDao.getPendingMovieIds(SyncOutboxWorker.TARGET_WATCHLIST) } returns emptyList()
@@ -442,8 +442,8 @@ class MoviesRepositoryImplTest {
 
         coVerify(exactly = 0) { favoriteDao.upsert(any()) }
         coVerify(exactly = 0) { favoriteDao.delete(any()) }
-        coVerify(exactly = 0) { watchedDao.upsert(any()) }
-        coVerify(exactly = 0) { watchedDao.delete(any()) }
+        coVerify(exactly = 0) { watchlistDao.upsert(any()) }
+        coVerify(exactly = 0) { watchlistDao.delete(any()) }
     }
 
     @Test
@@ -496,7 +496,7 @@ class MoviesRepositoryImplTest {
             TmdbPageResponseDto(page = 1, results = emptyList(), totalPages = 1, totalResults = 0)
         )
         every { favoriteDao.getAllFavorites() } returns flowOf(emptyList<FavoriteMovieEntity>())
-        every { watchedDao.getAllWatched() } returns flowOf(emptyList<WatchedMovieEntity>())
+        every { watchlistDao.getAllWatchlist() } returns flowOf(emptyList<WatchlistMovieEntity>())
 
         testScheduler.runCurrent()
 
@@ -527,7 +527,7 @@ class MoviesRepositoryImplTest {
             TmdbPageResponseDto(page = 1, results = emptyList(), totalPages = 1, totalResults = 0)
         )
         every { favoriteDao.getAllFavorites() } returns flowOf(emptyList())
-        every { watchedDao.getAllWatched() } returns flowOf(emptyList())
+        every { watchlistDao.getAllWatchlist() } returns flowOf(emptyList())
 
         val result = repository.syncCloudWithLocal()
 
@@ -562,7 +562,7 @@ class MoviesRepositoryImplTest {
             TmdbPageResponseDto(page = 1, results = emptyList(), totalPages = 1, totalResults = 0)
         )
         every { favoriteDao.getAllFavorites() } returns flowOf(emptyList())
-        every { watchedDao.getAllWatched() } returns flowOf(emptyList())
+        every { watchlistDao.getAllWatchlist() } returns flowOf(emptyList())
 
         val result = repository.syncCloudWithLocal()
 

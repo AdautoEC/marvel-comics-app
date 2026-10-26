@@ -22,7 +22,6 @@ sealed interface MovieListAction {
     data class MovieClicked(val id: Int) : MovieListAction
     data class FavoriteToggled(val movie: MovieSummary) : MovieListAction
     data class WatchlistToggled(val movie: MovieSummary) : MovieListAction
-    data class WatchedToggled(val movie: MovieSummary) : MovieListAction
     data object ConnectTmdbClicked : MovieListAction
     data object LogoutClicked : MovieListAction
     data class SearchQueryChanged(val query: String) : MovieListAction

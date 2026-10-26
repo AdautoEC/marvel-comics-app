@@ -17,7 +17,7 @@ HSPLcom/adauto/marvel/core/data/sync/SyncCoordinator;->getPullRequests()Lkotlinx
 HSPLcom/adauto/marvel/core/database/CinemaHubDatabase;-><init>()V
 HSPLcom/adauto/marvel/core/database/CinemaHubDatabase;->movieDao()Lcom/adauto/marvel/core/database/dao/MovieDao;
 HSPLcom/adauto/marvel/core/database/CinemaHubDatabase;->favoriteDao()Lcom/adauto/marvel/core/database/dao/FavoriteDao;
-HSPLcom/adauto/marvel/core/database/CinemaHubDatabase;->watchedDao()Lcom/adauto/marvel/core/database/dao/WatchedDao;
+HSPLcom/adauto/marvel/core/database/CinemaHubDatabase;->watchlistDao()Lcom/adauto/marvel/core/database/dao/WatchlistDao;
 HSPLcom/adauto/marvel/core/database/CinemaHubDatabase;->syncOutboxDao()Lcom/adauto/marvel/core/database/dao/SyncOutboxDao;
 HSPLcom/adauto/marvel/feature/movies/MoviesViewModel;-><init>(Lcom/adauto/marvel/core/data/repository/MoviesRepository;)V
 HSPLcom/adauto/marvel/feature/detail/DetailViewModel;-><init>(Lcom/adauto/marvel/core/data/repository/MoviesRepository;Landroidx/lifecycle/SavedStateHandle;)V

@@ -7,7 +7,7 @@ import androidx.test.core.app.ApplicationProvider
 import com.adauto.marvel.core.database.MarvelDatabase
 import com.adauto.marvel.core.database.entity.FavoriteMovieEntity
 import com.adauto.marvel.core.database.entity.MovieEntity
-import com.adauto.marvel.core.database.entity.WatchedMovieEntity
+import com.adauto.marvel.core.database.entity.WatchlistMovieEntity
 import com.adauto.marvel.core.database.model.MovieWithUserData
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.test.runTest
@@ -23,7 +23,7 @@ class MovieDaoReactiveJoinTest {
     private lateinit var db: MarvelDatabase
     private lateinit var movieDao: MovieDao
     private lateinit var favoriteDao: FavoriteDao
-    private lateinit var watchedDao: WatchedDao
+    private lateinit var watchlistDao: WatchlistDao
 
     @Before
     fun createDb() {
@@ -35,7 +35,7 @@ class MovieDaoReactiveJoinTest {
             .build()
         movieDao = db.movieDao()
         favoriteDao = db.favoriteDao()
-        watchedDao = db.watchedDao()
+        watchlistDao = db.watchlistDao()
     }
 
     @After
@@ -72,7 +72,7 @@ class MovieDaoReactiveJoinTest {
         val initialItem = result1.data.first()
         assertThat(initialItem.movie.id).isEqualTo(42)
         assertThat(initialItem.isFavorite).isFalse()
-        assertThat(initialItem.isWatched).isFalse()
+        assertThat(initialItem.isInWatchlist).isFalse()
 
         // Insert favorite: verify new pagingSource reflects isFavorite = true
         favoriteDao.upsert(
@@ -92,11 +92,11 @@ class MovieDaoReactiveJoinTest {
         ) as PagingSource.LoadResult.Page
         val favoriteItem = result2.data.first()
         assertThat(favoriteItem.isFavorite).isTrue()
-        assertThat(favoriteItem.isWatched).isFalse()
+        assertThat(favoriteItem.isInWatchlist).isFalse()
 
-        // Insert watched: verify new pagingSource reflects both isFavorite = true and isWatched = true
-        watchedDao.upsert(
-            WatchedMovieEntity(
+        // Insert watchlist: verify new pagingSource reflects both isFavorite = true and isInWatchlist = true
+        watchlistDao.upsert(
+            WatchlistMovieEntity(
                 movieId = 42,
                 title = "Movie 42",
                 posterPath = "/poster42.jpg",
@@ -112,7 +112,7 @@ class MovieDaoReactiveJoinTest {
         ) as PagingSource.LoadResult.Page
         val bothItem = result3.data.first()
         assertThat(bothItem.isFavorite).isTrue()
-        assertThat(bothItem.isWatched).isTrue()
+        assertThat(bothItem.isInWatchlist).isTrue()
 
         // Delete favorite: verify isFavorite reverts to false
         favoriteDao.delete(42)
@@ -123,7 +123,7 @@ class MovieDaoReactiveJoinTest {
         ) as PagingSource.LoadResult.Page
         val revertedItem = result4.data.first()
         assertThat(revertedItem.isFavorite).isFalse()
-        assertThat(revertedItem.isWatched).isTrue()
+        assertThat(revertedItem.isInWatchlist).isTrue()
     }
 
     @Test

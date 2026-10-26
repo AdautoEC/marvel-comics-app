@@ -12,7 +12,7 @@ data class MovieSummary(
     val voteAverage: Double = 0.0,
     val releaseDate: String? = null,
     val isFavorite: Boolean = false,
-    val isWatched: Boolean = false
+    val isInWatchlist: Boolean = false
 ) {
     val ratingFormatted: String
         get() = String.format(Locale.US, "%.1f", voteAverage)

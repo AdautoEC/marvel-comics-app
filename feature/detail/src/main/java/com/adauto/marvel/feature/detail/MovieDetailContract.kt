@@ -16,7 +16,6 @@ sealed interface MovieDetailAction {
     data object BackClicked : MovieDetailAction
     data object FavoriteToggled : MovieDetailAction
     data object WatchlistToggled : MovieDetailAction
-    data object WatchedToggled : MovieDetailAction
 }
 
 sealed interface MovieDetailEffect {

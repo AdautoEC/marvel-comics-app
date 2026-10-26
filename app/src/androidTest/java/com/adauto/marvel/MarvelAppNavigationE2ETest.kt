@@ -54,7 +54,7 @@ class MarvelAppNavigationE2ETest {
         runtime = 139,
         genres = listOf("Drama"),
         isFavorite = false,
-        isWatched = false
+        isInWatchlist = false
     )
 
     @Composable

@@ -30,7 +30,7 @@ class MovieDetailScreenTest {
         genres = listOf("Ação", "Ficção Científica"),
         cast = listOf("Leonardo DiCaprio", "Joseph Gordon-Levitt"),
         isFavorite = false,
-        isWatched = false
+        isInWatchlist = false
     )
 
     @Test

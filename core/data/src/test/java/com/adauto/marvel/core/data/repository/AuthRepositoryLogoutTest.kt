@@ -8,7 +8,7 @@ import com.adauto.marvel.core.data.worker.SyncOutboxWorker
 import com.adauto.marvel.core.database.MarvelDatabase
 import com.adauto.marvel.core.database.dao.FavoriteDao
 import com.adauto.marvel.core.database.dao.SyncOutboxDao
-import com.adauto.marvel.core.database.dao.WatchedDao
+import com.adauto.marvel.core.database.dao.WatchlistDao
 import com.adauto.marvel.core.database.entity.SyncOutboxEntity
 import com.adauto.marvel.core.model.SessionState
 import com.adauto.marvel.core.network.api.TmdbApi
@@ -39,7 +39,7 @@ class AuthRepositoryLogoutTest {
     private val sessionManager: SessionManager = mockk(relaxed = true)
     private val database: MarvelDatabase = mockk()
     private val favoriteDao: FavoriteDao = mockk(relaxed = true)
-    private val watchedDao: WatchedDao = mockk(relaxed = true)
+    private val watchlistDao: WatchlistDao = mockk(relaxed = true)
     private val syncOutboxDao: SyncOutboxDao = mockk(relaxed = true)
     private val moviesRepository: MoviesRepository = mockk(relaxed = true)
     private val authPreferences: AuthPreferencesStorage = mockk(relaxed = true)
@@ -57,10 +57,10 @@ class AuthRepositoryLogoutTest {
             block()
         }
         every { database.favoriteDao() } returns favoriteDao
-        every { database.watchedDao() } returns watchedDao
+        every { database.watchlistDao() } returns watchlistDao
         every { database.syncOutboxDao() } returns syncOutboxDao
         every { favoriteDao.getAllFavorites() } returns flowOf(emptyList())
-        every { watchedDao.getAllWatched() } returns flowOf(emptyList())
+        every { watchlistDao.getAllWatchlist() } returns flowOf(emptyList())
         every { sessionManager.sessionState } returns MutableStateFlow<SessionState>(SessionState.Guest)
 
         authRepository = AuthRepositoryImpl(
@@ -83,7 +83,7 @@ class AuthRepositoryLogoutTest {
         coVerify(exactly = 1) { sessionManager.clearSession() }
         coVerify(exactly = 1) { syncOutboxDao.clearAll() }
         coVerify(exactly = 1) { favoriteDao.clearAll() }
-        coVerify(exactly = 1) { watchedDao.clearAll() }
+        coVerify(exactly = 1) { watchlistDao.clearAll() }
         coVerify(exactly = 1) { authPreferences.clearLastAccountId() }
     }
 

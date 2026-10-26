@@ -6,18 +6,18 @@ import com.adauto.marvel.core.database.dao.FavoriteDao
 import com.adauto.marvel.core.database.dao.MovieDao
 import com.adauto.marvel.core.database.dao.MovieRemoteKeysDao
 import com.adauto.marvel.core.database.dao.SyncOutboxDao
-import com.adauto.marvel.core.database.dao.WatchedDao
+import com.adauto.marvel.core.database.dao.WatchlistDao
 import com.adauto.marvel.core.database.entity.FavoriteMovieEntity
 import com.adauto.marvel.core.database.entity.MovieEntity
 import com.adauto.marvel.core.database.entity.MovieRemoteKeysEntity
 import com.adauto.marvel.core.database.entity.SyncOutboxEntity
-import com.adauto.marvel.core.database.entity.WatchedMovieEntity
+import com.adauto.marvel.core.database.entity.WatchlistMovieEntity
 
 @Database(
     entities = [
         MovieEntity::class,
         FavoriteMovieEntity::class,
-        WatchedMovieEntity::class,
+        WatchlistMovieEntity::class,
         SyncOutboxEntity::class,
         MovieRemoteKeysEntity::class
     ],
@@ -27,7 +27,7 @@ import com.adauto.marvel.core.database.entity.WatchedMovieEntity
 abstract class MarvelDatabase : RoomDatabase() {
     abstract fun movieDao(): MovieDao
     abstract fun favoriteDao(): FavoriteDao
-    abstract fun watchedDao(): WatchedDao
+    abstract fun watchlistDao(): WatchlistDao
     abstract fun syncOutboxDao(): SyncOutboxDao
     abstract fun movieRemoteKeysDao(): MovieRemoteKeysDao
 }

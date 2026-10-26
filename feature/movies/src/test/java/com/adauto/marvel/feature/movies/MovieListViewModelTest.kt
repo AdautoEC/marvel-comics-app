@@ -53,7 +53,7 @@ class MovieListViewModelTest {
         isOnlineFlow.value = true
         every { moviesRepository.movies(any(), any()) } returns emptyFlow()
         every { moviesRepository.observeFavorites() } returns emptyFlow()
-        every { moviesRepository.observeWatched() } returns emptyFlow()
+        every { moviesRepository.observeWatchlist() } returns emptyFlow()
         every { authRepository.sessionState } returns MutableStateFlow(SessionState.Guest)
     }
 
@@ -98,12 +98,12 @@ class MovieListViewModelTest {
     }
 
     @Test
-    fun watchedToggled_callsRepositoryToggleWatched() = runTest {
+    fun watchlistToggled_callsRepositoryToggleWatchlist() = runTest {
         val viewModel = createViewModel()
         val sampleMovie = MovieSummary(id = 1, title = "Iron Man", posterUrl = null, voteAverage = 8.0)
-        viewModel.onAction(MovieListAction.WatchedToggled(sampleMovie))
+        viewModel.onAction(MovieListAction.WatchlistToggled(sampleMovie))
         testDispatcher.scheduler.advanceUntilIdle()
-        coVerify { moviesRepository.toggleWatched(sampleMovie) }
+        coVerify { moviesRepository.toggleWatchlist(sampleMovie) }
     }
 
     @Test

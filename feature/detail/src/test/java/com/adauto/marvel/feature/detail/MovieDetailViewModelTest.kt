@@ -36,7 +36,7 @@ class MovieDetailViewModelTest {
         genres = listOf("Ficção Científica", "Ação"),
         cast = listOf("Leonardo DiCaprio"),
         isFavorite = false,
-        isWatched = false
+        isInWatchlist = false
     )
 
     @Before
@@ -100,20 +100,6 @@ class MovieDetailViewModelTest {
         testDispatcher.scheduler.advanceUntilIdle()
 
         coVerify { moviesRepository.toggleWatchlist(any()) }
-        assertThat(viewModel.uiState.value.movie?.isWatched).isTrue()
-    }
-
-    @Test
-    fun watchedToggled_callsRepositoryToggleWatchlist_andUpdatesState() = runTest {
-        val savedStateHandle = SavedStateHandle(mapOf("movieId" to 101))
-        val viewModel = MovieDetailViewModel(moviesRepository, savedStateHandle)
-
-        testDispatcher.scheduler.advanceUntilIdle()
-
-        viewModel.onAction(MovieDetailAction.WatchedToggled)
-        testDispatcher.scheduler.advanceUntilIdle()
-
-        coVerify { moviesRepository.toggleWatchlist(any()) }
-        assertThat(viewModel.uiState.value.movie?.isWatched).isTrue()
+        assertThat(viewModel.uiState.value.movie?.isInWatchlist).isTrue()
     }
 }

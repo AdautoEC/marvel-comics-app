@@ -35,7 +35,7 @@ class MovieDetailUiTest {
         runtime = 139,
         genres = listOf("Drama", "Suspense"),
         isFavorite = false,
-        isWatched = false
+        isInWatchlist = false
     )
 
     @Test
@@ -88,7 +88,7 @@ class MovieDetailUiTest {
         composeTestRule.setContent {
             MovieDetailScreen(
                 uiState = MovieDetailUiState(
-                    movie = sampleMovie.copy(isWatched = false),
+                    movie = sampleMovie.copy(isInWatchlist = false),
                     isLoading = false
                 ),
                 onAction = { actionDispatched = it }

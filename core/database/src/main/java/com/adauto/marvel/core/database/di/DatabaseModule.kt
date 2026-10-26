@@ -7,7 +7,7 @@ import com.adauto.marvel.core.database.dao.FavoriteDao
 import com.adauto.marvel.core.database.dao.MovieDao
 import com.adauto.marvel.core.database.dao.MovieRemoteKeysDao
 import com.adauto.marvel.core.database.dao.SyncOutboxDao
-import com.adauto.marvel.core.database.dao.WatchedDao
+import com.adauto.marvel.core.database.dao.WatchlistDao
 import com.adauto.marvel.core.database.migrations.MIGRATION_2_3
 import com.adauto.marvel.core.database.migrations.MIGRATION_3_4
 import com.adauto.marvel.core.database.migrations.MIGRATION_4_5
@@ -44,7 +44,7 @@ object DatabaseModule {
     fun provideFavoriteDao(database: MarvelDatabase): FavoriteDao = database.favoriteDao()
 
     @Provides
-    fun provideWatchedDao(database: MarvelDatabase): WatchedDao = database.watchedDao()
+    fun provideWatchlistDao(database: MarvelDatabase): WatchlistDao = database.watchlistDao()
 
     @Provides
     fun provideSyncOutboxDao(database: MarvelDatabase): SyncOutboxDao = database.syncOutboxDao()

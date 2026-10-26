@@ -12,10 +12,9 @@ interface MoviesRepository {
     suspend fun getMovieDetail(id: Int): Outcome<MovieDetail>
     suspend fun toggleFavorite(movie: MovieSummary)
     suspend fun toggleWatchlist(movie: MovieSummary)
-    suspend fun toggleWatched(movie: MovieSummary)
     fun observeFavorites(): Flow<List<MovieSummary>>
-    fun observeWatched(): Flow<List<MovieSummary>>
+    fun observeWatchlist(): Flow<List<MovieSummary>>
     fun isFavorite(id: Int): Flow<Boolean>
-    fun isWatched(id: Int): Flow<Boolean>
+    fun isInWatchlist(id: Int): Flow<Boolean>
     suspend fun syncCloudWithLocal(): Outcome<Unit>
 }

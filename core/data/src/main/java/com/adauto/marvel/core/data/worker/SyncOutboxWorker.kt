@@ -203,7 +203,7 @@ class SyncOutboxWorker @Suppress("LongParameterList") @AssistedInject constructo
             if (deleted == 1 && item.desired) {
                 when (item.target) {
                     TARGET_FAVORITE -> database.favoriteDao().delete(item.movieId)
-                    TARGET_WATCHLIST -> database.watchedDao().delete(item.movieId)
+                    TARGET_WATCHLIST -> database.watchlistDao().delete(item.movieId)
                 }
             }
             deleted
