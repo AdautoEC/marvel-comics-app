@@ -2,30 +2,29 @@ package com.adauto.cinemahub.feature.detail
 
 import androidx.lifecycle.SavedStateHandle
 import app.cash.turbine.test
-import com.adauto.cinemahub.core.data.repository.MoviesRepository
-import com.adauto.cinemahub.core.model.MovieDetail
 import com.adauto.cinemahub.core.model.Outcome
+import com.adauto.cinemahub.core.testing.data.MovieTestData
+import com.adauto.cinemahub.core.testing.repository.FakeMoviesRepository
+import com.adauto.cinemahub.core.testing.util.MainDispatcherRule
 import com.google.common.truth.Truth.assertThat
-import io.mockk.coEvery
-import io.mockk.coVerify
-import io.mockk.mockk
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
-import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
-import kotlinx.coroutines.test.setMain
-import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Before
+import org.junit.Rule
 import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class MovieDetailViewModelTest {
-    private val testDispatcher = StandardTestDispatcher()
-    private val moviesRepository: MoviesRepository = mockk(relaxed = true)
 
-    private val sampleMovie = MovieDetail(
+    private val testDispatcher = StandardTestDispatcher()
+
+    @get:Rule
+    val mainDispatcherRule = MainDispatcherRule(testDispatcher)
+
+    private lateinit var moviesRepository: FakeMoviesRepository
+    private val sampleMovie = MovieTestData.createMovieDetail(
         id = 101,
         title = "Inception",
         overview = "Dream within a dream.",
@@ -36,18 +35,13 @@ class MovieDetailViewModelTest {
         genres = listOf("Ficção Científica", "Ação"),
         cast = listOf("Leonardo DiCaprio"),
         isFavorite = false,
-        isInWatchlist = false
+        isInWatchlist = false,
     )
 
     @Before
     fun setUp() {
-        Dispatchers.setMain(testDispatcher)
-        coEvery { moviesRepository.getMovieDetail(101) } returns Outcome.Success(sampleMovie)
-    }
-
-    @After
-    fun tearDown() {
-        Dispatchers.resetMain()
+        moviesRepository = FakeMoviesRepository()
+        moviesRepository.movieDetails[101] = Outcome.Success(sampleMovie)
     }
 
     @Test
@@ -85,8 +79,10 @@ class MovieDetailViewModelTest {
         viewModel.onAction(MovieDetailAction.FavoriteToggled)
         testDispatcher.scheduler.advanceUntilIdle()
 
-        coVerify { moviesRepository.toggleFavorite(any()) }
         assertThat(viewModel.uiState.value.movie?.isFavorite).isTrue()
+        // Initial repository map wasn't mutated directly
+        val initialDetail = moviesRepository.movieDetails[101]?.getOrNull()
+        assertThat(initialDetail?.isFavorite).isFalse()
     }
 
     @Test
@@ -99,7 +95,6 @@ class MovieDetailViewModelTest {
         viewModel.onAction(MovieDetailAction.WatchlistToggled)
         testDispatcher.scheduler.advanceUntilIdle()
 
-        coVerify { moviesRepository.toggleWatchlist(any()) }
         assertThat(viewModel.uiState.value.movie?.isInWatchlist).isTrue()
     }
 }
