@@ -402,10 +402,10 @@ O repositório é equipado com automação completa via **GitHub Actions** em do
 | Categoria | Tecnologias Utilizadas |
 |---|---|
 | **Linguagem & Runtime** | Kotlin 2.0.21, Java 17, Coroutines & Flow 1.9.0 |
-| **Interface (UI)** | Jetpack Compose BOM 2024.10.00, Material 3, Compose Navigation 2.8.3, Coil 2.7.0 |
+| **Interface (UI)** | Jetpack Compose BOM 2024.12.01, Material 3, Compose Navigation 2.8.5, Coil 2.7.0 |
 | **Persistência Local** | AndroidX Room 2.6.1 (SQLite, InvalidationTracker, KSP), DataStore Preferences |
 | **Comunicação Remota** | Retrofit 2.11.0, OkHttp 4.12.0, Sandwich 2.0.10, KotlinX Serialization 1.7.3 |
-| **Paginação & Listas** | AndroidX Paging 3 (Paging 3.3.2, Paging Compose, RemoteMediator) |
+| **Paginação & Listas** | AndroidX Paging 3 (Paging 3.3.5, Paging Compose, RemoteMediator) |
 | **Injeção de Dependências** | Dagger Hilt 2.52 |
 | **Segurança & Criptografia** | Android Keystore Provider, AES-256-GCM, Custom Tabs 1.8.0 |
 | **Qualidade & Análise** | Detekt 1.23.7, Android Lint, KotlinX Kover 0.8.3 |
