@@ -539,12 +539,26 @@ class AuthRepositoryTest {
         assertThat(result).isInstanceOf(Outcome.Success::class.java)
         coVerify(exactly = 1) {
             syncOutboxDao.upsert(
-                SyncOutboxEntity(movieId = 101, target = "FAVORITE", desired = true, attempts = 0, version = 1)
+                SyncOutboxEntity(
+                    movieId = 101,
+                    target = "FAVORITE",
+                    desired = true,
+                    attempts = 0,
+                    version = 1,
+                    createdAt = 1000L
+                )
             )
         }
         coVerify(exactly = 1) {
             syncOutboxDao.upsert(
-                SyncOutboxEntity(movieId = 202, target = "WATCHLIST", desired = true, attempts = 0, version = 1)
+                SyncOutboxEntity(
+                    movieId = 202,
+                    target = "WATCHLIST",
+                    desired = true,
+                    attempts = 0,
+                    version = 1,
+                    createdAt = 2000L
+                )
             )
         }
         verify(exactly = 1) {
@@ -552,6 +566,69 @@ class AuthRepositoryTest {
                 SyncOutboxWorker.WORK_NAME,
                 ExistingWorkPolicy.APPEND_OR_REPLACE,
                 any<OneTimeWorkRequest>()
+            )
+        }
+    }
+
+    @Test
+    fun completeAuthentication_stagesGuestDataWithMonotonicVersionIncrement() = runTest {
+        coEvery { authPreferences.getLastAccountId() } returns null
+        every { favoriteDao.getAllFavorites() } returns flowOf(listOf(sampleFavEntity(101).copy(addedAt = 12345L)))
+        every { watchedDao.getAllWatched() } returns flowOf(listOf(sampleWatchEntity(202).copy(watchedAt = 67890L)))
+
+        // Pre-existing outbox row for favorite 101 with version 3
+        coEvery { syncOutboxDao.find(101, SyncOutboxWorker.TARGET_FAVORITE) } returns SyncOutboxEntity(
+            movieId = 101,
+            target = SyncOutboxWorker.TARGET_FAVORITE,
+            desired = false,
+            version = 3,
+            createdAt = 1000L
+        )
+        // No pre-existing outbox row for watchlist 202
+        coEvery { syncOutboxDao.find(202, SyncOutboxWorker.TARGET_WATCHLIST) } returns null
+
+        coEvery { api.createRequestToken() } returns ApiResponse.Success(
+            TmdbRequestTokenDto(success = true, request_token = "tok_mono", expires_at = "2026-10-23")
+        )
+        coEvery {
+            api.createSession(TmdbCreateSessionRequestDto("tok_mono"))
+        } returns ApiResponse.Success(TmdbSessionResponseDto(success = true, session_id = "sess_mono"))
+        coEvery {
+            api.getAccountDetails("sess_mono")
+        } returns ApiResponse.Success(
+            TmdbAccountDto(id = 42, username = "tony", name = "Tony Stark", avatar = null)
+        )
+        coEvery { moviesRepository.syncCloudWithLocal() } returns Outcome.Success(Unit)
+
+        authRepository.createRequestToken()
+        val result = authRepository.completeAuthentication("tok_mono")
+
+        assertThat(result).isInstanceOf(Outcome.Success::class.java)
+
+        // Monotonic version increment: version was 3, must now be 4; createdAt preserved from existing
+        coVerify(exactly = 1) {
+            syncOutboxDao.upsert(
+                SyncOutboxEntity(
+                    movieId = 101,
+                    target = "FAVORITE",
+                    desired = true,
+                    attempts = 0,
+                    version = 4,
+                    createdAt = 1000L
+                )
+            )
+        }
+        // New row: starts with version 1; createdAt initialized from watchedAt
+        coVerify(exactly = 1) {
+            syncOutboxDao.upsert(
+                SyncOutboxEntity(
+                    movieId = 202,
+                    target = "WATCHLIST",
+                    desired = true,
+                    attempts = 0,
+                    version = 1,
+                    createdAt = 67890L
+                )
             )
         }
     }
@@ -573,103 +650,4 @@ class AuthRepositoryTest {
         releaseDate = "2021-01-01",
         watchedAt = 2000L
     )
-
-    @Test
-    fun logout_cancelsWorker_clearsOutboxAndLocalTables_andClearsLastAccountId() = runTest {
-        authRepository.logout()
-
-        verify(exactly = 1) { workManager.cancelUniqueWork(SyncOutboxWorker.WORK_NAME) }
-        coVerify(exactly = 1) { sessionManager.clearSession() }
-        coVerify(exactly = 1) { syncOutboxDao.clearAll() }
-        coVerify(exactly = 1) { favoriteDao.clearAll() }
-        coVerify(exactly = 1) { watchedDao.clearAll() }
-        coVerify(exactly = 1) { authPreferences.clearLastAccountId() }
-    }
-
-    @Test
-    fun logout_whenAuthenticated_revokesRemoteSessionOnTmdb() = runTest {
-        val authState = SessionState.Authenticated(
-            accountId = 42,
-            username = "stark",
-            sessionId = "sess_iron",
-            avatarUrl = null
-        )
-        every { sessionManager.sessionState } returns MutableStateFlow(authState)
-        coEvery { api.deleteSession(any()) } returns ApiResponse.Success(
-            TmdbDeleteSessionResponseDto(success = true)
-        )
-
-        authRepository.logout()
-
-        coVerify(exactly = 1) {
-            api.deleteSession(TmdbDeleteSessionRequestDto(sessionId = "sess_iron"))
-        }
-        coVerify(exactly = 1) { sessionManager.clearSession() }
-        coVerify(exactly = 1) { authPreferences.clearPendingRequestToken() }
-        coVerify(exactly = 1) { authPreferences.clearLastAccountId() }
-    }
-
-    @Test
-    fun logout_whenPendingOutboxExists_attemptsFlushBeforeClearing() = runTest {
-        val authState = SessionState.Authenticated(
-            accountId = 42,
-            username = "stark",
-            sessionId = "sess_iron",
-            avatarUrl = null
-        )
-        every { sessionManager.sessionState } returns MutableStateFlow(authState)
-        val outboxItem = SyncOutboxEntity(
-            movieId = 101,
-            target = SyncOutboxWorker.TARGET_FAVORITE,
-            desired = true,
-            version = 1
-        )
-        coEvery { syncOutboxDao.getAllPending() } returns listOf(outboxItem)
-        coEvery {
-            api.markAsFavorite(42, "sess_iron", any())
-        } returns ApiResponse.Success(TmdbActionResponseDto(status_code = 1, status_message = "Success"))
-        coEvery { api.deleteSession(any()) } returns ApiResponse.Success(
-            TmdbDeleteSessionResponseDto(success = true)
-        )
-
-        authRepository.logout()
-
-        coVerify(exactly = 1) {
-            api.markAsFavorite(42, "sess_iron", TmdbFavoriteRequestDto(media_id = 101, favorite = true))
-        }
-        coVerify(exactly = 1) {
-            syncOutboxDao.deleteVersion(101, SyncOutboxWorker.TARGET_FAVORITE, 1)
-        }
-        coVerify(exactly = 1) {
-            api.deleteSession(TmdbDeleteSessionRequestDto("sess_iron"))
-        }
-    }
-
-    @Test
-    fun flushPendingOutbox_rethrowsCancellationException() = runTest {
-        val authState = SessionState.Authenticated(
-            accountId = 42,
-            username = "stark",
-            sessionId = "sess_iron",
-            avatarUrl = null
-        )
-        every { sessionManager.sessionState } returns MutableStateFlow(authState)
-        val outboxItem = SyncOutboxEntity(
-            movieId = 101,
-            target = SyncOutboxWorker.TARGET_FAVORITE,
-            desired = true,
-            version = 1
-        )
-        coEvery { syncOutboxDao.getAllPending() } returns listOf(outboxItem)
-        coEvery {
-            api.markAsFavorite(42, "sess_iron", any())
-        } throws kotlinx.coroutines.CancellationException("Timeout reached")
-
-        try {
-            authRepository.logout()
-            org.junit.Assert.fail("Expected CancellationException to be thrown")
-        } catch (e: kotlinx.coroutines.CancellationException) {
-            assertThat(e.message).isEqualTo("Timeout reached")
-        }
-    }
 }

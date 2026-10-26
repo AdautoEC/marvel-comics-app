@@ -159,13 +159,15 @@ class MoviesRepositoryImpl @Inject constructor(
             val newFavState = mutateLocalFavorite(movie)
             val existing = database.syncOutboxDao().find(movie.id, SyncOutboxWorker.TARGET_FAVORITE)
             val nextVersion = (existing?.version ?: 0) + 1
+            val creationTime = existing?.createdAt?.takeIf { it > 0 } ?: clock.millis()
             database.syncOutboxDao().upsert(
                 SyncOutboxEntity(
                     movieId = movie.id,
                     target = SyncOutboxWorker.TARGET_FAVORITE,
                     desired = newFavState,
                     attempts = 0,
-                    version = nextVersion
+                    version = nextVersion,
+                    createdAt = creationTime
                 )
             )
         }
@@ -205,13 +207,15 @@ class MoviesRepositoryImpl @Inject constructor(
             val newWatchState = mutateLocalWatchlist(movie)
             val existing = database.syncOutboxDao().find(movie.id, SyncOutboxWorker.TARGET_WATCHLIST)
             val nextVersion = (existing?.version ?: 0) + 1
+            val creationTime = existing?.createdAt?.takeIf { it > 0 } ?: clock.millis()
             database.syncOutboxDao().upsert(
                 SyncOutboxEntity(
                     movieId = movie.id,
                     target = SyncOutboxWorker.TARGET_WATCHLIST,
                     desired = newWatchState,
                     attempts = 0,
-                    version = nextVersion
+                    version = nextVersion,
+                    createdAt = creationTime
                 )
             )
         }
