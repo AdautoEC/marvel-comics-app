@@ -2,9 +2,6 @@
 <SmellBaseline>
   <ManuallySuppressedIssues></ManuallySuppressedIssues>
   <CurrentIssues>
-    <ID>CyclomaticComplexMethod:MovieDetailScreen.kt$@OptIn(ExperimentalLayoutApi::class) @Composable private fun MovieDetailContent( movie: MovieDetail, onAction: (MovieDetailAction) -&gt; Unit, modifier: Modifier = Modifier )</ID>
-    <ID>LongMethod:MovieDetailScreen.kt$@OptIn(ExperimentalLayoutApi::class) @Composable private fun MovieDetailContent( movie: MovieDetail, onAction: (MovieDetailAction) -&gt; Unit, modifier: Modifier = Modifier )</ID>
-    <ID>MaxLineLength:MovieDetailScreen.kt$imageVector = if (movie.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder</ID>
     <ID>MaxLineLength:MovieDetailUiStatePreviewParameterProvider.kt$MovieDetailUiStatePreviewParameterProvider$overview = "Um homem deprimido que sofre de insônia conhece um vendedor estranho de sabonetes e funda um clube de luta clandestino que se transforma em algo muito mais grandioso."</ID>
     <ID>UnusedPrivateMember:MovieDetailScreen.kt$@ThemePreviews @DevicePreviews @Composable private fun MovieDetailScreenPreview( @PreviewParameter(MovieDetailUiStatePreviewParameterProvider::class) uiState: MovieDetailUiState )</ID>
   </CurrentIssues>

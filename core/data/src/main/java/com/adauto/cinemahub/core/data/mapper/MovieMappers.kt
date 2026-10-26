@@ -7,6 +7,8 @@ import com.adauto.cinemahub.core.model.MovieDetail
 import com.adauto.cinemahub.core.model.MovieSummary
 import com.adauto.cinemahub.core.network.model.TmdbMovieDetailDto
 import com.adauto.cinemahub.core.network.model.TmdbMovieDto
+import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.toImmutableList
 
 private const val TMDB_POSTER_BASE_URL = "https://image.tmdb.org/t/p/w500"
 private const val TMDB_BACKDROP_BASE_URL = "https://image.tmdb.org/t/p/w780"
@@ -62,8 +64,8 @@ fun TmdbMovieDetailDto.toMovieDetail(
         voteAverage = voteAverage,
         runtime = runtime,
         releaseDate = releaseDate,
-        genres = genres.map { it.name },
-        cast = credits?.cast?.map { it.name } ?: emptyList(),
+        genres = genres.map { it.name }.toImmutableList(),
+        cast = credits?.cast?.map { it.name }?.toImmutableList() ?: persistentListOf(),
         isFavorite = isFavorite,
         isInWatchlist = isInWatchlist
     )

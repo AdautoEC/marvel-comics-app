@@ -9,6 +9,7 @@ import com.adauto.cinemahub.core.testing.data.MovieTestData
 import com.adauto.cinemahub.core.testing.repository.FakeMoviesRepository
 import com.adauto.cinemahub.core.testing.util.MainDispatcherRule
 import com.google.common.truth.Truth.assertThat
+import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.runTest
@@ -36,8 +37,8 @@ class MovieDetailViewModelTest {
         voteAverage = 8.8,
         runtime = 148,
         releaseDate = "2010-07-16",
-        genres = listOf("Ficção Científica", "Ação"),
-        cast = listOf("Leonardo DiCaprio"),
+        genres = persistentListOf("Ficção Científica", "Ação"),
+        cast = persistentListOf("Leonardo DiCaprio"),
         isFavorite = false,
         isInWatchlist = false,
     )

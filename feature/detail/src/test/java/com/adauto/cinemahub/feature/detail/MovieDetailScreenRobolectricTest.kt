@@ -9,6 +9,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import com.adauto.cinemahub.core.model.UiText
 import com.adauto.cinemahub.core.testing.data.MovieTestData
+import kotlinx.collections.immutable.persistentListOf
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -29,8 +30,8 @@ class MovieDetailScreenRobolectricTest {
         releaseDate = "2024-01-15",
         voteAverage = 8.8,
         runtime = 148,
-        genres = listOf("Ação", "Ficção Científica"),
-        cast = listOf("Leonardo DiCaprio", "Joseph Gordon-Levitt"),
+        genres = persistentListOf("Ação", "Ficção Científica"),
+        cast = persistentListOf("Leonardo DiCaprio", "Joseph Gordon-Levitt"),
         isFavorite = false,
         isInWatchlist = false
     )

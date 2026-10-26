@@ -5,6 +5,7 @@ import com.adauto.cinemahub.core.model.MovieDetail
 import com.adauto.cinemahub.core.model.MovieSummary
 import io.mockk.coVerify
 import io.mockk.mockk
+import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.test.runTest
 import org.junit.Test
 
@@ -40,8 +41,8 @@ class ToggleWatchlistUseCaseTest {
             voteAverage = 8.8,
             releaseDate = "2010-07-16",
             runtime = 148,
-            genres = listOf("Sci-Fi", "Action"),
-            cast = emptyList(),
+            genres = persistentListOf("Sci-Fi", "Action"),
+            cast = persistentListOf(),
             isFavorite = true,
             isInWatchlist = false
         )
