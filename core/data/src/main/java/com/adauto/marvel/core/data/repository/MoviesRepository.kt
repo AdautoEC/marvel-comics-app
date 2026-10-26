@@ -8,7 +8,7 @@ import com.adauto.marvel.core.model.Outcome
 import kotlinx.coroutines.flow.Flow
 
 interface MoviesRepository {
-    fun movies(category: MovieCategory): Flow<PagingData<MovieSummary>>
+    fun movies(category: MovieCategory, query: String = ""): Flow<PagingData<MovieSummary>>
     suspend fun getMovieDetail(id: Int): Outcome<MovieDetail>
     suspend fun toggleFavorite(movie: MovieSummary)
     suspend fun toggleWatchlist(movie: MovieSummary)

@@ -68,23 +68,31 @@ class MoviesRepositoryImpl @Inject constructor(
     }
 
     @OptIn(ExperimentalPagingApi::class)
-    override fun movies(category: MovieCategory): Flow<PagingData<MovieSummary>> {
+    override fun movies(category: MovieCategory, query: String): Flow<PagingData<MovieSummary>> {
         val categoryKey = category.name
-        val pager = Pager(
-            config = PagingConfig(
-                pageSize = 20,
-                prefetchDistance = 4,
-                enablePlaceholders = false,
-                initialLoadSize = 20
-            ),
-            remoteMediator = MoviesRemoteMediator(
-                api = api,
-                database = database,
-                category = categoryKey,
-                clock = clock
-            ),
-            pagingSourceFactory = { database.movieDao().pagingSource(categoryKey) }
+        val config = PagingConfig(
+            pageSize = 20,
+            prefetchDistance = 4,
+            enablePlaceholders = true,
+            initialLoadSize = 40
         )
+        val pager = if (query.isBlank()) {
+            Pager(
+                config = config,
+                remoteMediator = MoviesRemoteMediator(
+                    api = api,
+                    database = database,
+                    category = categoryKey,
+                    clock = clock
+                ),
+                pagingSourceFactory = { database.movieDao().pagingSource(categoryKey) }
+            )
+        } else {
+            Pager(
+                config = config,
+                pagingSourceFactory = { database.movieDao().searchPagingSource(categoryKey, query) }
+            )
+        }
 
         return pager.flow.map { pagingData ->
             pagingData.map { item ->

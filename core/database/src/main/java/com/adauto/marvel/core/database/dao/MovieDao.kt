@@ -25,6 +25,18 @@ interface MovieDao {
     """)
     fun pagingSource(category: String): PagingSource<Int, MovieWithUserData>
 
+    @Query("""
+        SELECT m.*, 
+               (f.movieId IS NOT NULL) AS isFavorite, 
+               (w.movieId IS NOT NULL) AS isWatched
+        FROM movies m
+        LEFT JOIN favorite_movies f ON m.id = f.movieId
+        LEFT JOIN watched_movies w ON m.id = w.movieId
+        WHERE m.category = :category AND m.title LIKE '%' || :query || '%'
+        ORDER BY m.position ASC
+    """)
+    fun searchPagingSource(category: String, query: String): PagingSource<Int, MovieWithUserData>
+
     @Query("SELECT * FROM movies WHERE id = :id LIMIT 1")
     suspend fun getMovieById(id: Int): MovieEntity?
 
