@@ -118,6 +118,7 @@ Todas as decisões técnicas de relevância estrutural, limites de segurança e 
 | [`ADR-0004`](docs/adr/0004-logout-e-privacidade-multi-tenant.md) | Privacidade no Logout | Expurgo imediato de chaves em repouso e truncagem de tabelas privadas (`favorite_movies`, `watched_movies`, `sync_outbox`) para isolamento estrito multi-usuário. |
 | [`ADR-0005`](docs/adr/0005-fronteiras-camadas-dominio-dados.md) | Casos de Uso (Domain UseCases) | Introdução de `ToggleFavoriteUseCase` e `ToggleWatchlistUseCase` desacoplando a camada de apresentação do repositório. |
 | [`ADR-0006`](docs/adr/0006-estrategia-testes-por-estado-e-jvm.md) | Testes por Estado e UI na JVM | Testes de persistência com Room em memória, UI Compose executada na JVM via Robolectric no CI de PRs, e reserva do Test Lab para release. |
+| [`ADR-0007`](docs/adr/0007-matriz-de-compatibilidade-do-toolchain.md) | Matriz do Toolchain & Updates Coordenados | Manutenção do Gradle 8.11.1 homologado para AGP 8.7.3 e Kotlin 2.0.21, com bloqueio de saltos semver-major do wrapper no Dependabot. |
 
 ---
 
