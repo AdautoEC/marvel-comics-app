@@ -129,6 +129,7 @@ dependencies {
     implementation(libs.androidx.compose.material3)
 
     implementation(libs.coil.compose)
+    implementation(libs.coil.network.okhttp)
     implementation(libs.okhttp.core)
 
     implementation(platform(libs.firebase.bom))

@@ -3,8 +3,11 @@ package com.adauto.cinemahub
 import android.app.Application
 import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
-import coil.ImageLoader
-import coil.ImageLoaderFactory
+import coil3.ImageLoader
+import coil3.PlatformContext
+import coil3.SingletonImageLoader
+import coil3.network.okhttp.OkHttpNetworkFetcherFactory
+import coil3.request.crossfade
 import com.adauto.cinemahub.core.network.di.ApplicationScope
 import com.adauto.cinemahub.core.network.di.ImageOkHttpClient
 import com.adauto.cinemahub.core.network.integrity.ClientIntegrityManager
@@ -17,7 +20,7 @@ import okhttp3.OkHttpClient
 import javax.inject.Inject
 
 @HiltAndroidApp
-class CinemaHubApp : Application(), ImageLoaderFactory, Configuration.Provider {
+class CinemaHubApp : Application(), SingletonImageLoader.Factory, Configuration.Provider {
 
     @Inject
     @ImageOkHttpClient
@@ -57,9 +60,15 @@ class CinemaHubApp : Application(), ImageLoaderFactory, Configuration.Provider {
         }
     }
 
-    override fun newImageLoader(): ImageLoader {
-        return ImageLoader.Builder(this)
-            .okHttpClient(imageOkHttpClient)
+    override fun newImageLoader(context: PlatformContext): ImageLoader {
+        return ImageLoader.Builder(context)
+            .components {
+                add(
+                    OkHttpNetworkFetcherFactory(
+                        callFactory = { imageOkHttpClient }
+                    )
+                )
+            }
             .crossfade(true)
             .build()
     }

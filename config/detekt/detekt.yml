@@ -22,7 +22,7 @@ style:
   ForbiddenImport:
     active: true
     imports:
-      - value: 'coil.compose.AsyncImage'
+      - value: 'coil3.compose.AsyncImage'
         reason: 'Todas as imagens devem passar pelo componente centralizado MoviePoster em core:ui'
-      - value: 'coil.compose.rememberAsyncImagePainter'
+      - value: 'coil3.compose.rememberAsyncImagePainter'
         reason: 'Use MoviePoster em core:ui para evitar duplicação de ImageLoader'
