@@ -237,7 +237,7 @@ class MoviesRepositoryImplTest {
                 posterPath = null,
                 voteAverage = 7.0,
                 releaseDate = "2015-07-17",
-                watchedAt = 1000L
+                addedAt = 1000L
             )
         )
 

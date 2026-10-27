@@ -58,11 +58,11 @@ class MovieEntityUnitTest {
             posterPath = "/poster.jpg",
             voteAverage = 8.4,
             releaseDate = "1999-10-15",
-            watchedAt = 2000L
+            addedAt = 2000L
         )
 
         assertThat(watchlist.movieId).isEqualTo(550)
         assertThat(watchlist.title).isEqualTo("Fight Club")
-        assertThat(watchlist.watchedAt).isEqualTo(2000L)
+        assertThat(watchlist.addedAt).isEqualTo(2000L)
     }
 }

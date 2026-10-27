@@ -76,3 +76,31 @@ val MIGRATION_4_5 = object : Migration(4, 5) {
         db.execSQL("ALTER TABLE `sync_outbox` ADD COLUMN `createdAt` INTEGER NOT NULL DEFAULT 0")
     }
 }
+
+val MIGRATION_5_6 = object : Migration(5, 6) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `watchlist_movies` (
+                `movieId` INTEGER NOT NULL,
+                `title` TEXT NOT NULL,
+                `posterPath` TEXT,
+                `voteAverage` REAL NOT NULL,
+                `releaseDate` TEXT,
+                `addedAt` INTEGER NOT NULL,
+                PRIMARY KEY(`movieId`)
+            )
+            """.trimIndent()
+        )
+        db.execSQL(
+            """
+            INSERT OR REPLACE INTO `watchlist_movies` (
+                `movieId`, `title`, `posterPath`, `voteAverage`, `releaseDate`, `addedAt`
+            )
+            SELECT `movieId`, `title`, `posterPath`, `voteAverage`, `releaseDate`, `watchedAt`
+            FROM `watched_movies`
+            """.trimIndent()
+        )
+        db.execSQL("DROP TABLE `watched_movies`")
+    }
+}

@@ -16,10 +16,10 @@ interface MovieDao {
     @Query("""
         SELECT m.*, 
                (f.movieId IS NOT NULL) AS isFavorite, 
-               (w.movieId IS NOT NULL) AS isWatched
+               (w.movieId IS NOT NULL) AS isInWatchlist
         FROM movies m
         LEFT JOIN favorite_movies f ON m.id = f.movieId
-        LEFT JOIN watched_movies w ON m.id = w.movieId
+        LEFT JOIN watchlist_movies w ON m.id = w.movieId
         WHERE m.category = :category
         ORDER BY m.position ASC
     """)
@@ -28,10 +28,10 @@ interface MovieDao {
     @Query("""
         SELECT m.*, 
                (f.movieId IS NOT NULL) AS isFavorite, 
-               (w.movieId IS NOT NULL) AS isWatched
+               (w.movieId IS NOT NULL) AS isInWatchlist
         FROM movies m
         LEFT JOIN favorite_movies f ON m.id = f.movieId
-        LEFT JOIN watched_movies w ON m.id = w.movieId
+        LEFT JOIN watchlist_movies w ON m.id = w.movieId
         WHERE m.category = :category AND m.title LIKE '%' || :query || '%'
         ORDER BY m.position ASC
     """)

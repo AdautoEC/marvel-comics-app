@@ -4,7 +4,7 @@ import androidx.compose.ui.graphics.Color
 
 object CinemaHubColors {
     val CinemaHubRed = Color(0xFFED1D24)
-    val MarvelRed = CinemaHubRed
+    val BrandRed = CinemaHubRed
     val DarkBackground = Color(0xFF0F0F14)
     val SurfaceDark = Color(0xFF1B1B22)
     val SurfaceCard = Color(0xFF22222B)

@@ -84,7 +84,7 @@ class MovieMappersTest {
     }
 
     @Test
-    fun favoriteAndWatchedEntities_mapToMovieSummary() {
+    fun favoriteAndWatchlistEntities_mapToMovieSummary() {
         val fav = FavoriteMovieEntity(
             movieId = 101,
             title = "Inception",
@@ -99,18 +99,18 @@ class MovieMappersTest {
         assertThat(favSummary.isFavorite).isTrue()
         assertThat(favSummary.posterUrl).isEqualTo("https://image.tmdb.org/t/p/w500/inception.jpg")
 
-        val watched = WatchlistMovieEntity(
+        val watchlist = WatchlistMovieEntity(
             movieId = 102,
             title = "Interstellar",
             posterPath = "/interstellar.jpg",
             voteAverage = 8.7,
             releaseDate = "2014-11-05",
-            watchedAt = 6000L
+            addedAt = 6000L
         )
 
-        val watchedSummary = watched.toMovieSummary()
-        assertThat(watchedSummary.id).isEqualTo(102)
-        assertThat(watchedSummary.isInWatchlist).isTrue()
-        assertThat(watchedSummary.posterUrl).isEqualTo("https://image.tmdb.org/t/p/w500/interstellar.jpg")
+        val watchlistSummary = watchlist.toMovieSummary()
+        assertThat(watchlistSummary.id).isEqualTo(102)
+        assertThat(watchlistSummary.isInWatchlist).isTrue()
+        assertThat(watchlistSummary.posterUrl).isEqualTo("https://image.tmdb.org/t/p/w500/interstellar.jpg")
     }
 }

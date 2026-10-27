@@ -20,16 +20,11 @@ import com.adauto.cinemahub.core.model.Outcome
 import com.adauto.cinemahub.core.model.SessionState
 import com.adauto.cinemahub.core.network.api.TmdbApi
 import com.adauto.cinemahub.core.network.model.TmdbAccountDto
-import com.adauto.cinemahub.core.network.model.TmdbActionResponseDto
 import com.adauto.cinemahub.core.network.model.TmdbAvatarDto
 import com.adauto.cinemahub.core.network.model.TmdbAvatarPathDto
 import com.adauto.cinemahub.core.network.model.TmdbCreateSessionRequestDto
-import com.adauto.cinemahub.core.network.model.TmdbDeleteSessionRequestDto
-import com.adauto.cinemahub.core.network.model.TmdbDeleteSessionResponseDto
-import com.adauto.cinemahub.core.network.model.TmdbFavoriteRequestDto
 import com.adauto.cinemahub.core.network.model.TmdbRequestTokenDto
 import com.adauto.cinemahub.core.network.model.TmdbSessionResponseDto
-import com.adauto.cinemahub.core.network.model.TmdbWatchlistRequestDto
 import com.adauto.cinemahub.core.network.security.session.SessionManager
 import com.google.common.truth.Truth.assertThat
 import com.skydoves.sandwich.ApiResponse
@@ -607,7 +602,7 @@ class AuthRepositoryTest {
     fun completeAuthentication_stagesGuestDataWithMonotonicVersionIncrement() = runTest {
         coEvery { authPreferences.getLastAccountId() } returns null
         every { favoriteDao.getAllFavorites() } returns flowOf(listOf(sampleFavEntity(101).copy(addedAt = 12345L)))
-        every { watchlistDao.getAllWatchlist() } returns flowOf(listOf(sampleWatchEntity(202).copy(watchedAt = 67890L)))
+        every { watchlistDao.getAllWatchlist() } returns flowOf(listOf(sampleWatchEntity(202).copy(addedAt = 67890L)))
 
         // Pre-existing outbox row for favorite 101 with version 3
         coEvery { syncOutboxDao.find(101, SyncOutboxWorker.TARGET_FAVORITE) } returns SyncOutboxEntity(
@@ -651,7 +646,7 @@ class AuthRepositoryTest {
                 )
             )
         }
-        // New row: starts with version 1; createdAt initialized from watchedAt
+        // New row: starts with version 1; createdAt initialized from addedAt
         coVerify(exactly = 1) {
             syncOutboxDao.upsert(
                 SyncOutboxEntity(
@@ -681,6 +676,6 @@ class AuthRepositoryTest {
         posterPath = null,
         voteAverage = 7.0,
         releaseDate = "2021-01-01",
-        watchedAt = 2000L
+        addedAt = 2000L
     )
 }

@@ -11,6 +11,7 @@ import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
 
+// Alias preserved intentionally to avoid invalidating encrypted keys on existing installations.
 open class KeystoreCipher(private val alias: String = "marvel_keys_v1") {
 
     @Synchronized

@@ -171,9 +171,9 @@ class AuthRepositoryImpl(
 
     private suspend fun stageGuestDataIntoOutbox() {
         val localFavorites = database.favoriteDao().getAllFavorites().first()
-        val localWatched = database.watchlistDao().getAllWatchlist().first()
+        val localWatchlist = database.watchlistDao().getAllWatchlist().first()
 
-        if (localFavorites.isNotEmpty() || localWatched.isNotEmpty()) {
+        if (localFavorites.isNotEmpty() || localWatchlist.isNotEmpty()) {
             database.withTransaction {
                 for (fav in localFavorites) {
                     val existing = database.syncOutboxDao().find(fav.movieId, SyncOutboxWorker.TARGET_FAVORITE)
@@ -190,10 +190,10 @@ class AuthRepositoryImpl(
                         )
                     )
                 }
-                for (watch in localWatched) {
+                for (watch in localWatchlist) {
                     val existing = database.syncOutboxDao().find(watch.movieId, SyncOutboxWorker.TARGET_WATCHLIST)
                     val nextVersion = (existing?.version ?: 0) + 1
-                    val creationTime = existing?.createdAt?.takeIf { it > 0 } ?: watch.watchedAt
+                    val creationTime = existing?.createdAt?.takeIf { it > 0 } ?: watch.addedAt
                     database.syncOutboxDao().upsert(
                         SyncOutboxEntity(
                             movieId = watch.movieId,

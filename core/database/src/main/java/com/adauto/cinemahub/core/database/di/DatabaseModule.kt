@@ -11,6 +11,7 @@ import com.adauto.cinemahub.core.database.dao.WatchlistDao
 import com.adauto.cinemahub.core.database.migrations.MIGRATION_2_3
 import com.adauto.cinemahub.core.database.migrations.MIGRATION_3_4
 import com.adauto.cinemahub.core.database.migrations.MIGRATION_4_5
+import com.adauto.cinemahub.core.database.migrations.MIGRATION_5_6
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -27,31 +28,14 @@ object DatabaseModule {
     fun provideCinemaHubDatabase(
         @ApplicationContext context: Context
     ): CinemaHubDatabase {
-        migrateLegacyDatabaseFileIfNeeded(context)
         return Room.databaseBuilder(
             context,
             CinemaHubDatabase::class.java,
             "cinemahub.db"
         )
-            .addMigrations(MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+            .addMigrations(MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
             .fallbackToDestructiveMigrationFrom(1)
             .build()
-    }
-
-    private fun migrateLegacyDatabaseFileIfNeeded(context: Context) {
-        val oldDb = context.getDatabasePath("marvel.db")
-        val newDb = context.getDatabasePath("cinemahub.db")
-        if (oldDb.exists() && !newDb.exists()) {
-            runCatching {
-                oldDb.copyTo(newDb)
-                val oldWal = context.getDatabasePath("marvel.db-wal")
-                val newWal = context.getDatabasePath("cinemahub.db-wal")
-                if (oldWal.exists()) oldWal.copyTo(newWal)
-                val oldShm = context.getDatabasePath("marvel.db-shm")
-                val newShm = context.getDatabasePath("cinemahub.db-shm")
-                if (oldShm.exists()) oldShm.copyTo(newShm)
-            }
-        }
     }
 
     @Provides

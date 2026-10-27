@@ -8,7 +8,6 @@ import com.adauto.cinemahub.core.database.CinemaHubDatabase
 import com.adauto.cinemahub.core.database.entity.FavoriteMovieEntity
 import com.adauto.cinemahub.core.database.entity.MovieEntity
 import com.adauto.cinemahub.core.database.entity.WatchlistMovieEntity
-import com.adauto.cinemahub.core.database.model.MovieWithUserData
 import com.google.common.truth.Truth.assertThat
 import kotlinx.coroutines.test.runTest
 import org.junit.After
@@ -59,11 +58,11 @@ class MovieDaoReactiveJoinTest {
     }
 
     @Test
-    fun pagingSource_reflectsFavoriteAndWatchedStateViaLeftJoin() = runTest {
+    fun pagingSource_reflectsFavoriteAndWatchlistStateViaLeftJoin() = runTest {
         val movie = createMovie(id = 42)
         movieDao.upsertAll(listOf(movie))
 
-        // Initial load: neither favorite nor watched
+        // Initial load: neither favorite nor watchlist
         val pagingSource1 = movieDao.pagingSource("POPULAR")
         val result1 = pagingSource1.load(
             PagingSource.LoadParams.Refresh(key = null, loadSize = 10, placeholdersEnabled = false)
@@ -102,7 +101,7 @@ class MovieDaoReactiveJoinTest {
                 posterPath = "/poster42.jpg",
                 voteAverage = 7.5,
                 releaseDate = "2024-01-01",
-                watchedAt = 3000L
+                addedAt = 3000L
             )
         )
 
@@ -127,7 +126,7 @@ class MovieDaoReactiveJoinTest {
     }
 
     @Test
-    fun pagingSource_isInvalidatedWhenFavoriteOrWatchedChanges() = runTest {
+    fun pagingSource_isInvalidatedWhenFavoriteOrWatchlistChanges() = runTest {
         val movie = createMovie(id = 99)
         movieDao.upsertAll(listOf(movie))
 

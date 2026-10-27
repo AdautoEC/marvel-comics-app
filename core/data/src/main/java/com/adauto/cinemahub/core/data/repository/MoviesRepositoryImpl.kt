@@ -244,7 +244,7 @@ class MoviesRepositoryImpl @Inject constructor(
                     posterPath = movie.posterUrl?.substringAfter("w500"),
                     voteAverage = movie.voteAverage,
                     releaseDate = movie.releaseDate,
-                    watchedAt = clock.millis()
+                    addedAt = clock.millis()
                 )
             )
         }
@@ -402,7 +402,7 @@ class MoviesRepositoryImpl @Inject constructor(
                         posterPath = remoteMovie.posterPath,
                         voteAverage = remoteMovie.voteAverage,
                         releaseDate = remoteMovie.releaseDate,
-                        watchedAt = clock.millis()
+                        addedAt = clock.millis()
                     )
                 )
             }

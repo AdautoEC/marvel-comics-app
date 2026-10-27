@@ -353,7 +353,7 @@ class SyncOutboxWorkerTest {
     }
 
     @Test
-    fun whenPermanentFailure_desiredTrueWatchlist_rollsBackWatchedEntry() = runTest {
+    fun whenPermanentFailure_desiredTrueWatchlist_rollsBackWatchlistEntry() = runTest {
         val outboxItem = SyncOutboxEntity(
             movieId = TEST_MOVIE_ID,
             target = SyncOutboxWorker.TARGET_WATCHLIST,

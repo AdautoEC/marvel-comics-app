@@ -43,7 +43,7 @@ class SyncFailureStorageTest {
     @Test
     fun recordFailure_persistsAndAppendsFailures() = runTest(testDispatcher) {
         val failure1 = SyncFailureEvent(movieId = 101, target = "FAVORITE", error = "404 Not Found")
-        val failure2 = SyncFailureEvent(movieId = 202, target = "WATCHED", error = "500 Server Error")
+        val failure2 = SyncFailureEvent(movieId = 202, target = "WATCHLIST", error = "500 Server Error")
 
         storage.recordFailure(failure1, timestamp = 1_000L)
         storage.recordFailure(failure2, timestamp = 2_000L)
