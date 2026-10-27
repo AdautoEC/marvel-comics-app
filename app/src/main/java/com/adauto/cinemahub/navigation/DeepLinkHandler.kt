@@ -7,6 +7,7 @@ object DeepLinkHandler {
 
     const val SCHEME = "cinemahub"
     const val HOST_TMDB_CALLBACK = "tmdb-callback"
+    const val HOST_AUTH = "auth"
     const val PARAM_REQUEST_TOKEN = "request_token"
     const val PARAM_APPROVED = "approved"
 
@@ -17,9 +18,9 @@ object DeepLinkHandler {
 
     fun extractApprovedRequestToken(uri: Uri?): String? {
         if (uri == null) return null
-        if (!uri.scheme.equals(SCHEME, ignoreCase = true) ||
-            !uri.host.equals(HOST_TMDB_CALLBACK, ignoreCase = true)
-        ) {
+        val isSupportedHost = uri.host.equals(HOST_TMDB_CALLBACK, ignoreCase = true) ||
+            uri.host.equals(HOST_AUTH, ignoreCase = true)
+        if (!uri.scheme.equals(SCHEME, ignoreCase = true) || !isSupportedHost) {
             return null
         }
         val approved = uri.getQueryParameter(PARAM_APPROVED)
