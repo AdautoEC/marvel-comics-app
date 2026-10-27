@@ -8,6 +8,10 @@ updates:
       time: "09:00"
       timezone: "America/Sao_Paulo"
     open-pull-requests-limit: 10
+    # Ver matriz de compatibilidade oficial em docs/adr/0007-matriz-de-compatibilidade-do-toolchain.md
+    ignore:
+      - dependency-name: "gradle-wrapper"
+        update-types: ["version-update:semver-major"]
     groups:
       core-frameworks:
         patterns:
