@@ -624,6 +624,45 @@ class SyncOutboxWorkerTest {
         assertThat(database.syncOutboxDao().getAllPending()).hasSize(1)
     }
 
+    @Test
+    fun whenHttp401WithSessionId_retriesWithoutSessionIdAndSucceedsWithBearerToken() = runTest {
+        database.syncOutboxDao().upsert(
+            SyncOutboxEntity(
+                movieId = TEST_MOVIE_ID,
+                target = SyncOutboxWorker.TARGET_FAVORITE,
+                desired = true,
+                attempts = 0,
+                version = TEST_VERSION
+            )
+        )
+
+        val observedSessionIds = mutableListOf<String?>()
+        fakeApi.markAsFavoriteHandler = { _, sessionId, body ->
+            observedSessionIds.add(sessionId)
+            if (sessionId != null) {
+                val errorResponse = Response.error<TmdbActionResponseDto>(
+                    HTTP_UNAUTHORIZED,
+                    "Unauthorized session_id".toResponseBody()
+                )
+                ApiResponse.Failure.Error(errorResponse)
+            } else {
+                fakeApi.favorites.add(
+                    com.adauto.cinemahub.core.network.model.TmdbMovieDto(id = body.media_id, title = "M")
+                )
+                ApiResponse.Success(TmdbActionResponseDto(status_code = 1, status_message = "Success"))
+            }
+        }
+
+        val result = worker.doWork()
+
+        assertThat(result).isEqualTo(Result.success())
+        assertThat(observedSessionIds).containsExactly(TEST_SESSION_ID, null).inOrder()
+        assertThat(fakeApi.favorites.map { it.id }).containsExactly(TEST_MOVIE_ID)
+        assertThat(database.syncOutboxDao().getAllPending()).isEmpty()
+        val updatedSession = fakeSessionManager.sessionState.value as SessionState.Authenticated
+        assertThat(updatedSession.sessionId).isEmpty()
+    }
+
     private companion object {
         const val TEST_ACCOUNT_ID = 42
         const val TEST_SESSION_ID = "session_42"

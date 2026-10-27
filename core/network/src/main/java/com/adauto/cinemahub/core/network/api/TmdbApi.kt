@@ -63,34 +63,34 @@ interface TmdbApi {
 
     @GET("3/account")
     suspend fun getAccountDetails(
-        @Query("session_id") sessionId: String
+        @Query("session_id") sessionId: String? = null
     ): ApiResponse<TmdbAccountDto>
 
     @POST("3/account/{account_id}/favorite")
     suspend fun markAsFavorite(
         @Path("account_id") accountId: Int,
-        @Query("session_id") sessionId: String,
+        @Query("session_id") sessionId: String? = null,
         @Body body: TmdbFavoriteRequestDto
     ): ApiResponse<TmdbActionResponseDto>
 
     @POST("3/account/{account_id}/watchlist")
     suspend fun addToWatchlist(
         @Path("account_id") accountId: Int,
-        @Query("session_id") sessionId: String,
+        @Query("session_id") sessionId: String? = null,
         @Body body: TmdbWatchlistRequestDto
     ): ApiResponse<TmdbActionResponseDto>
 
     @GET("3/account/{account_id}/favorite/movies")
     suspend fun getFavoriteMovies(
         @Path("account_id") accountId: Int,
-        @Query("session_id") sessionId: String,
+        @Query("session_id") sessionId: String? = null,
         @Query("page") page: Int = 1
     ): ApiResponse<TmdbPageResponseDto<TmdbMovieDto>>
 
     @GET("3/account/{account_id}/watchlist/movies")
     suspend fun getWatchlistMovies(
         @Path("account_id") accountId: Int,
-        @Query("session_id") sessionId: String,
+        @Query("session_id") sessionId: String? = null,
         @Query("page") page: Int = 1
     ): ApiResponse<TmdbPageResponseDto<TmdbMovieDto>>
 }

@@ -200,7 +200,9 @@ class MovieListViewModel @Inject constructor(
                 viewModelScope.launch {
                     when (val result = authRepository.buildAuthorizationUrl()) {
                         is Outcome.Success -> {
-                            _effects.send(MovieListEffect.LaunchTmdbAuth(result.value))
+                            if (result.value.isNotBlank()) {
+                                _effects.send(MovieListEffect.LaunchTmdbAuth(result.value))
+                            }
                         }
                         is Outcome.Failure -> {
                             val errorMessage = UiText.Resource(R.string.error_tmdb_connect_failed)

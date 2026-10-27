@@ -131,12 +131,25 @@ class AuthRepositoryImpl(
             is ApiResponse.Failure -> return Outcome.Failure(sessionResponse.toDomainError())
         }
 
-        val accountResponse = api.getAccountDetails(sessionId)
+        val accountResponse = when (val initialAccount = api.getAccountDetails(sessionId)) {
+            is ApiResponse.Success -> initialAccount
+            is ApiResponse.Failure -> {
+                val fallback = api.getAccountDetails(sessionId = null)
+                if (fallback is ApiResponse.Success) fallback else initialAccount
+            }
+        }
         val account = when (accountResponse) {
             is ApiResponse.Success -> accountResponse.data
             is ApiResponse.Failure -> return Outcome.Failure(accountResponse.toDomainError())
         }
 
+        return finalizeAuthenticatedSession(account = account, sessionId = sessionId)
+    }
+
+    private suspend fun finalizeAuthenticatedSession(
+        account: com.adauto.cinemahub.core.network.model.TmdbAccountDto,
+        sessionId: String
+    ): Outcome<AccountProfile> {
         val lastAccountId = authPreferences.getLastAccountId()
         val accountIdStr = account.id.toString()
         if (lastAccountId != null && lastAccountId != accountIdStr) {
@@ -257,12 +270,13 @@ class AuthRepositoryImpl(
 
     private suspend fun flushPendingOutbox(session: SessionState.Authenticated) {
         val pending = database.syncOutboxDao().getAllPending()
+        val sessionId = session.sessionId.takeIf { it.isNotBlank() }
         for (item in pending) {
             val response = try {
                 when (item.target) {
                     SyncOutboxWorker.TARGET_FAVORITE -> api.markAsFavorite(
                         accountId = session.accountId,
-                        sessionId = session.sessionId,
+                        sessionId = sessionId,
                         body = TmdbFavoriteRequestDto(
                             media_id = item.movieId,
                             favorite = item.desired
@@ -270,7 +284,7 @@ class AuthRepositoryImpl(
                     )
                     SyncOutboxWorker.TARGET_WATCHLIST -> api.addToWatchlist(
                         accountId = session.accountId,
-                        sessionId = session.sessionId,
+                        sessionId = sessionId,
                         body = TmdbWatchlistRequestDto(
                             media_id = item.movieId,
                             watchlist = item.desired

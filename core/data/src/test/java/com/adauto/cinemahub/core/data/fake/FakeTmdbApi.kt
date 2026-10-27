@@ -32,10 +32,10 @@ class FakeTmdbApi : TmdbApi {
         suspend (TmdbDeleteSessionRequestDto) -> ApiResponse<TmdbDeleteSessionResponseDto>
     )? = null
     var markAsFavoriteHandler: (
-        suspend (Int, String, TmdbFavoriteRequestDto) -> ApiResponse<TmdbActionResponseDto>
+        suspend (Int, String?, TmdbFavoriteRequestDto) -> ApiResponse<TmdbActionResponseDto>
     )? = null
     var addToWatchlistHandler: (
-        suspend (Int, String, TmdbWatchlistRequestDto) -> ApiResponse<TmdbActionResponseDto>
+        suspend (Int, String?, TmdbWatchlistRequestDto) -> ApiResponse<TmdbActionResponseDto>
     )? = null
     val deletedSessions = mutableListOf<String>()
 
@@ -158,7 +158,7 @@ class FakeTmdbApi : TmdbApi {
     }
 
     override suspend fun getAccountDetails(
-        sessionId: String
+        sessionId: String?
     ): ApiResponse<TmdbAccountDto> {
         getAccountDetailsResponse?.let { return it }
         failureResponse?.let {
@@ -177,7 +177,7 @@ class FakeTmdbApi : TmdbApi {
 
     override suspend fun markAsFavorite(
         accountId: Int,
-        sessionId: String,
+        sessionId: String?,
         body: TmdbFavoriteRequestDto
     ): ApiResponse<TmdbActionResponseDto> {
         markAsFavoriteHandler?.let { return it(accountId, sessionId, body) }
@@ -197,7 +197,7 @@ class FakeTmdbApi : TmdbApi {
 
     override suspend fun addToWatchlist(
         accountId: Int,
-        sessionId: String,
+        sessionId: String?,
         body: TmdbWatchlistRequestDto
     ): ApiResponse<TmdbActionResponseDto> {
         addToWatchlistHandler?.let { return it(accountId, sessionId, body) }
@@ -217,7 +217,7 @@ class FakeTmdbApi : TmdbApi {
 
     override suspend fun getFavoriteMovies(
         accountId: Int,
-        sessionId: String,
+        sessionId: String?,
         page: Int
     ): ApiResponse<TmdbPageResponseDto<TmdbMovieDto>> {
         failureResponse?.let {
@@ -236,7 +236,7 @@ class FakeTmdbApi : TmdbApi {
 
     override suspend fun getWatchlistMovies(
         accountId: Int,
-        sessionId: String,
+        sessionId: String?,
         page: Int
     ): ApiResponse<TmdbPageResponseDto<TmdbMovieDto>> {
         failureResponse?.let {

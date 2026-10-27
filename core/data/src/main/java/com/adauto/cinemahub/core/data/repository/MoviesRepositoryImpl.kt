@@ -65,7 +65,12 @@ class MoviesRepositoryImpl @Inject constructor(
 
     init {
         externalScope.launch {
-            syncCloudWithLocal()
+            if (sessionManager.awaitInitialSession() is SessionState.Authenticated) {
+                if (database.syncOutboxDao().getAllPending().isNotEmpty()) {
+                    enqueueSyncOutboxWorker()
+                }
+                syncCloudWithLocal()
+            }
         }
         externalScope.launch {
             syncCoordinator.pullRequests.collect {
@@ -281,18 +286,52 @@ class MoviesRepositoryImpl @Inject constructor(
                 return@withLock Outcome.Success(Unit)
             }
 
-            val remoteFavs = when (val favsResult = fetchAllRemoteFavorites(accountId, sessionId)) {
+            var effectiveSessionId: String? = sessionId.takeIf { it.isNotBlank() }
+
+            val remoteFavs = when (val favsResult = fetchAllRemoteFavorites(accountId, effectiveSessionId)) {
                 is Outcome.Success -> favsResult.value
-                is Outcome.Failure -> return@withLock favsResult
+                is Outcome.Failure -> {
+                    if (favsResult.error == DomainError.InvalidKey && effectiveSessionId != null) {
+                        when (val fallbackFavs = fetchAllRemoteFavorites(accountId, null)) {
+                            is Outcome.Success -> {
+                                effectiveSessionId = null
+                                sessionManager.saveSession(
+                                    accountId = sessionAfterLock.accountId,
+                                    username = sessionAfterLock.username,
+                                    sessionId = "",
+                                    avatarUrl = sessionAfterLock.avatarUrl
+                                )
+                                fallbackFavs.value
+                            }
+                            is Outcome.Failure -> {
+                                sessionManager.clearSession()
+                                syncEventBus?.consumeFailures()
+                                return@withLock fallbackFavs
+                            }
+                        }
+                    } else {
+                        if (favsResult.error == DomainError.InvalidKey) {
+                            sessionManager.clearSession()
+                            syncEventBus?.consumeFailures()
+                        }
+                        return@withLock favsResult
+                    }
+                }
             }
 
-            val remoteWatchlist = when (val watchResult = fetchAllRemoteWatchlist(accountId, sessionId)) {
+            val remoteWatchlist = when (val watchResult = fetchAllRemoteWatchlist(accountId, effectiveSessionId)) {
                 is Outcome.Success -> watchResult.value
-                is Outcome.Failure -> return@withLock watchResult
+                is Outcome.Failure -> {
+                    if (watchResult.error == DomainError.InvalidKey) {
+                        sessionManager.clearSession()
+                        syncEventBus?.consumeFailures()
+                    }
+                    return@withLock watchResult
+                }
             }
 
             val sessionBeforeCommit = sessionManager.sessionState.value
-            if (sessionBeforeCommit !is SessionState.Authenticated || sessionBeforeCommit.sessionId != sessionId) {
+            if (sessionBeforeCommit !is SessionState.Authenticated || sessionBeforeCommit.accountId != accountId) {
                 return@withLock Outcome.Success(Unit)
             }
 
@@ -307,7 +346,7 @@ class MoviesRepositoryImpl @Inject constructor(
 
     private suspend fun fetchAllRemoteFavorites(
         accountId: Int,
-        sessionId: String
+        sessionId: String?
     ): Outcome<List<TmdbMovieDto>> {
         val results = mutableListOf<TmdbMovieDto>()
         var page = 1
@@ -322,8 +361,6 @@ class MoviesRepositoryImpl @Inject constructor(
                 }
                 is ApiResponse.Failure -> {
                     val error = if (isUnauthorized(response)) {
-                        sessionManager.clearSession()
-                        syncEventBus?.consumeFailures()
                         DomainError.InvalidKey
                     } else {
                         response.toDomainError()
@@ -337,7 +374,7 @@ class MoviesRepositoryImpl @Inject constructor(
 
     private suspend fun fetchAllRemoteWatchlist(
         accountId: Int,
-        sessionId: String
+        sessionId: String?
     ): Outcome<List<TmdbMovieDto>> {
         val results = mutableListOf<TmdbMovieDto>()
         var page = 1
@@ -352,8 +389,6 @@ class MoviesRepositoryImpl @Inject constructor(
                 }
                 is ApiResponse.Failure -> {
                     val error = if (isUnauthorized(response)) {
-                        sessionManager.clearSession()
-                        syncEventBus?.consumeFailures()
                         DomainError.InvalidKey
                     } else {
                         response.toDomainError()
