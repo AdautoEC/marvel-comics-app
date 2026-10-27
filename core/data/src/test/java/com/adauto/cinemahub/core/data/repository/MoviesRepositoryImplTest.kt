@@ -411,10 +411,18 @@ class MoviesRepositoryImplTest {
         repository.toggleFavorite(sampleMovie)
         val favs = repository.observeFavorites().first()
         assertThat(favs.map { it.id }).containsExactly(101)
+        assertThat(favs.first().isFavorite).isTrue()
+        assertThat(favs.first().isInWatchlist).isFalse()
 
         repository.toggleWatchlist(sampleMovie)
         val watch = repository.observeWatchlist().first()
         assertThat(watch.map { it.id }).containsExactly(101)
+        assertThat(watch.first().isInWatchlist).isTrue()
+        assertThat(watch.first().isFavorite).isTrue()
+
+        val favsWithWatchlist = repository.observeFavorites().first()
+        assertThat(favsWithWatchlist.first().isFavorite).isTrue()
+        assertThat(favsWithWatchlist.first().isInWatchlist).isTrue()
     }
 
     // endregion

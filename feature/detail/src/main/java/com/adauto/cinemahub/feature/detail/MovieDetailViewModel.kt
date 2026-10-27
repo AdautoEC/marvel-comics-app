@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -41,7 +42,28 @@ class MovieDetailViewModel @Inject constructor(
     val effects: Flow<MovieDetailEffect> = _effects.receiveAsFlow()
 
     init {
+        observeUserMovieState()
         loadDetail()
+    }
+
+    private fun observeUserMovieState() {
+        viewModelScope.launch {
+            combine(
+                moviesRepository.isFavorite(movieId),
+                moviesRepository.isInWatchlist(movieId)
+            ) { isFav, isWatch ->
+                isFav to isWatch
+            }.collect { (isFav, isWatch) ->
+                _uiState.update { state ->
+                    val currentMovie = state.movie ?: return@update state
+                    if (currentMovie.isFavorite == isFav && currentMovie.isInWatchlist == isWatch) {
+                        state
+                    } else {
+                        state.copy(movie = currentMovie.copy(isFavorite = isFav, isInWatchlist = isWatch))
+                    }
+                }
+            }
+        }
     }
 
     fun onAction(action: MovieDetailAction) {
@@ -54,16 +76,22 @@ class MovieDetailViewModel @Inject constructor(
             }
             is MovieDetailAction.FavoriteToggled -> {
                 val current = _uiState.value.movie ?: return
+                _uiState.update { state ->
+                    val movie = state.movie ?: return@update state
+                    state.copy(movie = movie.copy(isFavorite = !movie.isFavorite))
+                }
                 viewModelScope.launch {
                     toggleFavoriteUseCase(current)
-                    _uiState.update { it.copy(movie = current.copy(isFavorite = !current.isFavorite)) }
                 }
             }
             is MovieDetailAction.WatchlistToggled -> {
                 val current = _uiState.value.movie ?: return
+                _uiState.update { state ->
+                    val movie = state.movie ?: return@update state
+                    state.copy(movie = movie.copy(isInWatchlist = !movie.isInWatchlist))
+                }
                 viewModelScope.launch {
                     toggleWatchlistUseCase(current)
-                    _uiState.update { it.copy(movie = current.copy(isInWatchlist = !current.isInWatchlist)) }
                 }
             }
         }
