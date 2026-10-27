@@ -37,6 +37,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
@@ -417,14 +418,22 @@ class MoviesRepositoryImpl @Inject constructor(
     }
 
     override fun observeFavorites(): Flow<List<MovieSummary>> {
-        return database.favoriteDao().getAllFavorites().map { list ->
-            list.map { it.toMovieSummary() }
+        return combine(
+            database.favoriteDao().getAllFavorites(),
+            database.watchlistDao().getAllWatchlist()
+        ) { favList, watchList ->
+            val watchIds = watchList.asSequence().map { it.movieId }.toSet()
+            favList.map { it.toMovieSummary(isInWatchlist = it.movieId in watchIds) }
         }
     }
 
     override fun observeWatchlist(): Flow<List<MovieSummary>> {
-        return database.watchlistDao().getAllWatchlist().map { list ->
-            list.map { it.toMovieSummary() }
+        return combine(
+            database.watchlistDao().getAllWatchlist(),
+            database.favoriteDao().getAllFavorites()
+        ) { watchList, favList ->
+            val favIds = favList.asSequence().map { it.movieId }.toSet()
+            watchList.map { it.toMovieSummary(isFavorite = it.movieId in favIds) }
         }
     }
 

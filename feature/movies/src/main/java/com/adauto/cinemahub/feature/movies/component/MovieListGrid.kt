@@ -20,7 +20,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
 import androidx.paging.LoadState
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.itemContentType
@@ -52,7 +51,7 @@ fun MovieListGrid(
 ) {
     val shimmerProgress = rememberShimmerProgress()
     LazyVerticalGrid(
-        columns = GridCells.Adaptive(minSize = 160.dp),
+        columns = GridCells.Fixed(2),
         state = gridState,
         contentPadding = PaddingValues(CinemaHubTheme.spacing.medium),
         horizontalArrangement = Arrangement.spacedBy(CinemaHubTheme.spacing.medium),
@@ -125,7 +124,7 @@ private fun LazyGridScope.appendLoadingOrError(
 fun MovieListShimmerGrid(modifier: Modifier = Modifier) {
     val shimmerProgress = rememberShimmerProgress()
     LazyVerticalGrid(
-        columns = GridCells.Adaptive(minSize = 160.dp),
+        columns = GridCells.Fixed(2),
         contentPadding = PaddingValues(CinemaHubTheme.spacing.medium),
         horizontalArrangement = Arrangement.spacedBy(CinemaHubTheme.spacing.medium),
         verticalArrangement = Arrangement.spacedBy(CinemaHubTheme.spacing.medium),
