@@ -56,7 +56,8 @@ class SyncOutboxWorker @Suppress("LongParameterList") @AssistedInject constructo
             }
 
             for (item in pending) {
-                val itemResult = processItem(item, session)
+                val currentSession = sessionManager.sessionState.value as? SessionState.Authenticated ?: session
+                val itemResult = processItem(item, currentSession)
                 if (itemResult != null) {
                     workerResult = itemResult
                     break
@@ -105,19 +106,50 @@ class SyncOutboxWorker @Suppress("LongParameterList") @AssistedInject constructo
         item: SyncOutboxEntity,
         session: SessionState.Authenticated
     ): ApiResponse<TmdbActionResponseDto>? {
+        val initialResponse = callTargetEndpoint(
+            item = item,
+            accountId = session.accountId,
+            sessionId = session.sessionId.takeIf { it.isNotBlank() }
+        )
+        val isInitialAuthError = initialResponse is ApiResponse.Failure.Error &&
+            (initialResponse.statusCode.code == HTTP_UNAUTHORIZED || initialResponse.statusCode.code == HTTP_FORBIDDEN)
+
+        return if (initialResponse != null && isInitialAuthError && session.sessionId.isNotBlank()) {
+            val fallbackResponse = callTargetEndpoint(item = item, accountId = session.accountId, sessionId = null)
+            if (fallbackResponse is ApiResponse.Success) {
+                sessionManager.saveSession(
+                    accountId = session.accountId,
+                    username = session.username,
+                    sessionId = "",
+                    avatarUrl = session.avatarUrl
+                )
+                fallbackResponse
+            } else {
+                initialResponse
+            }
+        } else {
+            initialResponse
+        }
+    }
+
+    private suspend fun callTargetEndpoint(
+        item: SyncOutboxEntity,
+        accountId: Int,
+        sessionId: String?
+    ): ApiResponse<TmdbActionResponseDto>? {
         return try {
             when (item.target) {
                 TARGET_FAVORITE -> api.markAsFavorite(
-                    accountId = session.accountId,
-                    sessionId = session.sessionId,
+                    accountId = accountId,
+                    sessionId = sessionId,
                     body = TmdbFavoriteRequestDto(
                         media_id = item.movieId,
                         favorite = item.desired
                     )
                 )
                 TARGET_WATCHLIST -> api.addToWatchlist(
-                    accountId = session.accountId,
-                    sessionId = session.sessionId,
+                    accountId = accountId,
+                    sessionId = sessionId,
                     body = TmdbWatchlistRequestDto(
                         media_id = item.movieId,
                         watchlist = item.desired
