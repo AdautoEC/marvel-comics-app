@@ -1,21 +1,20 @@
 package com.adauto.cinemahub.core.data.usecase
 
-import com.adauto.cinemahub.core.data.repository.MoviesRepository
 import com.adauto.cinemahub.core.model.MovieDetail
 import com.adauto.cinemahub.core.model.MovieSummary
-import io.mockk.coVerify
-import io.mockk.mockk
+import com.adauto.cinemahub.core.testing.repository.FakeMoviesRepository
+import com.google.common.truth.Truth.assertThat
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.test.runTest
 import org.junit.Test
 
 class ToggleFavoriteUseCaseTest {
 
-    private val moviesRepository: MoviesRepository = mockk(relaxed = true)
+    private val moviesRepository = FakeMoviesRepository()
     private val useCase = ToggleFavoriteUseCase(moviesRepository)
 
     @Test
-    fun invoke_withMovieSummary_callsRepositoryToggleFavorite() = runTest {
+    fun invoke_withMovieSummary_togglesFavoriteStateInRepository() = runTest {
         val summary = MovieSummary(
             id = 42,
             title = "Inception",
@@ -27,11 +26,12 @@ class ToggleFavoriteUseCaseTest {
 
         useCase(summary)
 
-        coVerify(exactly = 1) { moviesRepository.toggleFavorite(summary) }
+        assertThat(moviesRepository.toggledFavorites).containsExactly(summary)
+        assertThat(moviesRepository.favorites.value).containsExactly(summary.copy(isFavorite = true))
     }
 
     @Test
-    fun invoke_withMovieDetail_mapsToSummaryAndCallsRepository() = runTest {
+    fun invoke_withMovieDetail_mapsToSummaryAndTogglesFavoriteStateInRepository() = runTest {
         val detail = MovieDetail(
             id = 42,
             title = "Inception",
@@ -59,6 +59,7 @@ class ToggleFavoriteUseCaseTest {
             isInWatchlist = true
         )
 
-        coVerify(exactly = 1) { moviesRepository.toggleFavorite(expectedSummary) }
+        assertThat(moviesRepository.toggledFavorites).containsExactly(expectedSummary)
+        assertThat(moviesRepository.favorites.value).containsExactly(expectedSummary.copy(isFavorite = true))
     }
 }

@@ -17,16 +17,23 @@ class FakeMoviesRepository : MoviesRepository {
 
     var moviesList: List<MovieSummary> = emptyList()
     var customMoviesFlow: Flow<PagingData<MovieSummary>>? = null
+    var customMoviesFlowProvider: ((MovieCategory, String) -> Flow<PagingData<MovieSummary>>)? = null
+    val moviesQueries = mutableListOf<Pair<MovieCategory, String>>()
 
     val favorites = MutableStateFlow<List<MovieSummary>>(emptyList())
     val watchlist = MutableStateFlow<List<MovieSummary>>(emptyList())
+    val toggledFavorites = mutableListOf<MovieSummary>()
+    val toggledWatchlist = mutableListOf<MovieSummary>()
 
     val movieDetails = mutableMapOf<Int, Outcome<MovieDetail>>()
     var syncCloudResult: Outcome<Unit> = Outcome.Success(Unit)
+    var syncCloudCallCount: Int = 0
+        private set
 
     override fun movies(category: MovieCategory, query: String): Flow<PagingData<MovieSummary>> {
-        val custom = customMoviesFlow
-        if (custom != null) return custom
+        moviesQueries.add(category to query)
+        val overrideFlow = customMoviesFlowProvider?.invoke(category, query) ?: customMoviesFlow
+        if (overrideFlow != null) return overrideFlow
 
         val filtered = when {
             query.isNotBlank() -> moviesList.filter {
@@ -50,6 +57,7 @@ class FakeMoviesRepository : MoviesRepository {
     }
 
     override suspend fun toggleFavorite(movie: MovieSummary) {
+        toggledFavorites.add(movie)
         val current = favorites.value.toMutableList()
         val index = current.indexOfFirst { it.id == movie.id }
         if (index >= 0) {
@@ -61,6 +69,7 @@ class FakeMoviesRepository : MoviesRepository {
     }
 
     override suspend fun toggleWatchlist(movie: MovieSummary) {
+        toggledWatchlist.add(movie)
         val current = watchlist.value.toMutableList()
         val index = current.indexOfFirst { it.id == movie.id }
         if (index >= 0) {
@@ -83,5 +92,8 @@ class FakeMoviesRepository : MoviesRepository {
         list.any { it.id == id }
     }
 
-    override suspend fun syncCloudWithLocal(): Outcome<Unit> = syncCloudResult
+    override suspend fun syncCloudWithLocal(): Outcome<Unit> {
+        syncCloudCallCount++
+        return syncCloudResult
+    }
 }

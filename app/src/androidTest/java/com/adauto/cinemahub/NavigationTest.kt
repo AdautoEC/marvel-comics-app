@@ -7,8 +7,6 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
-import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.toRoute
 import androidx.paging.PagingData
@@ -22,14 +20,22 @@ import com.adauto.cinemahub.feature.detail.MovieDetailUiState
 import com.adauto.cinemahub.feature.movies.MovieListAction
 import com.adauto.cinemahub.feature.movies.MovieListScreen
 import com.adauto.cinemahub.feature.movies.MovieListUiState
+import com.adauto.cinemahub.navigation.CinemaHubNavHost
 import com.adauto.cinemahub.navigation.MovieDetailRoute
-import com.adauto.cinemahub.navigation.MovieListRoute
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.flow.flowOf
+import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 
+/**
+ * Isolated Navigation Graph Contract Test.
+ *
+ * Exercises the real [CinemaHubNavHost] route registration, type-safe [MovieDetailRoute]
+ * serialization/deserialization (`movieId` argument extraction via `SavedStateHandle`/`toRoute`),
+ * and back-stack preservation between [MovieListScreen] and [MovieDetailScreen].
+ */
 @RunWith(AndroidJUnit4::class)
 class NavigationTest {
 
@@ -59,14 +65,12 @@ class NavigationTest {
     )
 
     @Composable
-    private fun TestAppNavigation() {
+    private fun TestAppNavigation(onExtractedMovieId: (Int?) -> Unit = {}) {
         val navController = rememberNavController()
 
-        NavHost(
+        CinemaHubNavHost(
             navController = navController,
-            startDestination = MovieListRoute
-        ) {
-            composable<MovieListRoute> {
+            movieListContent = { onOpenDetail ->
                 val movies = remember {
                     flowOf(PagingData.from(listOf(sampleMovieSummary)))
                 }.collectAsLazyPagingItems()
@@ -76,50 +80,56 @@ class NavigationTest {
                     movies = movies,
                     onAction = { action ->
                         if (action is MovieListAction.MovieClicked) {
-                            navController.navigate(MovieDetailRoute(action.id))
+                            onOpenDetail(action.id)
                         }
                     }
                 )
-            }
-
-            composable<MovieDetailRoute> { backStackEntry ->
+            },
+            movieDetailContent = { backStackEntry, onBackClick ->
                 val route = backStackEntry.toRoute<MovieDetailRoute>()
+                val savedStateMovieId = backStackEntry.savedStateHandle.get<Int>("movieId")
+                onExtractedMovieId(savedStateMovieId)
                 MovieDetailScreen(
                     uiState = MovieDetailUiState(
-                        movie = if (route.movieId == 550) sampleMovieDetail else null,
+                        movie = if (route.movieId == 550 && savedStateMovieId == 550) sampleMovieDetail else null,
                         isLoading = false
                     ),
                     onAction = { action ->
                         if (action is MovieDetailAction.BackClicked) {
-                            navController.popBackStack()
+                            onBackClick()
                         }
                     }
                 )
             }
-        }
+        )
     }
 
     @Test
-    fun navigationFromListToDetailAndBack_preservesStack() {
+    fun navigationFromListToDetailAndBack_extractsMovieIdAndPreservesStack() {
+        var extractedMovieId: Int? = null
+
         composeTestRule.setContent {
-            TestAppNavigation()
+            TestAppNavigation(onExtractedMovieId = { extractedMovieId = it })
         }
 
         // 1. Initial Screen: MovieListScreen with item
         composeTestRule.onNodeWithText("Clube da Luta").assertIsDisplayed()
 
-        // 2. Click movie card to navigate to detail
+        // 2. Click movie card to navigate to detail via CinemaHubNavHost
         composeTestRule.onNodeWithText("Clube da Luta").performClick()
 
-        // 3. MovieDetailScreen should be visible with overview and back button
+        // 3. Verify MovieDetailRoute argument movieId=550 was serialized into SavedStateHandle
+        assertEquals(550, extractedMovieId)
+
+        // 4. MovieDetailScreen should be visible with overview and back button
         composeTestRule.onNodeWithTag("MovieDetailContent").assertIsDisplayed()
         composeTestRule.onNodeWithText("Um homem deprimido e insone conhece Tyler Durden.").assertIsDisplayed()
         composeTestRule.onNodeWithTag("BackButton").assertIsDisplayed()
 
-        // 4. Click back button
+        // 5. Click back button
         composeTestRule.onNodeWithTag("BackButton").performClick()
 
-        // 5. Back to MovieListScreen
+        // 6. Back to MovieListScreen
         composeTestRule.onNodeWithText("Clube da Luta").assertIsDisplayed()
     }
 }

@@ -1,12 +1,19 @@
 package com.adauto.cinemahub.feature.detail
 
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.semantics.getOrNull
+import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertWidthIsAtLeast
+import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.unit.dp
 import com.adauto.cinemahub.core.model.UiText
 import com.adauto.cinemahub.core.testing.data.MovieTestData
 import kotlinx.collections.immutable.persistentListOf
@@ -134,5 +141,50 @@ class MovieDetailScreenRobolectricTest {
         composeTestRule.onNodeWithTag("DetailErrorState").assertIsDisplayed()
         composeTestRule.onNodeWithText("Tentar novamente").performClick()
         assertTrue(retryTriggered)
+    }
+
+    @Test
+    fun movieDetailScreen_accessibilityChecks_labelsAndTouchTargets() {
+        composeTestRule.setContent {
+            MovieDetailScreen(
+                uiState = MovieDetailUiState(movie = sampleMovie),
+                onAction = {}
+            )
+        }
+
+        // Floating back button must have contentDescription and >= 48.dp touch target
+        composeTestRule.onNodeWithTag("BackButton")
+            .assertIsDisplayed()
+            .assertWidthIsAtLeast(48.dp)
+            .assertHeightIsAtLeast(48.dp)
+        composeTestRule.onNodeWithContentDescription("Voltar").assertIsDisplayed()
+
+        // Action buttons must have accessible labels and >= 48.dp touch height
+        composeTestRule.onNodeWithTag("FavoriteButton")
+            .assertIsDisplayed()
+            .assertHeightIsAtLeast(48.dp)
+        composeTestRule.onNodeWithTag("WatchlistButton")
+            .assertIsDisplayed()
+            .assertHeightIsAtLeast(48.dp)
+
+        // All clickable nodes must expose text, contentDescription, or onClickLabel
+        val clickableNodes = composeTestRule.onAllNodes(hasClickAction()).fetchSemanticsNodes()
+        assertTrue(clickableNodes.isNotEmpty())
+        clickableNodes.forEach { node ->
+            val hasText = node.config
+                .getOrElse(SemanticsProperties.Text) { emptyList() }
+                .isNotEmpty()
+            val hasContentDesc = node.config
+                .getOrElse(SemanticsProperties.ContentDescription) { emptyList() }
+                .isNotEmpty()
+            val hasClickLabel = !node.config
+                .getOrNull(SemanticsActions.OnClick)
+                ?.label
+                .isNullOrBlank()
+            assertTrue(
+                "Clickable node ${node.id} lacks accessible label",
+                hasText || hasContentDesc || hasClickLabel
+            )
+        }
     }
 }

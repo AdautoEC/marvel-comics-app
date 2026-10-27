@@ -7,6 +7,7 @@ import androidx.paging.cachedIn
 import androidx.paging.filter
 import com.adauto.cinemahub.core.data.repository.AuthRepository
 import com.adauto.cinemahub.core.data.repository.MoviesRepository
+import com.adauto.cinemahub.core.data.sync.SyncEventBus
 import com.adauto.cinemahub.core.data.usecase.ToggleFavoriteUseCase
 import com.adauto.cinemahub.core.data.usecase.ToggleWatchlistUseCase
 import com.adauto.cinemahub.core.data.util.NetworkMonitor
@@ -43,7 +44,8 @@ class MovieListViewModel @Inject constructor(
     private val authRepository: AuthRepository,
     private val networkMonitor: NetworkMonitor,
     private val toggleFavoriteUseCase: ToggleFavoriteUseCase,
-    private val toggleWatchlistUseCase: ToggleWatchlistUseCase
+    private val toggleWatchlistUseCase: ToggleWatchlistUseCase,
+    private val syncEventBus: SyncEventBus? = null
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(MovieListUiState())
@@ -105,6 +107,16 @@ class MovieListViewModel @Inject constructor(
         viewModelScope.launch {
             networkMonitor.isOnline.collect { isOnline ->
                 _uiState.update { it.copy(isOffline = !isOnline) }
+            }
+        }
+        syncEventBus?.let { bus ->
+            viewModelScope.launch {
+                bus.unconsumedFailures.collect { failures ->
+                    if (failures.isNotEmpty()) {
+                        _effects.send(MovieListEffect.ShowMessage(UiText.Resource(R.string.sync_failure_message)))
+                        bus.consumeFailures()
+                    }
+                }
             }
         }
     }

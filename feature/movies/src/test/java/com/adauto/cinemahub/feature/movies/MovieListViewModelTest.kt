@@ -2,30 +2,23 @@ package com.adauto.cinemahub.feature.movies
 
 import androidx.paging.Pager
 import androidx.paging.PagingConfig
-import androidx.paging.PagingData
 import androidx.paging.PagingSource
 import androidx.paging.PagingState
 import androidx.paging.testing.asSnapshot
 import app.cash.turbine.test
-import com.adauto.cinemahub.core.data.repository.AuthRepository
-import com.adauto.cinemahub.core.data.repository.MoviesRepository
 import com.adauto.cinemahub.core.data.usecase.ToggleFavoriteUseCase
 import com.adauto.cinemahub.core.data.usecase.ToggleWatchlistUseCase
-import com.adauto.cinemahub.core.data.util.NetworkMonitor
 import com.adauto.cinemahub.core.model.DomainError
 import com.adauto.cinemahub.core.model.MovieCategory
 import com.adauto.cinemahub.core.model.MovieSummary
 import com.adauto.cinemahub.core.model.Outcome
 import com.adauto.cinemahub.core.model.SessionState
+import com.adauto.cinemahub.core.testing.network.FakeNetworkMonitor
+import com.adauto.cinemahub.core.testing.repository.FakeAuthRepository
+import com.adauto.cinemahub.core.testing.repository.FakeMoviesRepository
 import com.google.common.truth.Truth.assertThat
-import io.mockk.coEvery
-import io.mockk.coVerify
-import io.mockk.every
-import io.mockk.mockk
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.take
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -40,14 +33,11 @@ import org.junit.Test
 @OptIn(ExperimentalCoroutinesApi::class)
 class MovieListViewModelTest {
     private val testDispatcher = StandardTestDispatcher()
-    private val moviesRepository: MoviesRepository = mockk(relaxed = true)
-    private val authRepository: AuthRepository = mockk(relaxed = true)
-    private val isOnlineFlow = MutableStateFlow(true)
-    private val networkMonitor: NetworkMonitor = mockk {
-        every { isOnline } returns isOnlineFlow
-    }
-    private val toggleFavoriteUseCase = ToggleFavoriteUseCase(moviesRepository)
-    private val toggleWatchlistUseCase = ToggleWatchlistUseCase(moviesRepository)
+    private lateinit var moviesRepository: FakeMoviesRepository
+    private lateinit var authRepository: FakeAuthRepository
+    private lateinit var networkMonitor: FakeNetworkMonitor
+    private lateinit var toggleFavoriteUseCase: ToggleFavoriteUseCase
+    private lateinit var toggleWatchlistUseCase: ToggleWatchlistUseCase
 
     private fun createViewModel() = MovieListViewModel(
         moviesRepository,
@@ -60,11 +50,11 @@ class MovieListViewModelTest {
     @Before
     fun setUp() {
         Dispatchers.setMain(testDispatcher)
-        isOnlineFlow.value = true
-        every { moviesRepository.movies(any(), any()) } returns emptyFlow()
-        every { moviesRepository.observeFavorites() } returns emptyFlow()
-        every { moviesRepository.observeWatchlist() } returns emptyFlow()
-        every { authRepository.sessionState } returns MutableStateFlow(SessionState.Guest)
+        moviesRepository = FakeMoviesRepository()
+        authRepository = FakeAuthRepository()
+        networkMonitor = FakeNetworkMonitor(initialOnline = true)
+        toggleFavoriteUseCase = ToggleFavoriteUseCase(moviesRepository)
+        toggleWatchlistUseCase = ToggleWatchlistUseCase(moviesRepository)
     }
 
     @After
@@ -99,42 +89,37 @@ class MovieListViewModelTest {
     }
 
     @Test
-    fun favoriteToggled_callsRepositoryToggleFavorite() = runTest {
+    fun favoriteToggled_updatesRepositoryFavoritesState() = runTest {
         val viewModel = createViewModel()
         val sampleMovie = MovieSummary(id = 1, title = "Iron Man", posterUrl = null, voteAverage = 8.0)
         viewModel.onAction(MovieListAction.FavoriteToggled(sampleMovie))
         testDispatcher.scheduler.advanceUntilIdle()
-        coVerify { moviesRepository.toggleFavorite(sampleMovie) }
+        assertThat(moviesRepository.favorites.value.map { it.id }).containsExactly(1)
     }
 
     @Test
-    fun watchlistToggled_callsRepositoryToggleWatchlist() = runTest {
+    fun watchlistToggled_updatesRepositoryWatchlistState() = runTest {
         val viewModel = createViewModel()
         val sampleMovie = MovieSummary(id = 1, title = "Iron Man", posterUrl = null, voteAverage = 8.0)
         viewModel.onAction(MovieListAction.WatchlistToggled(sampleMovie))
         testDispatcher.scheduler.advanceUntilIdle()
-        coVerify { moviesRepository.toggleWatchlist(sampleMovie) }
+        assertThat(moviesRepository.watchlist.value.map { it.id }).containsExactly(1)
     }
 
     @Test
     fun refreshRequested_togglesIsRefreshingState() = runTest {
         val viewModel = createViewModel()
         viewModel.uiState.test {
-            // Initial state: not refreshing
             val initial = awaitItem()
             assertThat(initial.isRefreshing).isFalse()
 
-            // Trigger refresh
             viewModel.onAction(MovieListAction.RefreshRequested)
 
-            // Should transition to refreshing true
             val refreshing = awaitItem()
             assertThat(refreshing.isRefreshing).isTrue()
 
-            // Advance scheduler until coroutine completes
             testDispatcher.scheduler.advanceUntilIdle()
 
-            // Should reset to refreshing false
             val finished = awaitItem()
             assertThat(finished.isRefreshing).isFalse()
         }
@@ -142,25 +127,23 @@ class MovieListViewModelTest {
 
     @Test
     fun refreshRequested_whenAuthenticated_callsSyncCloudWithLocal() = runTest {
-        val authState = MutableStateFlow<SessionState>(
+        authRepository.setSessionState(
             SessionState.Authenticated(accountId = 42, username = "adauto", sessionId = "sess_123")
         )
-        every { authRepository.sessionState } returns authState
         val viewModel = createViewModel()
         testDispatcher.scheduler.advanceUntilIdle()
 
         viewModel.onAction(MovieListAction.RefreshRequested)
         testDispatcher.scheduler.advanceUntilIdle()
 
-        coVerify { moviesRepository.syncCloudWithLocal() }
+        assertThat(moviesRepository.syncCloudCallCount).isEqualTo(1)
     }
 
     @Test
     fun refreshRequested_whenAuthenticated_triggersSyncAndResetsIsRefreshingWithoutDelay() = runTest {
-        val authState = MutableStateFlow<SessionState>(
+        authRepository.setSessionState(
             SessionState.Authenticated(accountId = 42, username = "adauto", sessionId = "sess_123")
         )
-        every { authRepository.sessionState } returns authState
         val viewModel = createViewModel()
         testDispatcher.scheduler.advanceUntilIdle()
 
@@ -179,7 +162,7 @@ class MovieListViewModelTest {
             assertThat(finished.isRefreshing).isFalse()
         }
 
-        coVerify(exactly = 1) { moviesRepository.syncCloudWithLocal() }
+        assertThat(moviesRepository.syncCloudCallCount).isEqualTo(1)
         assertThat(testScheduler.currentTime).isEqualTo(0L)
     }
 
@@ -194,18 +177,14 @@ class MovieListViewModelTest {
     fun toggleSearchClicked_togglesSearchActiveStateAndClearsQueryWhenDeactivating() = runTest {
         val viewModel = createViewModel()
 
-        // Initial: inactive
         assertThat(viewModel.uiState.value.isSearchActive).isFalse()
 
-        // Toggle on
         viewModel.onAction(MovieListAction.ToggleSearchClicked)
         assertThat(viewModel.uiState.value.isSearchActive).isTrue()
 
-        // Set query
         viewModel.onAction(MovieListAction.SearchQueryChanged("Duna"))
         assertThat(viewModel.uiState.value.searchQuery).isEqualTo("Duna")
 
-        // Toggle off: should deactivate and reset query
         viewModel.onAction(MovieListAction.ToggleSearchClicked)
         assertThat(viewModel.uiState.value.isSearchActive).isFalse()
         assertThat(viewModel.uiState.value.searchQuery).isEmpty()
@@ -230,14 +209,10 @@ class MovieListViewModelTest {
         val movie1 = MovieSummary(id = 1, title = "Clube da Luta", posterUrl = null, voteAverage = 8.8)
         val movie2 = MovieSummary(id = 2, title = "Pulp Fiction", posterUrl = null, voteAverage = 8.9)
         val movie3 = MovieSummary(id = 3, title = "Clube dos Cinco", posterUrl = null, voteAverage = 7.8)
-
-        every { moviesRepository.movies(MovieCategory.POPULAR, "clube") } returns flowOf(
-            PagingData.from(listOf(movie1, movie3))
-        )
+        moviesRepository.moviesList = listOf(movie1, movie2, movie3)
 
         val viewModel = createViewModel()
 
-        // Search for "clube" (lowercase, partial)
         viewModel.onAction(MovieListAction.SearchQueryChanged("clube"))
 
         val filteredMovies = viewModel.moviesFlow.take(1).asSnapshot()
@@ -252,12 +227,12 @@ class MovieListViewModelTest {
 
         assertThat(viewModel.uiState.value.isOffline).isFalse()
 
-        isOnlineFlow.value = false
+        networkMonitor.setOnline(false)
         testDispatcher.scheduler.advanceUntilIdle()
 
         assertThat(viewModel.uiState.value.isOffline).isTrue()
 
-        isOnlineFlow.value = true
+        networkMonitor.setOnline(true)
         testDispatcher.scheduler.advanceUntilIdle()
 
         assertThat(viewModel.uiState.value.isOffline).isFalse()
@@ -267,21 +242,13 @@ class MovieListViewModelTest {
     fun movies_whenSearchQueryChanges_doesNotCollectSamePagingDataTwice() = runTest {
         val movie1 = MovieSummary(id = 1, title = "Iron Man", posterUrl = null, voteAverage = 8.0)
         val movie2 = MovieSummary(id = 2, title = "Thor", posterUrl = null, voteAverage = 7.5)
-        fun createPager() = Pager(PagingConfig(pageSize = 2)) {
-            object : PagingSource<Int, MovieSummary>() {
-                override fun getRefreshKey(state: PagingState<Int, MovieSummary>): Int? = null
-                override suspend fun load(params: LoadParams<Int>): LoadResult<Int, MovieSummary> {
-                    return LoadResult.Page(data = listOf(movie1, movie2), prevKey = null, nextKey = null)
-                }
-            }
-        }
-        every { moviesRepository.movies(MovieCategory.POPULAR, "") } answers { createPager().flow }
-        every { moviesRepository.movies(MovieCategory.POPULAR, "Thor") } answers {
+        moviesRepository.customMoviesFlowProvider = { _, query ->
+            val data = if (query == "Thor") listOf(movie2) else listOf(movie1, movie2)
             Pager(PagingConfig(pageSize = 2)) {
                 object : PagingSource<Int, MovieSummary>() {
                     override fun getRefreshKey(state: PagingState<Int, MovieSummary>): Int? = null
                     override suspend fun load(params: LoadParams<Int>): LoadResult<Int, MovieSummary> {
-                        return LoadResult.Page(data = listOf(movie2), prevKey = null, nextKey = null)
+                        return LoadResult.Page(data = data, prevKey = null, nextKey = null)
                     }
                 }
             }.flow
@@ -306,15 +273,10 @@ class MovieListViewModelTest {
     @Test
     fun movies_whenSearchQueryActive_delegatesToRepositoryMoviesWithQuery() = runTest {
         val thorMovie = MovieSummary(id = 2, title = "Thor", posterUrl = null, voteAverage = 7.5)
-        fun createSearchPager() = Pager(PagingConfig(pageSize = 2)) {
-            object : PagingSource<Int, MovieSummary>() {
-                override fun getRefreshKey(state: PagingState<Int, MovieSummary>): Int? = null
-                override suspend fun load(params: LoadParams<Int>): LoadResult<Int, MovieSummary> {
-                    return LoadResult.Page(data = listOf(thorMovie), prevKey = null, nextKey = null)
-                }
-            }
-        }
-        every { moviesRepository.movies(MovieCategory.POPULAR, "Thor") } answers { createSearchPager().flow }
+        moviesRepository.moviesList = listOf(
+            MovieSummary(id = 1, title = "Iron Man", posterUrl = null, voteAverage = 8.0),
+            thorMovie
+        )
 
         val viewModel = createViewModel()
         viewModel.onAction(MovieListAction.SearchQueryChanged("Thor"))
@@ -327,18 +289,16 @@ class MovieListViewModelTest {
             assertThat(items.first().title).isEqualTo("Thor")
         }
 
-        io.mockk.verify { moviesRepository.movies(MovieCategory.POPULAR, "Thor") }
+        assertThat(moviesRepository.moviesQueries).contains(MovieCategory.POPULAR to "Thor")
     }
 
     @Test
     fun searchQueryChanged_rapidKeystrokes_debouncesPagerQueriesBy300ms() = runTest {
-        every { moviesRepository.movies(any(), any()) } returns flowOf(PagingData.from(emptyList()))
         val viewModel = createViewModel()
 
         viewModel.movies.test {
             awaitItem() // Initial load for empty query
 
-            // 5 rapid keystrokes with 20ms intervals (total 100ms < 300ms)
             viewModel.onAction(MovieListAction.SearchQueryChanged("D"))
             testScheduler.advanceTimeBy(20)
             viewModel.onAction(MovieListAction.SearchQueryChanged("Du"))
@@ -349,31 +309,29 @@ class MovieListViewModelTest {
             testScheduler.advanceTimeBy(20)
             viewModel.onAction(MovieListAction.SearchQueryChanged("Dunas"))
 
-            // Advance by 150ms (total from last stroke: 150ms < 300ms) - debounce should not have fired yet
             testScheduler.advanceTimeBy(150)
-            io.mockk.verify(exactly = 0) { moviesRepository.movies(MovieCategory.POPULAR, "D") }
-            io.mockk.verify(exactly = 0) { moviesRepository.movies(MovieCategory.POPULAR, "Du") }
-            io.mockk.verify(exactly = 0) { moviesRepository.movies(MovieCategory.POPULAR, "Dun") }
-            io.mockk.verify(exactly = 0) { moviesRepository.movies(MovieCategory.POPULAR, "Duna") }
-            io.mockk.verify(exactly = 0) { moviesRepository.movies(MovieCategory.POPULAR, "Dunas") }
+            assertThat(moviesRepository.moviesQueries).doesNotContain(MovieCategory.POPULAR to "D")
+            assertThat(moviesRepository.moviesQueries).doesNotContain(MovieCategory.POPULAR to "Du")
+            assertThat(moviesRepository.moviesQueries).doesNotContain(MovieCategory.POPULAR to "Dun")
+            assertThat(moviesRepository.moviesQueries).doesNotContain(MovieCategory.POPULAR to "Duna")
+            assertThat(moviesRepository.moviesQueries).doesNotContain(MovieCategory.POPULAR to "Dunas")
 
-            // Advance past 300ms from the last keystroke (160ms -> total 310ms > 300ms)
             testScheduler.advanceTimeBy(160)
 
             awaitItem() // PagingData for debounced query "Dunas"
 
-            io.mockk.verify(exactly = 1) { moviesRepository.movies(MovieCategory.POPULAR, "Dunas") }
-            io.mockk.verify(exactly = 0) { moviesRepository.movies(MovieCategory.POPULAR, "D") }
-            io.mockk.verify(exactly = 0) { moviesRepository.movies(MovieCategory.POPULAR, "Du") }
-            io.mockk.verify(exactly = 0) { moviesRepository.movies(MovieCategory.POPULAR, "Dun") }
-            io.mockk.verify(exactly = 0) { moviesRepository.movies(MovieCategory.POPULAR, "Duna") }
+            assertThat(moviesRepository.moviesQueries).contains(MovieCategory.POPULAR to "Dunas")
+            assertThat(moviesRepository.moviesQueries).doesNotContain(MovieCategory.POPULAR to "D")
+            assertThat(moviesRepository.moviesQueries).doesNotContain(MovieCategory.POPULAR to "Du")
+            assertThat(moviesRepository.moviesQueries).doesNotContain(MovieCategory.POPULAR to "Dun")
+            assertThat(moviesRepository.moviesQueries).doesNotContain(MovieCategory.POPULAR to "Duna")
             cancelAndIgnoreRemainingEvents()
         }
     }
 
     @Test
     fun connectTmdbClicked_whenFailure_emitsShowMessageEffect() = runTest {
-        coEvery { authRepository.buildAuthorizationUrl() } returns Outcome.Failure(DomainError.NoConnection)
+        authRepository.authorizationUrlResult = Outcome.Failure(DomainError.NoConnection)
         val viewModel = createViewModel()
 
         viewModel.effects.test {

@@ -76,7 +76,8 @@ class MoviesRepositoryImpl @Inject constructor(
             enablePlaceholders = true,
             initialLoadSize = 40
         )
-        val pager = if (query.isBlank()) {
+        val trimmedQuery = query.trim()
+        val pager = if (trimmedQuery.isBlank()) {
             Pager(
                 config = config,
                 remoteMediator = MoviesRemoteMediator(
@@ -90,7 +91,7 @@ class MoviesRepositoryImpl @Inject constructor(
         } else {
             Pager(
                 config = config,
-                pagingSourceFactory = { database.movieDao().searchPagingSource(categoryKey, query) }
+                pagingSourceFactory = { database.movieDao().searchPagingSource(categoryKey, trimmedQuery) }
             )
         }
 

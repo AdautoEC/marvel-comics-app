@@ -3,6 +3,7 @@ package com.adauto.cinemahub.feature.detail.component
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -64,7 +65,9 @@ private fun FavoriteActionButton(
 ) {
     Button(
         onClick = onClick,
-        modifier = modifier.testTag("FavoriteButton"),
+        modifier = modifier
+            .defaultMinSize(minHeight = 48.dp)
+            .testTag("FavoriteButton"),
         colors = ButtonDefaults.buttonColors(
             containerColor = if (isFavorite) {
                 MaterialTheme.colorScheme.primary
@@ -109,7 +112,9 @@ private fun WatchlistActionButton(
 ) {
     OutlinedButton(
         onClick = onClick,
-        modifier = modifier.testTag("WatchlistButton"),
+        modifier = modifier
+            .defaultMinSize(minHeight = 48.dp)
+            .testTag("WatchlistButton"),
         colors = ButtonDefaults.outlinedButtonColors(
             containerColor = if (isInWatchlist) WatchlistGreen else Color.Transparent
         ),

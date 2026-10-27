@@ -1,6 +1,9 @@
 package com.adauto.cinemahub.feature.movies.component
 
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.unit.dp
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
@@ -60,7 +63,10 @@ private fun SearchTopBar(
         navigationIcon = {
             IconButton(
                 onClick = { onAction(MovieListAction.ToggleSearchClicked) },
-                modifier = Modifier.testTag("CloseSearchButton")
+                modifier = Modifier
+                    .defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
+                    .size(48.dp)
+                    .testTag("CloseSearchButton")
             ) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
@@ -80,7 +86,10 @@ private fun SearchTopBar(
             if (uiState.searchQuery.isNotEmpty()) {
                 IconButton(
                     onClick = { onAction(MovieListAction.SearchQueryChanged("")) },
-                    modifier = Modifier.testTag("ClearSearchButton")
+                    modifier = Modifier
+                        .defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
+                        .size(48.dp)
+                        .testTag("ClearSearchButton")
                 ) {
                     Icon(
                         imageVector = Icons.Default.Close,
@@ -161,7 +170,10 @@ private fun StandardTopBar(
         actions = {
             IconButton(
                 onClick = { onAction(MovieListAction.ToggleSearchClicked) },
-                modifier = Modifier.testTag("SearchIconButton")
+                modifier = Modifier
+                    .defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
+                    .size(48.dp)
+                    .testTag("SearchIconButton")
             ) {
                 Icon(
                     imageVector = Icons.Default.Search,

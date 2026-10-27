@@ -14,7 +14,7 @@ Atualizações automatizadas e pontuais dessas ferramentas — como a promoção
 ## Decisão
 1. **Manutenção de Combinação Homologada:** O Gradle Wrapper permanece estritamente na linha **8.11.1**, que oferece compatibilidade completa com o AGP 8.7.3 e Kotlin 2.0.21.
 2. **Atualização Coordenada em Degraus:** Atualizações de toolchain nunca são feitas de forma isolada. Qualquer salto de versão maior deve ser realizado em conjunto (Kotlin + KSP + AGP + Gradle Wrapper).
-3. **Bloqueio de Saltos Semver-Major no Dependabot:** Configurar o `.github/dependabot.yml` para ignorar saltos `semver-major` no `gradle-wrapper`.
+3. **Remoção do Dependabot:** O arquivo `.github/dependabot.yml` foi removido para evitar PRs automáticos fragmentados que tentavam atualizar versões major de ferramentas isoladamente (como Gradle 9 ou bibliotecas incompatíveis com Kotlin 2.0.21) e consumiam minutos de CI desnecessariamente.
 4. **Matriz Vigente Homologada:**
 
 | Componente | Versão Vigente | Referência / Documentação Oficial |
@@ -32,7 +32,7 @@ Atualizações automatizadas e pontuais dessas ferramentas — como a promoção
 ## Consequências
 - **Positivas:**
   - Build reproduzível, previsível e sem avisos de depreciação de Gradle 10.
-  - Dependabot impedido de abrir PRs arriscados de major versions do Gradle sem atualização correspondente do AGP.
+  - Ausência de ruído de PRs automáticos do Dependabot tentando promover major versions do Gradle ou bibliotecas incompatíveis sem atualização coordenada do AGP/Kotlin.
   - Documentação transparente servindo de guia de conformidade para novos upgrades.
 - **Negativas / Limitações:**
   - Requer intervenção manual planejada para futuras migrações para a API 36 (Fase 5 do plano).

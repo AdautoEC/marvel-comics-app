@@ -1,12 +1,8 @@
 package com.adauto.cinemahub.core.data.sync
 
 import app.cash.turbine.test
-import com.adauto.cinemahub.core.data.storage.SyncFailureStorage
+import com.adauto.cinemahub.core.testing.storage.FakeSyncFailureStorage
 import com.google.common.truth.Truth.assertThat
-import io.mockk.coVerify
-import io.mockk.every
-import io.mockk.mockk
-import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
 import org.junit.Test
 import java.time.Clock
@@ -15,7 +11,7 @@ import java.time.ZoneOffset
 
 class SyncEventBusTest {
 
-    private val storage: SyncFailureStorage = mockk(relaxed = true)
+    private val storage = FakeSyncFailureStorage()
     private val fixedClock = Clock.fixed(Instant.ofEpochMilli(123456789L), ZoneOffset.UTC)
     private val bus = SyncEventBus(storage, fixedClock)
 
@@ -28,24 +24,31 @@ class SyncEventBusTest {
             assertThat(awaitItem()).isEqualTo(event)
         }
 
-        coVerify(exactly = 1) { storage.recordFailure(event, 123456789L) }
+        assertThat(storage.recordedTimestamps).containsExactly(123456789L)
+        bus.unconsumedFailures.test {
+            assertThat(awaitItem()).containsExactly(event)
+        }
     }
 
     @Test
-    fun consumeFailures_callsStorageClearFailures() = runTest {
+    fun consumeFailures_clearsFailuresInStorage() = runTest {
+        val event = SyncFailureEvent(movieId = 10, target = "FAVORITE", error = "404")
+        bus.emitFailure(event)
+
         bus.consumeFailures()
 
-        coVerify(exactly = 1) { storage.clearFailures() }
+        bus.unconsumedFailures.test {
+            assertThat(awaitItem()).isEmpty()
+        }
     }
 
     @Test
     fun unconsumedFailures_delegatesToStorage() = runTest {
-        val events = listOf(SyncFailureEvent(movieId = 10, target = "FAVORITE", error = "404"))
-        every { storage.unconsumedFailures } returns flowOf(events)
+        val event = SyncFailureEvent(movieId = 10, target = "FAVORITE", error = "404")
+        storage.recordFailure(event, 1000L)
 
         bus.unconsumedFailures.test {
-            assertThat(awaitItem()).isEqualTo(events)
-            awaitComplete()
+            assertThat(awaitItem()).containsExactly(event)
         }
     }
 }
