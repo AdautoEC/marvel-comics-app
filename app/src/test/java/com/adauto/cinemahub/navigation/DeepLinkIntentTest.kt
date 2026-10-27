@@ -64,6 +64,16 @@ class DeepLinkIntentTest {
     }
 
     @Test
+    fun valid_approved_auth_host_extracts_request_token() {
+        val uri = Uri.parse("cinemahub://auth?request_token=auth_tok&approved=true")
+        val intent = createIntent(uri)
+
+        val token = DeepLinkHandler.extractApprovedRequestToken(intent)
+
+        assertThat(token).isEqualTo("auth_tok")
+    }
+
+    @Test
     fun valid_approved_callback_is_case_insensitive_for_scheme_and_host() {
         val uppercaseUri = Uri.parse("CINEMAHUB://TMDB-CALLBACK?request_token=upper_tok&approved=true")
         val mixedUri = Uri.parse("CinemaHub://Tmdb-Callback?request_token=mixed_tok&approved=true")

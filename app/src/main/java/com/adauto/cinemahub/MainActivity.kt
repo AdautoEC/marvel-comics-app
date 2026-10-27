@@ -12,16 +12,13 @@ import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTagsAsResourceId
-import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
-import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.compose.rememberNavController
 import com.adauto.cinemahub.core.data.repository.AuthRepository
-import com.adauto.cinemahub.core.data.sync.SyncEventBus
 import com.adauto.cinemahub.core.designsystem.theme.CinemaHubTheme
 import com.adauto.cinemahub.core.model.Outcome
-import com.adauto.cinemahub.navigation.DeepLinkHandler
 import com.adauto.cinemahub.navigation.CinemaHubNavHost
+import com.adauto.cinemahub.navigation.DeepLinkHandler
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 import kotlinx.coroutines.launch
@@ -32,14 +29,10 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var authRepository: AuthRepository
 
-    @Inject
-    lateinit var syncEventBus: SyncEventBus
-
     @OptIn(ExperimentalComposeUiApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         handleDeepLink(intent)
-        observeSyncFailures()
         enableEdgeToEdge()
         setContent {
             CinemaHubTheme {
@@ -59,23 +52,6 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         handleDeepLink(intent)
-    }
-
-    private fun observeSyncFailures() {
-        lifecycleScope.launch {
-            repeatOnLifecycle(Lifecycle.State.STARTED) {
-                syncEventBus.unconsumedFailures.collect { failures ->
-                    if (failures.isNotEmpty()) {
-                        Toast.makeText(
-                            this@MainActivity,
-                            getString(R.string.sync_failure_message),
-                            Toast.LENGTH_LONG
-                        ).show()
-                        syncEventBus.consumeFailures()
-                    }
-                }
-            }
-        }
     }
 
     private fun handleDeepLink(intent: Intent?) {

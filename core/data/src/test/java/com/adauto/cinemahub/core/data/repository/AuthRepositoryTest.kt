@@ -151,7 +151,7 @@ class AuthRepositoryTest {
         assertThat(outcome).isInstanceOf(Outcome.Success::class.java)
         val url = (outcome as Outcome.Success).value
         assertThat(url).isEqualTo(
-            "https://www.themoviedb.org/authenticate/req_token_123?redirect_to=cinemahub%3A%2F%2Fauth"
+            "https://www.themoviedb.org/authenticate/req_token_123?redirect_to=cinemahub%3A%2F%2Ftmdb-callback"
         )
     }
 

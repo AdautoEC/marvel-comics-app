@@ -16,6 +16,7 @@ import com.adauto.cinemahub.core.data.mapper.toMovieDetail
 import com.adauto.cinemahub.core.data.mapper.toMovieSummary
 import com.adauto.cinemahub.core.data.mediator.MoviesRemoteMediator
 import com.adauto.cinemahub.core.data.sync.SyncCoordinator
+import com.adauto.cinemahub.core.data.sync.SyncEventBus
 import com.adauto.cinemahub.core.data.worker.SyncOutboxWorker
 import com.adauto.cinemahub.core.database.CinemaHubDatabase
 import com.adauto.cinemahub.core.database.entity.FavoriteMovieEntity
@@ -47,6 +48,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 private const val HTTP_UNAUTHORIZED = 401
+private const val HTTP_FORBIDDEN = 403
 
 @Singleton
 @Suppress("LongParameterList", "TooManyFunctions")
@@ -56,11 +58,15 @@ class MoviesRepositoryImpl @Inject constructor(
     private val sessionManager: SessionManager,
     private val workManager: WorkManager,
     private val syncCoordinator: SyncCoordinator,
+    private val syncEventBus: SyncEventBus? = null,
     @ApplicationScope private val externalScope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
     private val clock: Clock = Clock.systemUTC()
 ) : MoviesRepository {
 
     init {
+        externalScope.launch {
+            syncCloudWithLocal()
+        }
         externalScope.launch {
             syncCoordinator.pullRequests.collect {
                 syncCloudWithLocal()
@@ -317,6 +323,7 @@ class MoviesRepositoryImpl @Inject constructor(
                 is ApiResponse.Failure -> {
                     val error = if (isUnauthorized(response)) {
                         sessionManager.clearSession()
+                        syncEventBus?.consumeFailures()
                         DomainError.InvalidKey
                     } else {
                         response.toDomainError()
@@ -346,6 +353,7 @@ class MoviesRepositoryImpl @Inject constructor(
                 is ApiResponse.Failure -> {
                     val error = if (isUnauthorized(response)) {
                         sessionManager.clearSession()
+                        syncEventBus?.consumeFailures()
                         DomainError.InvalidKey
                     } else {
                         response.toDomainError()
@@ -358,7 +366,8 @@ class MoviesRepositoryImpl @Inject constructor(
     }
 
     private fun isUnauthorized(response: ApiResponse.Failure<*>): Boolean {
-        return response is ApiResponse.Failure.Error && response.statusCode.code == HTTP_UNAUTHORIZED
+        return response is ApiResponse.Failure.Error &&
+            (response.statusCode.code == HTTP_UNAUTHORIZED || response.statusCode.code == HTTP_FORBIDDEN)
     }
 
     private suspend fun reconcileFavorites(remoteFavs: List<TmdbMovieDto>) {

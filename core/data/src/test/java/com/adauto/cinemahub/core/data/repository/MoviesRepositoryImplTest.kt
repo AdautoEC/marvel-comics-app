@@ -320,6 +320,36 @@ class MoviesRepositoryImplTest {
     }
 
     @Test
+    fun syncCloudWithLocal_whenApiReturns403_clearsInvalidSessionAndPreservesLocalDatabase() = runTest {
+        sessionManager.sessionStateFlow.value = SessionState.Authenticated(
+            accountId = 42,
+            username = "adauto",
+            sessionId = "sess_stale"
+        )
+        db.favoriteDao().upsert(
+            FavoriteMovieEntity(
+                movieId = 101,
+                title = "Iron Man",
+                posterPath = null,
+                voteAverage = 8.2,
+                releaseDate = "2008-05-02",
+                addedAt = 1000L
+            )
+        )
+
+        fakeApi.failureResponse = ApiResponse.Failure.Error(
+            Response.error<Any>(403, "Forbidden".toResponseBody())
+        )
+
+        val result = repository.syncCloudWithLocal()
+        assertThat(result).isInstanceOf(Outcome.Failure::class.java)
+        assertThat(sessionManager.sessionState.value).isEqualTo(SessionState.Guest)
+
+        val favorites = db.favoriteDao().getAllFavorites().first()
+        assertThat(favorites.map { it.movieId }).containsExactly(101)
+    }
+
+    @Test
     fun syncCloudWithLocal_whenGuest_returnsSuccessWithoutMakingNetworkCalls() = runTest {
         sessionManager.sessionStateFlow.value = SessionState.Guest
 
