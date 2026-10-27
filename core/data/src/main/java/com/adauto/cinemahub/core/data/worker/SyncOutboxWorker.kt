@@ -139,8 +139,9 @@ class SyncOutboxWorker @Suppress("LongParameterList") @AssistedInject constructo
     ): Result? {
         val statusCode = response.statusCode.code
         return when {
-            statusCode == HTTP_UNAUTHORIZED -> {
+            statusCode == HTTP_UNAUTHORIZED || statusCode == HTTP_FORBIDDEN -> {
                 sessionManager.clearSession()
+                syncEventBus.consumeFailures()
                 WorkManager.getInstance(applicationContext).cancelUniqueWork(WORK_NAME)
                 Result.failure()
             }
@@ -199,14 +200,7 @@ class SyncOutboxWorker @Suppress("LongParameterList") @AssistedInject constructo
         errorMsg: String
     ): Result? {
         val rowsAffected = database.withTransaction {
-            val deleted = database.syncOutboxDao().deleteVersion(item.movieId, item.target, capturedVersion)
-            if (deleted == 1 && item.desired) {
-                when (item.target) {
-                    TARGET_FAVORITE -> database.favoriteDao().delete(item.movieId)
-                    TARGET_WATCHLIST -> database.watchlistDao().delete(item.movieId)
-                }
-            }
-            deleted
+            database.syncOutboxDao().deleteVersion(item.movieId, item.target, capturedVersion)
         }
 
         if (rowsAffected == 1) {
@@ -240,6 +234,7 @@ class SyncOutboxWorker @Suppress("LongParameterList") @AssistedInject constructo
         private const val DEFAULT_RETRY_AFTER_SECONDS = 5L
         private const val MAX_IN_PASS_DELAY_MS = 10_000L
         private const val HTTP_UNAUTHORIZED = 401
+        private const val HTTP_FORBIDDEN = 403
         private const val HTTP_NOT_FOUND = 404
         private const val HTTP_TOO_MANY_REQUESTS = 429
         private const val HTTP_SERVER_ERROR_MIN = 500

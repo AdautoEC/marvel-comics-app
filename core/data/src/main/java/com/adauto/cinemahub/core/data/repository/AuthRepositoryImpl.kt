@@ -9,6 +9,7 @@ import androidx.work.WorkManager
 import com.adauto.cinemahub.core.data.mapper.toDomainError
 import com.adauto.cinemahub.core.data.storage.AuthPreferencesStorage
 import com.adauto.cinemahub.core.data.sync.SyncCoordinator
+import com.adauto.cinemahub.core.data.sync.SyncEventBus
 import com.adauto.cinemahub.core.data.worker.SyncOutboxWorker
 import com.adauto.cinemahub.core.database.CinemaHubDatabase
 import com.adauto.cinemahub.core.database.entity.SyncOutboxEntity
@@ -33,7 +34,7 @@ import javax.inject.Singleton
 import okhttp3.HttpUrl
 
 private const val TMDB_AUTH_HOST = "www.themoviedb.org"
-private const val TMDB_REDIRECT_URI = "cinemahub://auth"
+private const val TMDB_REDIRECT_URI = "cinemahub://tmdb-callback"
 private const val TMDB_AVATAR_BASE_URL = "https://image.tmdb.org/t/p/w200"
 private const val TOKEN_TTL_MS = 10 * 60 * 1000L // 10 minutes
 private const val LOGOUT_FLUSH_TIMEOUT_MS = 3_000L
@@ -48,6 +49,7 @@ class AuthRepositoryImpl(
     private val authPreferences: AuthPreferencesStorage,
     private val workManager: WorkManager,
     private val syncCoordinator: SyncCoordinator,
+    private val syncEventBus: SyncEventBus? = null,
     private val timeProvider: () -> Long = { System.currentTimeMillis() }
 ) : AuthRepository {
 
@@ -59,7 +61,8 @@ class AuthRepositoryImpl(
         moviesRepository: MoviesRepository,
         authPreferences: AuthPreferencesStorage,
         workManager: WorkManager,
-        syncCoordinator: SyncCoordinator
+        syncCoordinator: SyncCoordinator,
+        syncEventBus: SyncEventBus
     ) : this(
         api = api,
         sessionManager = sessionManager,
@@ -68,6 +71,7 @@ class AuthRepositoryImpl(
         authPreferences = authPreferences,
         workManager = workManager,
         syncCoordinator = syncCoordinator,
+        syncEventBus = syncEventBus,
         timeProvider = { System.currentTimeMillis() }
     )
 
@@ -242,6 +246,7 @@ class AuthRepositoryImpl(
         }
 
         sessionManager.clearSession()
+        syncEventBus?.consumeFailures()
         database.withTransaction {
             database.syncOutboxDao().clearAll()
             database.favoriteDao().clearAll()

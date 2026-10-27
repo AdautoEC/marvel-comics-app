@@ -353,7 +353,7 @@ class SyncOutboxWorkerTest {
     }
 
     @Test
-    fun whenTransientError_maxAttemptsReached_treatsAsPermanentFailure_andRollsBackDesiredTrue() = runTest {
+    fun whenTransientError_maxAttemptsReached_treatsAsPermanentFailure_andPreservesLocalFavorite() = runTest {
         database.favoriteDao().upsert(
             FavoriteMovieEntity(
                 movieId = TEST_MOVIE_ID,
@@ -383,7 +383,7 @@ class SyncOutboxWorkerTest {
             val result = worker.doWork()
 
             assertThat(result).isEqualTo(Result.success())
-            assertThat(database.favoriteDao().isFavorite(TEST_MOVIE_ID).first()).isFalse()
+            assertThat(database.favoriteDao().isFavorite(TEST_MOVIE_ID).first()).isTrue()
             assertThat(database.syncOutboxDao().getAllPending()).isEmpty()
 
             val event = awaitItem()
@@ -394,7 +394,7 @@ class SyncOutboxWorkerTest {
     }
 
     @Test
-    fun whenPermanentFailure_desiredTrueWatchlist_rollsBackWatchlistEntry() = runTest {
+    fun whenPermanentFailure_desiredTrueWatchlist_preservesLocalWatchlistEntry() = runTest {
         database.watchlistDao().upsert(
             WatchlistMovieEntity(
                 movieId = TEST_MOVIE_ID,
@@ -424,7 +424,7 @@ class SyncOutboxWorkerTest {
             val result = worker.doWork()
 
             assertThat(result).isEqualTo(Result.success())
-            assertThat(database.watchlistDao().isInWatchlist(TEST_MOVIE_ID).first()).isFalse()
+            assertThat(database.watchlistDao().isInWatchlist(TEST_MOVIE_ID).first()).isTrue()
             assertThat(database.syncOutboxDao().getAllPending()).isEmpty()
 
             val event = awaitItem()
@@ -589,6 +589,41 @@ class SyncOutboxWorkerTest {
         }
     }
 
+    @Test
+    fun whenHttp403_clearsSessionCancelsWorkRetainsOutboxAndReturnsFailure() = runTest {
+        database.favoriteDao().upsert(
+            FavoriteMovieEntity(
+                movieId = TEST_MOVIE_ID,
+                title = "Iron Man",
+                posterPath = null,
+                voteAverage = 8.0,
+                releaseDate = "2008-05-02",
+                addedAt = 1000L
+            )
+        )
+        database.syncOutboxDao().upsert(
+            SyncOutboxEntity(
+                movieId = TEST_MOVIE_ID,
+                target = SyncOutboxWorker.TARGET_FAVORITE,
+                desired = true,
+                attempts = 0,
+                version = TEST_VERSION
+            )
+        )
+        val errorResponse = Response.error<TmdbActionResponseDto>(
+            HTTP_FORBIDDEN,
+            "Forbidden".toResponseBody()
+        )
+        fakeApi.failureResponse = ApiResponse.Failure.Error(errorResponse)
+
+        val result = worker.doWork()
+
+        assertThat(result).isEqualTo(Result.failure())
+        assertThat(fakeSessionManager.sessionState.value).isEqualTo(SessionState.Guest)
+        assertThat(database.favoriteDao().isFavorite(TEST_MOVIE_ID).first()).isTrue()
+        assertThat(database.syncOutboxDao().getAllPending()).hasSize(1)
+    }
+
     private companion object {
         const val TEST_ACCOUNT_ID = 42
         const val TEST_SESSION_ID = "session_42"
@@ -596,6 +631,7 @@ class SyncOutboxWorkerTest {
         const val TEST_VERSION = 1
         const val HTTP_BAD_REQUEST = 400
         const val HTTP_UNAUTHORIZED = 401
+        const val HTTP_FORBIDDEN = 403
         const val HTTP_NOT_FOUND = 404
         const val HTTP_TOO_MANY_REQUESTS = 429
         const val HTTP_INTERNAL_SERVER_ERROR = 500
