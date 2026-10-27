@@ -19,6 +19,7 @@ class DataStoreEncryptedKeyStorage(
 ) : EncryptedKeyStorage {
 
     companion object {
+        // Key name preserved intentionally to maintain backward compatibility with stored encrypted blobs.
         val KEY_BLOB = stringPreferencesKey("marvel_keys_blob")
     }
 

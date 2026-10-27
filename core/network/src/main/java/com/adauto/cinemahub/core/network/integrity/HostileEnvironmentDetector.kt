@@ -5,7 +5,6 @@ import android.content.pm.ApplicationInfo
 import android.os.Build
 import android.os.Debug
 import java.io.File
-import javax.inject.Inject
 
 class HostileEnvironmentDetector(
     private val debuggerChecker: () -> Boolean = { Debug.isDebuggerConnected() },

@@ -7,7 +7,6 @@ import androidx.paging.RemoteMediator
 import androidx.room.withTransaction
 import com.adauto.cinemahub.core.data.mapper.toMovieEntity
 import com.adauto.cinemahub.core.database.CinemaHubDatabase
-import com.adauto.cinemahub.core.database.entity.MovieEntity
 import com.adauto.cinemahub.core.database.entity.MovieRemoteKeysEntity
 import com.adauto.cinemahub.core.database.model.MovieWithUserData
 import com.adauto.cinemahub.core.model.TmdbApiException

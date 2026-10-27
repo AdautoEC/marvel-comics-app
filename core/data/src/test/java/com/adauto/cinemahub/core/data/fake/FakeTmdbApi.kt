@@ -62,7 +62,7 @@ class FakeTmdbApi : TmdbApi {
         )
     }
 
-    override suspend fun getMarvelMovies(
+    override suspend fun getStudioMovies(
         companyId: Int,
         page: Int,
         language: String

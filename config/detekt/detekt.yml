@@ -11,6 +11,14 @@ naming:
     ignoreAnnotated: ['Composable', 'Test']
 
 style:
+  UnusedPrivateMember:
+    active: true
+    ignoreAnnotated: ['Preview']
+  UnusedImports:
+    active: true
+  UnusedParameter:
+    active: true
+    ignoreAnnotated: ['Composable']
   MagicNumber:
     active: true
     ignoreAnnotated: ['Composable']

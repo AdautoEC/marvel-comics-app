@@ -1,8 +1,5 @@
 package com.adauto.cinemahub.core.data.repository
 
-import androidx.paging.PagingConfig
-import androidx.paging.PagingSource
-import androidx.paging.PagingState
 import androidx.paging.testing.asPagingSourceFactory
 import androidx.paging.testing.asSnapshot
 import androidx.work.WorkManager
@@ -103,7 +100,7 @@ class MoviesRepositoryReactiveTest {
     }
 
     @Test
-    fun movies_mapsProjectionDirectlyWithoutQueryingFavoriteOrWatchedDaos() = runTest {
+    fun movies_mapsProjectionDirectlyWithoutQueryingFavoriteOrWatchlistDaos() = runTest {
         val testData = listOf(
             createMovieWithUserData(id = 1, position = 0, isFavorite = false, isInWatchlist = false),
             createMovieWithUserData(id = 2, position = 1, isFavorite = true, isInWatchlist = false),

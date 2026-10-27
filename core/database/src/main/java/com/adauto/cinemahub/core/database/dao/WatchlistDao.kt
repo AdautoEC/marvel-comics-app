@@ -12,15 +12,15 @@ interface WatchlistDao {
     @Upsert
     suspend fun upsert(watchlistMovie: WatchlistMovieEntity)
 
-    @Query("DELETE FROM watched_movies WHERE movieId = :movieId")
+    @Query("DELETE FROM watchlist_movies WHERE movieId = :movieId")
     suspend fun delete(movieId: Int)
 
-    @Query("SELECT EXISTS(SELECT 1 FROM watched_movies WHERE movieId = :movieId)")
+    @Query("SELECT EXISTS(SELECT 1 FROM watchlist_movies WHERE movieId = :movieId)")
     fun isInWatchlist(movieId: Int): Flow<Boolean>
 
-    @Query("SELECT * FROM watched_movies ORDER BY watchedAt DESC")
+    @Query("SELECT * FROM watchlist_movies ORDER BY addedAt DESC")
     fun getAllWatchlist(): Flow<List<WatchlistMovieEntity>>
 
-    @Query("DELETE FROM watched_movies")
+    @Query("DELETE FROM watchlist_movies")
     suspend fun clearAll()
 }

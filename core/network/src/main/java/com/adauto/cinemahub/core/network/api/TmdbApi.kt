@@ -35,7 +35,7 @@ interface TmdbApi {
     ): ApiResponse<TmdbPageResponseDto<TmdbMovieDto>>
 
     @GET("3/discover/movie")
-    suspend fun getMarvelMovies(
+    suspend fun getStudioMovies(
         @Query("with_companies") companyId: Int = 420,
         @Query("page") page: Int = 1,
         @Query("language") language: String = "pt-BR"

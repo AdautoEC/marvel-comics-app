@@ -1,7 +1,6 @@
 package com.adauto.cinemahub.core.network.integrity
 
 import android.content.Context
-import com.google.firebase.appcheck.AppCheckProviderFactory
 import com.google.firebase.appcheck.FirebaseAppCheck
 import com.google.firebase.appcheck.debug.DebugAppCheckProviderFactory
 import com.google.firebase.appcheck.playintegrity.PlayIntegrityAppCheckProviderFactory

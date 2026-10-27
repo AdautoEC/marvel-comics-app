@@ -138,8 +138,8 @@ class SyncOutboxDaoTest {
         val favIds = syncOutboxDao.getPendingMovieIds(SyncOutboxEntity.TARGET_FAVORITE)
         assertThat(favIds).containsExactly(1, 3)
 
-        val watchedIds = syncOutboxDao.getPendingMovieIds(SyncOutboxEntity.TARGET_WATCHLIST)
-        assertThat(watchedIds).containsExactly(2)
+        val watchlistIds = syncOutboxDao.getPendingMovieIds(SyncOutboxEntity.TARGET_WATCHLIST)
+        assertThat(watchlistIds).containsExactly(2)
     }
 
     @Test

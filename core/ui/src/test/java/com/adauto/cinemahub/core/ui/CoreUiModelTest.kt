@@ -20,8 +20,9 @@ class CoreUiModelTest {
     }
 
     @Test
-    fun marvelColors_haveExpectedValues() {
+    fun brandColors_haveExpectedValues() {
         assertThat(CinemaHubColors.CinemaHubRed).isNotNull()
+        assertThat(CinemaHubColors.BrandRed).isEqualTo(CinemaHubColors.CinemaHubRed)
         assertThat(CinemaHubColors.SurfaceDark).isNotNull()
         assertThat(CinemaHubColors.SurfaceCard).isNotNull()
     }

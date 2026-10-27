@@ -27,8 +27,8 @@
     <string name="movie_rating_desc">Nota</string>
     <string name="movie_favorite_add">Favoritar</string>
     <string name="movie_favorite_remove">Remover dos favoritos</string>
-    <string name="movie_watched_badge">Na Lista</string>
-    <string name="movie_watched_desc">Na lista Quero Assistir</string>
+    <string name="movie_watchlist_badge">Na Lista</string>
+    <string name="movie_watchlist_desc">Na lista Quero Assistir</string>
     <string name="card_view_details">Ver detalhes de %1$s</string>
     <string name="search_placeholder">Buscar em %1$s…</string>
     <string name="search_empty_message">Nenhum filme encontrado para \"%1$s\" em %2$s.</string>

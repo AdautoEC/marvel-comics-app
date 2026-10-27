@@ -46,7 +46,7 @@ import com.adauto.cinemahub.core.model.MovieSummary
 import com.adauto.cinemahub.core.ui.R
 
 internal val StarYellowColor = Color(0xFFFFD700)
-internal val WatchedGreenColor = Color(0xFF2E7D32)
+internal val WatchlistGreenColor = Color(0xFF2E7D32)
 internal val RatingPillBackground = Color.Black.copy(alpha = 0.7f)
 internal val FavoritePillBackground = Color.Black.copy(alpha = 0.5f)
 
@@ -190,7 +190,7 @@ fun MovieCard(
                         Spacer(modifier = Modifier.width(6.dp))
                         Surface(
                             shape = RoundedCornerShape(4.dp),
-                            color = WatchedGreenColor
+                            color = WatchlistGreenColor
                         ) {
                             Row(
                                 modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp),
@@ -198,13 +198,13 @@ fun MovieCard(
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.Check,
-                                    contentDescription = stringResource(R.string.movie_watched_desc),
+                                    contentDescription = stringResource(R.string.movie_watchlist_desc),
                                     tint = Color.White,
                                     modifier = Modifier.size(10.dp)
                                 )
                                 Spacer(modifier = Modifier.width(2.dp))
                                 Text(
-                                    text = stringResource(R.string.movie_watched_badge),
+                                    text = stringResource(R.string.movie_watchlist_badge),
                                     color = Color.White,
                                     fontSize = 9.sp,
                                     fontWeight = FontWeight.Bold

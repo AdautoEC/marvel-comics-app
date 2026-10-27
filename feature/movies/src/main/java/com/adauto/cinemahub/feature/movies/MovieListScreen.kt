@@ -1,6 +1,5 @@
 package com.adauto.cinemahub.feature.movies
 
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -12,7 +11,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -20,9 +18,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.tooling.preview.PreviewParameter
 import androidx.paging.LoadState
 import androidx.paging.LoadStates
@@ -35,7 +31,6 @@ import com.adauto.cinemahub.core.designsystem.theme.CinemaHubTheme
 import com.adauto.cinemahub.core.model.MovieCategory
 import com.adauto.cinemahub.core.model.MovieSummary
 import com.adauto.cinemahub.core.model.SessionState
-import com.adauto.cinemahub.core.ui.component.AttributionFooter
 import com.adauto.cinemahub.core.ui.component.OfflineBanner
 import com.adauto.cinemahub.feature.movies.component.CategoryFilterTabs
 import com.adauto.cinemahub.feature.movies.component.GuestSyncBanner
