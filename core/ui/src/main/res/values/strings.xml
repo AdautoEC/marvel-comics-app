@@ -53,6 +53,7 @@
     <string name="error_generic">Ocorreu um erro</string>
     <string name="error_retry">Tentar novamente</string>
     <string name="error_tmdb_connect_failed">Não foi possível iniciar a conexão com o TMDB.</string>
+    <string name="sync_failure_message">Algumas alterações não puderam ser sincronizadas com o TMDB.</string>
     <string name="error_session_expired">Sessão expirada. Faça login novamente.</string>
     <string name="error_rate_limited">Muitas requisições. Aguarde um momento.</string>
     <string name="error_no_connection">Sem conexão com a internet.</string>

@@ -1,21 +1,20 @@
 package com.adauto.cinemahub.core.data.usecase
 
-import com.adauto.cinemahub.core.data.repository.MoviesRepository
 import com.adauto.cinemahub.core.model.MovieDetail
 import com.adauto.cinemahub.core.model.MovieSummary
-import io.mockk.coVerify
-import io.mockk.mockk
+import com.adauto.cinemahub.core.testing.repository.FakeMoviesRepository
+import com.google.common.truth.Truth.assertThat
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.test.runTest
 import org.junit.Test
 
 class ToggleWatchlistUseCaseTest {
 
-    private val moviesRepository: MoviesRepository = mockk(relaxed = true)
+    private val moviesRepository = FakeMoviesRepository()
     private val useCase = ToggleWatchlistUseCase(moviesRepository)
 
     @Test
-    fun invoke_withMovieSummary_callsRepositoryToggleWatchlist() = runTest {
+    fun invoke_withMovieSummary_togglesWatchlistStateInRepository() = runTest {
         val summary = MovieSummary(
             id = 42,
             title = "Inception",
@@ -27,11 +26,12 @@ class ToggleWatchlistUseCaseTest {
 
         useCase(summary)
 
-        coVerify(exactly = 1) { moviesRepository.toggleWatchlist(summary) }
+        assertThat(moviesRepository.toggledWatchlist).containsExactly(summary)
+        assertThat(moviesRepository.watchlist.value).containsExactly(summary.copy(isInWatchlist = true))
     }
 
     @Test
-    fun invoke_withMovieDetail_mapsToSummaryAndCallsRepository() = runTest {
+    fun invoke_withMovieDetail_mapsToSummaryAndTogglesWatchlistStateInRepository() = runTest {
         val detail = MovieDetail(
             id = 42,
             title = "Inception",
@@ -59,6 +59,7 @@ class ToggleWatchlistUseCaseTest {
             isInWatchlist = false
         )
 
-        coVerify(exactly = 1) { moviesRepository.toggleWatchlist(expectedSummary) }
+        assertThat(moviesRepository.toggledWatchlist).containsExactly(expectedSummary)
+        assertThat(moviesRepository.watchlist.value).containsExactly(expectedSummary.copy(isInWatchlist = true))
     }
 }

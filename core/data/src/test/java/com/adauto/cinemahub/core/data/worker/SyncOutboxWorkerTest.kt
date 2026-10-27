@@ -1,226 +1,274 @@
 package com.adauto.cinemahub.core.data.worker
 
 import android.content.Context
-import androidx.room.withTransaction
+import android.util.Log
+import androidx.room.Room
+import androidx.test.core.app.ApplicationProvider
+import androidx.work.Configuration
+import androidx.work.ExistingWorkPolicy
+import androidx.work.ListenableWorker
 import androidx.work.ListenableWorker.Result
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkInfo
 import androidx.work.WorkManager
+import androidx.work.WorkerFactory
 import androidx.work.WorkerParameters
+import androidx.work.testing.SynchronousExecutor
+import androidx.work.testing.TestListenableWorkerBuilder
+import androidx.work.testing.WorkManagerTestInitHelper
 import app.cash.turbine.test
-import com.adauto.cinemahub.core.data.storage.SyncFailureStorage
+import com.adauto.cinemahub.core.data.fake.FakeSessionManager
+import com.adauto.cinemahub.core.data.fake.FakeSyncFailureStorage
+import com.adauto.cinemahub.core.data.fake.FakeTmdbApi
 import com.adauto.cinemahub.core.data.sync.SyncCoordinator
 import com.adauto.cinemahub.core.data.sync.SyncEventBus
 import com.adauto.cinemahub.core.database.CinemaHubDatabase
-import com.adauto.cinemahub.core.database.dao.FavoriteDao
-import com.adauto.cinemahub.core.database.dao.SyncOutboxDao
-import com.adauto.cinemahub.core.database.dao.WatchlistDao
+import com.adauto.cinemahub.core.database.entity.FavoriteMovieEntity
 import com.adauto.cinemahub.core.database.entity.SyncOutboxEntity
+import com.adauto.cinemahub.core.database.entity.WatchlistMovieEntity
 import com.adauto.cinemahub.core.model.SessionState
-import com.adauto.cinemahub.core.network.api.TmdbApi
 import com.adauto.cinemahub.core.network.model.TmdbActionResponseDto
-import com.adauto.cinemahub.core.network.model.TmdbFavoriteRequestDto
-import com.adauto.cinemahub.core.network.model.TmdbWatchlistRequestDto
-import com.adauto.cinemahub.core.network.security.session.SessionManager
 import com.google.common.truth.Truth.assertThat
 import com.skydoves.sandwich.ApiResponse
-import io.mockk.coEvery
-import io.mockk.coVerify
-import io.mockk.every
-import io.mockk.mockk
-import io.mockk.mockkStatic
-import io.mockk.unmockkAll
-import io.mockk.verify
-import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import okhttp3.ResponseBody.Companion.toResponseBody
 import org.junit.After
 import org.junit.Before
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
 import retrofit2.Response
 import java.io.IOException
 
+@RunWith(RobolectricTestRunner::class)
 class SyncOutboxWorkerTest {
 
-    private val context: Context = mockk(relaxed = true)
-    private val workerParams: WorkerParameters = mockk(relaxed = true)
-    private val database: CinemaHubDatabase = mockk()
-    private val syncOutboxDao: SyncOutboxDao = mockk(relaxed = true)
-    private val favoriteDao: FavoriteDao = mockk(relaxed = true)
-    private val watchlistDao: WatchlistDao = mockk(relaxed = true)
-    private val api: TmdbApi = mockk()
-    private val sessionManager: SessionManager = mockk(relaxed = true)
-    private val workManager: WorkManager = mockk(relaxed = true)
-
-    private val sessionStateFlow = MutableStateFlow<SessionState>(
-        SessionState.Authenticated(
-            accountId = TEST_ACCOUNT_ID,
-            username = "tony",
-            sessionId = TEST_SESSION_ID
-        )
-    )
-
-    private val syncCoordinator = SyncCoordinator()
-    private val syncFailureStorage: SyncFailureStorage = mockk(relaxed = true)
-    private val syncEventBus = SyncEventBus(storage = syncFailureStorage)
-
+    private lateinit var context: Context
+    private lateinit var database: CinemaHubDatabase
+    private lateinit var fakeApi: FakeTmdbApi
+    private lateinit var fakeSessionManager: FakeSessionManager
+    private lateinit var fakeFailureStorage: FakeSyncFailureStorage
+    private lateinit var syncCoordinator: SyncCoordinator
+    private lateinit var syncEventBus: SyncEventBus
     private lateinit var worker: SyncOutboxWorker
 
     @Before
     fun setUp() {
-        mockkStatic("androidx.room.RoomDatabaseKt")
-        mockkStatic(WorkManager::class)
+        context = ApplicationProvider.getApplicationContext()
+        val config = Configuration.Builder()
+            .setMinimumLoggingLevel(Log.DEBUG)
+            .setExecutor(SynchronousExecutor())
+            .build()
+        WorkManagerTestInitHelper.initializeTestWorkManager(context, config)
 
-        every { context.applicationContext } returns context
-        every { WorkManager.getInstance(any()) } returns workManager
-        every { database.syncOutboxDao() } returns syncOutboxDao
-        every { database.favoriteDao() } returns favoriteDao
-        every { database.watchlistDao() } returns watchlistDao
-        every { sessionManager.sessionState } returns sessionStateFlow
-        coEvery { sessionManager.awaitInitialSession() } coAnswers { sessionStateFlow.value }
+        database = Room.inMemoryDatabaseBuilder(context, CinemaHubDatabase::class.java)
+            .allowMainThreadQueries()
+            .build()
 
-        coEvery { database.withTransaction(any<suspend () -> Any>()) } coAnswers {
-            @Suppress("UNCHECKED_CAST")
-            val block = it.invocation.args[1] as suspend () -> Any
-            block()
+        fakeApi = FakeTmdbApi()
+        fakeSessionManager = FakeSessionManager(
+            SessionState.Authenticated(
+                accountId = TEST_ACCOUNT_ID,
+                username = "tony",
+                sessionId = TEST_SESSION_ID
+            )
+        )
+        fakeFailureStorage = FakeSyncFailureStorage()
+        syncCoordinator = SyncCoordinator()
+        syncEventBus = SyncEventBus(storage = fakeFailureStorage)
+
+        val workerFactory = object : WorkerFactory() {
+            override fun createWorker(
+                appContext: Context,
+                workerClassName: String,
+                workerParameters: WorkerParameters
+            ): ListenableWorker {
+                return SyncOutboxWorker(
+                    appContext = appContext,
+                    workerParams = workerParameters,
+                    database = database,
+                    syncCoordinator = syncCoordinator,
+                    syncEventBus = syncEventBus,
+                    api = fakeApi,
+                    sessionManager = fakeSessionManager
+                )
+            }
         }
 
-        worker = SyncOutboxWorker(
-            appContext = context,
-            workerParams = workerParams,
-            database = database,
-            syncCoordinator = syncCoordinator,
-            syncEventBus = syncEventBus,
-            api = api,
-            sessionManager = sessionManager
-        )
+        worker = TestListenableWorkerBuilder<SyncOutboxWorker>(context)
+            .setWorkerFactory(workerFactory)
+            .build()
     }
 
     @After
     fun tearDown() {
-        unmockkAll()
+        database.close()
+        WorkManagerTestInitHelper.closeWorkDatabase()
     }
 
     @Test
     fun whenSessionIsGuest_returnsSuccessWithoutProcessingOutbox() = runTest {
-        sessionStateFlow.value = SessionState.Guest
+        fakeSessionManager.setSessionState(SessionState.Guest)
+        database.syncOutboxDao().upsert(
+            SyncOutboxEntity(
+                movieId = TEST_MOVIE_ID,
+                target = SyncOutboxWorker.TARGET_FAVORITE,
+                desired = true,
+                version = TEST_VERSION
+            )
+        )
 
         val result = worker.doWork()
 
         assertThat(result).isEqualTo(Result.success())
-        coVerify(exactly = 0) { syncOutboxDao.getAllPending() }
-        coVerify(exactly = 0) { api.markAsFavorite(any(), any(), any()) }
+        assertThat(database.syncOutboxDao().getAllPending()).hasSize(1)
+        assertThat(fakeApi.favorites).isEmpty()
     }
 
     @Test
     fun whenNoPendingItems_returnsSuccess() = runTest {
-        coEvery { syncOutboxDao.getAllPending() } returns emptyList()
-
         val result = worker.doWork()
 
         assertThat(result).isEqualTo(Result.success())
-        coVerify(exactly = 0) { api.markAsFavorite(any(), any(), any()) }
+        assertThat(database.syncOutboxDao().getAllPending()).isEmpty()
+        assertThat(fakeApi.favorites).isEmpty()
     }
 
     @Test
-    fun whenSyncFavoriteSucceeds_callsApiAndDeletesVersion() = runTest {
-        val outboxItem = SyncOutboxEntity(
-            movieId = TEST_MOVIE_ID,
-            target = SyncOutboxWorker.TARGET_FAVORITE,
-            desired = true,
-            version = TEST_VERSION
-        )
-        coEvery { syncOutboxDao.getAllPending() } returns listOf(outboxItem) andThen emptyList()
-        coEvery {
-            api.markAsFavorite(
-                accountId = TEST_ACCOUNT_ID,
-                sessionId = TEST_SESSION_ID,
-                body = TmdbFavoriteRequestDto(media_id = TEST_MOVIE_ID, favorite = true)
+    fun whenSyncFavoriteSucceeds_updatesRemoteAndDeletesOutboxRow() = runTest {
+        database.syncOutboxDao().upsert(
+            SyncOutboxEntity(
+                movieId = TEST_MOVIE_ID,
+                target = SyncOutboxWorker.TARGET_FAVORITE,
+                desired = true,
+                version = TEST_VERSION
             )
-        } returns ApiResponse.Success(TmdbActionResponseDto(status_code = 1, status_message = "Success"))
-        coEvery { syncOutboxDao.deleteVersion(TEST_MOVIE_ID, SyncOutboxWorker.TARGET_FAVORITE, TEST_VERSION) } returns 1
+        )
 
         val result = worker.doWork()
 
         assertThat(result).isEqualTo(Result.success())
-        coVerify(exactly = 1) {
-            api.markAsFavorite(
-                accountId = TEST_ACCOUNT_ID,
-                sessionId = TEST_SESSION_ID,
-                body = TmdbFavoriteRequestDto(media_id = TEST_MOVIE_ID, favorite = true)
-            )
-        }
-        coVerify(exactly = 1) {
-            syncOutboxDao.deleteVersion(TEST_MOVIE_ID, SyncOutboxWorker.TARGET_FAVORITE, TEST_VERSION)
-        }
+        assertThat(fakeApi.favorites.map { it.id }).containsExactly(TEST_MOVIE_ID)
+        assertThat(database.syncOutboxDao().getAllPending()).isEmpty()
     }
 
     @Test
-    fun whenSyncWatchlistSucceeds_callsApiAndDeletesVersion() = runTest {
-        val outboxItem = SyncOutboxEntity(
-            movieId = TEST_MOVIE_ID,
-            target = SyncOutboxWorker.TARGET_WATCHLIST,
-            desired = false,
-            version = TEST_VERSION
+    fun whenSyncWatchlistSucceeds_updatesRemoteAndDeletesOutboxRow() = runTest {
+        fakeApi.watchlist.add(
+            com.adauto.cinemahub.core.network.model.TmdbMovieDto(id = TEST_MOVIE_ID, title = "Movie")
         )
-        coEvery { syncOutboxDao.getAllPending() } returns listOf(outboxItem) andThen emptyList()
-        coEvery {
-            api.addToWatchlist(
-                accountId = TEST_ACCOUNT_ID,
-                sessionId = TEST_SESSION_ID,
-                body = TmdbWatchlistRequestDto(media_id = TEST_MOVIE_ID, watchlist = false)
+        database.syncOutboxDao().upsert(
+            SyncOutboxEntity(
+                movieId = TEST_MOVIE_ID,
+                target = SyncOutboxWorker.TARGET_WATCHLIST,
+                desired = false,
+                version = TEST_VERSION
             )
-        } returns ApiResponse.Success(TmdbActionResponseDto(status_code = 1, status_message = "Success"))
-        coEvery {
-            syncOutboxDao.deleteVersion(TEST_MOVIE_ID, SyncOutboxWorker.TARGET_WATCHLIST, TEST_VERSION)
-        } returns 1
+        )
 
         val result = worker.doWork()
 
         assertThat(result).isEqualTo(Result.success())
-        coVerify(exactly = 1) {
-            api.addToWatchlist(
-                accountId = TEST_ACCOUNT_ID,
-                sessionId = TEST_SESSION_ID,
-                body = TmdbWatchlistRequestDto(media_id = TEST_MOVIE_ID, watchlist = false)
-            )
-        }
-        coVerify(exactly = 1) {
-            syncOutboxDao.deleteVersion(TEST_MOVIE_ID, SyncOutboxWorker.TARGET_WATCHLIST, TEST_VERSION)
-        }
+        assertThat(fakeApi.watchlist).isEmpty()
+        assertThat(database.syncOutboxDao().getAllPending()).isEmpty()
     }
 
     @Test
-    fun whenVersionMismatchOnSuccess_deleteVersionAffectsZeroRows() = runTest {
-        val outboxItem = SyncOutboxEntity(
-            movieId = TEST_MOVIE_ID,
-            target = SyncOutboxWorker.TARGET_FAVORITE,
-            desired = true,
-            version = TEST_VERSION
+    fun whenNewerMutationArrivesDuringPush_preservesNewerOutboxRowAndSyncsDesiredState() = runTest {
+        database.syncOutboxDao().upsert(
+            SyncOutboxEntity(
+                movieId = TEST_MOVIE_ID,
+                target = SyncOutboxWorker.TARGET_FAVORITE,
+                desired = true,
+                version = 1
+            )
         )
-        coEvery { syncOutboxDao.getAllPending() } returns listOf(outboxItem) andThen emptyList()
-        coEvery {
-            api.markAsFavorite(any(), any(), any())
-        } returns ApiResponse.Success(TmdbActionResponseDto(status_code = 1, status_message = "Success"))
-        coEvery { syncOutboxDao.deleteVersion(TEST_MOVIE_ID, SyncOutboxWorker.TARGET_FAVORITE, TEST_VERSION) } returns 0
+
+        var callCount = 0
+        fakeApi.markAsFavoriteHandler = { _, _, body ->
+            callCount++
+            if (callCount == 1) {
+                // Simulate concurrent user toggle (version 1 -> 2, desired = false) while push 1 is in flight
+                database.syncOutboxDao().upsert(
+                    SyncOutboxEntity(
+                        movieId = TEST_MOVIE_ID,
+                        target = SyncOutboxWorker.TARGET_FAVORITE,
+                        desired = false,
+                        version = 2
+                    )
+                )
+            }
+            if (body.favorite) {
+                fakeApi.favorites.add(
+                    com.adauto.cinemahub.core.network.model.TmdbMovieDto(id = body.media_id, title = "M")
+                )
+            } else {
+                fakeApi.favorites.removeAll { it.id == body.media_id }
+            }
+            ApiResponse.Success(TmdbActionResponseDto(status_code = 1, status_message = "Success"))
+        }
 
         val result = worker.doWork()
 
         assertThat(result).isEqualTo(Result.success())
-        coVerify(exactly = 1) {
-            syncOutboxDao.deleteVersion(TEST_MOVIE_ID, SyncOutboxWorker.TARGET_FAVORITE, TEST_VERSION)
+        // Because deleteVersion(1) did not erase version 2, the worker loop drained version 2 in the next pass!
+        assertThat(callCount).isEqualTo(2)
+        assertThat(fakeApi.favorites).isEmpty()
+        assertThat(database.syncOutboxDao().getAllPending()).isEmpty()
+    }
+
+    @Test
+    fun whenVersionMismatchOnSinglePass_newerVersionIsNotDeletedByOldVersionDelete() = runTest {
+        database.syncOutboxDao().upsert(
+            SyncOutboxEntity(
+                movieId = TEST_MOVIE_ID,
+                target = SyncOutboxWorker.TARGET_FAVORITE,
+                desired = true,
+                version = 1
+            )
+        )
+
+        var callCount = 0
+        fakeApi.markAsFavoriteHandler = { _, _, _ ->
+            callCount++
+            if (callCount == 1) {
+                // User modifies row to version 2 while version 1 is in flight
+                database.syncOutboxDao().upsert(
+                    SyncOutboxEntity(
+                        movieId = TEST_MOVIE_ID,
+                        target = SyncOutboxWorker.TARGET_FAVORITE,
+                        desired = false,
+                        version = 2
+                    )
+                )
+                ApiResponse.Success(TmdbActionResponseDto(status_code = 1, status_message = "Success"))
+            } else {
+                // On second pass, simulate transient network failure so version 2 remains in DB to inspect
+                ApiResponse.Failure.Exception(IOException("Offline on second pass"))
+            }
         }
+
+        val result = worker.doWork()
+
+        assertThat(result).isEqualTo(Result.retry())
+        val remaining = database.syncOutboxDao().getAllPending().single()
+        assertThat(remaining.version).isEqualTo(2)
+        assertThat(remaining.desired).isFalse()
+        assertThat(remaining.attempts).isEqualTo(1)
     }
 
     @Test
     fun handleHttpError_429WithRetryAfterUnder10s_delaysCooperativelyAndRetriesInPass() = runTest {
-        val outboxItem = SyncOutboxEntity(
-            movieId = TEST_MOVIE_ID,
-            target = SyncOutboxWorker.TARGET_FAVORITE,
-            desired = true,
-            attempts = 0,
-            version = TEST_VERSION
+        database.syncOutboxDao().upsert(
+            SyncOutboxEntity(
+                movieId = TEST_MOVIE_ID,
+                target = SyncOutboxWorker.TARGET_FAVORITE,
+                desired = true,
+                attempts = 0,
+                version = TEST_VERSION
+            )
         )
-        coEvery { syncOutboxDao.getAllPending() } returns listOf(outboxItem) andThen emptyList()
-        coEvery { syncOutboxDao.deleteVersion(TEST_MOVIE_ID, SyncOutboxWorker.TARGET_FAVORITE, TEST_VERSION) } returns 1
 
         val headers = okhttp3.Headers.Builder().add("Retry-After", "2").build()
         val rawResponse = okhttp3.Response.Builder()
@@ -236,9 +284,7 @@ class SyncOutboxWorkerTest {
         )
 
         var callCount = 0
-        coEvery {
-            api.markAsFavorite(any(), any(), any())
-        } answers {
+        fakeApi.markAsFavoriteHandler = { _, _, _ ->
             callCount++
             if (callCount == 1) {
                 ApiResponse.Failure.Error(errorResponse)
@@ -255,131 +301,132 @@ class SyncOutboxWorkerTest {
         assertThat(result).isEqualTo(Result.success())
         assertThat(delayedMs).isEqualTo(2000L)
         assertThat(callCount).isEqualTo(2)
-        coVerify(exactly = 1) {
-            syncOutboxDao.deleteVersion(TEST_MOVIE_ID, SyncOutboxWorker.TARGET_FAVORITE, TEST_VERSION)
-        }
+        assertThat(database.syncOutboxDao().getAllPending()).isEmpty()
     }
 
     @Test
     fun whenTransientError_http429_incrementsAttemptsAndRetries() = runTest {
-        val outboxItem = SyncOutboxEntity(
-            movieId = TEST_MOVIE_ID,
-            target = SyncOutboxWorker.TARGET_FAVORITE,
-            desired = true,
-            attempts = 0,
-            version = TEST_VERSION
+        database.syncOutboxDao().upsert(
+            SyncOutboxEntity(
+                movieId = TEST_MOVIE_ID,
+                target = SyncOutboxWorker.TARGET_FAVORITE,
+                desired = true,
+                attempts = 0,
+                version = TEST_VERSION
+            )
         )
-        coEvery { syncOutboxDao.getAllPending() } returns listOf(outboxItem)
         val errorResponse = Response.error<TmdbActionResponseDto>(
             HTTP_TOO_MANY_REQUESTS,
             "Rate limited".toResponseBody()
         )
-        coEvery {
-            api.markAsFavorite(any(), any(), any())
-        } returns ApiResponse.Failure.Error(errorResponse)
-        coEvery {
-            syncOutboxDao.updateFailure(TEST_MOVIE_ID, SyncOutboxWorker.TARGET_FAVORITE, TEST_VERSION, any())
-        } returns 1
+        fakeApi.failureResponse = ApiResponse.Failure.Error(errorResponse)
+        worker.delayProvider = { }
 
         val result = worker.doWork()
 
         assertThat(result).isEqualTo(Result.retry())
-        coVerify(exactly = 1) {
-            syncOutboxDao.updateFailure(TEST_MOVIE_ID, SyncOutboxWorker.TARGET_FAVORITE, TEST_VERSION, any())
-        }
-        coVerify(exactly = 0) {
-            syncOutboxDao.deleteVersion(any(), any(), any())
-        }
+        val updated = database.syncOutboxDao().find(TEST_MOVIE_ID, SyncOutboxWorker.TARGET_FAVORITE)
+        assertThat(updated).isNotNull()
+        assertThat(updated?.attempts).isEqualTo(1)
+        assertThat(updated?.lastError).isNotEmpty()
     }
 
     @Test
     fun whenTransientError_ioException_incrementsAttemptsAndRetries() = runTest {
-        val outboxItem = SyncOutboxEntity(
-            movieId = TEST_MOVIE_ID,
-            target = SyncOutboxWorker.TARGET_FAVORITE,
-            desired = true,
-            attempts = 1,
-            version = TEST_VERSION
+        database.syncOutboxDao().upsert(
+            SyncOutboxEntity(
+                movieId = TEST_MOVIE_ID,
+                target = SyncOutboxWorker.TARGET_FAVORITE,
+                desired = true,
+                attempts = 1,
+                version = TEST_VERSION
+            )
         )
-        coEvery { syncOutboxDao.getAllPending() } returns listOf(outboxItem)
-        coEvery {
-            api.markAsFavorite(any(), any(), any())
-        } returns ApiResponse.Failure.Exception(IOException("Network failure"))
-        coEvery {
-            syncOutboxDao.updateFailure(TEST_MOVIE_ID, SyncOutboxWorker.TARGET_FAVORITE, TEST_VERSION, any())
-        } returns 1
+        fakeApi.failureResponse = ApiResponse.Failure.Exception(IOException("Network failure"))
 
         val result = worker.doWork()
 
         assertThat(result).isEqualTo(Result.retry())
-        coVerify(exactly = 1) {
-            syncOutboxDao.updateFailure(TEST_MOVIE_ID, SyncOutboxWorker.TARGET_FAVORITE, TEST_VERSION, any())
-        }
+        val updated = database.syncOutboxDao().find(TEST_MOVIE_ID, SyncOutboxWorker.TARGET_FAVORITE)
+        assertThat(updated?.attempts).isEqualTo(2)
+        assertThat(updated?.lastError).isEqualTo("Network failure")
     }
 
     @Test
     fun whenTransientError_maxAttemptsReached_treatsAsPermanentFailure_andRollsBackDesiredTrue() = runTest {
-        val outboxItem = SyncOutboxEntity(
-            movieId = TEST_MOVIE_ID,
-            target = SyncOutboxWorker.TARGET_FAVORITE,
-            desired = true,
-            attempts = SyncOutboxWorker.MAX_ATTEMPTS - 1,
-            version = TEST_VERSION
+        database.favoriteDao().upsert(
+            FavoriteMovieEntity(
+                movieId = TEST_MOVIE_ID,
+                title = "Iron Man",
+                posterPath = null,
+                voteAverage = 8.0,
+                releaseDate = "2008-05-02",
+                addedAt = 1000L
+            )
         )
-        coEvery { syncOutboxDao.getAllPending() } returns listOf(outboxItem) andThen emptyList()
+        database.syncOutboxDao().upsert(
+            SyncOutboxEntity(
+                movieId = TEST_MOVIE_ID,
+                target = SyncOutboxWorker.TARGET_FAVORITE,
+                desired = true,
+                attempts = SyncOutboxWorker.MAX_ATTEMPTS - 1,
+                version = TEST_VERSION
+            )
+        )
         val errorResponse = Response.error<TmdbActionResponseDto>(
             HTTP_INTERNAL_SERVER_ERROR,
             "Internal Server Error".toResponseBody()
         )
-        coEvery {
-            api.markAsFavorite(any(), any(), any())
-        } returns ApiResponse.Failure.Error(errorResponse)
-        coEvery { syncOutboxDao.deleteVersion(TEST_MOVIE_ID, SyncOutboxWorker.TARGET_FAVORITE, TEST_VERSION) } returns 1
+        fakeApi.failureResponse = ApiResponse.Failure.Error(errorResponse)
 
         syncEventBus.events.test {
             val result = worker.doWork()
 
             assertThat(result).isEqualTo(Result.success())
-            coVerify(exactly = 1) {
-                favoriteDao.delete(TEST_MOVIE_ID)
-            }
+            assertThat(database.favoriteDao().isFavorite(TEST_MOVIE_ID).first()).isFalse()
+            assertThat(database.syncOutboxDao().getAllPending()).isEmpty()
+
             val event = awaitItem()
             assertThat(event.movieId).isEqualTo(TEST_MOVIE_ID)
             assertThat(event.target).isEqualTo(SyncOutboxWorker.TARGET_FAVORITE)
-            coVerify(exactly = 1) {
-                syncFailureStorage.recordFailure(match { it.movieId == TEST_MOVIE_ID }, any())
-            }
+            assertThat(fakeFailureStorage.unconsumedFailures.first()).hasSize(1)
         }
     }
 
     @Test
     fun whenPermanentFailure_desiredTrueWatchlist_rollsBackWatchlistEntry() = runTest {
-        val outboxItem = SyncOutboxEntity(
-            movieId = TEST_MOVIE_ID,
-            target = SyncOutboxWorker.TARGET_WATCHLIST,
-            desired = true,
-            attempts = 0,
-            version = TEST_VERSION
+        database.watchlistDao().upsert(
+            WatchlistMovieEntity(
+                movieId = TEST_MOVIE_ID,
+                title = "Interstellar",
+                posterPath = null,
+                voteAverage = 8.7,
+                releaseDate = "2014-11-05",
+                addedAt = 2000L
+            )
         )
-        coEvery { syncOutboxDao.getAllPending() } returns listOf(outboxItem) andThen emptyList()
+        database.syncOutboxDao().upsert(
+            SyncOutboxEntity(
+                movieId = TEST_MOVIE_ID,
+                target = SyncOutboxWorker.TARGET_WATCHLIST,
+                desired = true,
+                attempts = 0,
+                version = TEST_VERSION
+            )
+        )
         val errorResponse = Response.error<TmdbActionResponseDto>(
             HTTP_BAD_REQUEST,
             "Bad Request".toResponseBody()
         )
-        coEvery {
-            api.addToWatchlist(any(), any(), any())
-        } returns ApiResponse.Failure.Error(errorResponse)
-        coEvery {
-            syncOutboxDao.deleteVersion(TEST_MOVIE_ID, SyncOutboxWorker.TARGET_WATCHLIST, TEST_VERSION)
-        } returns 1
+        fakeApi.failureResponse = ApiResponse.Failure.Error(errorResponse)
 
         syncEventBus.events.test {
             val result = worker.doWork()
 
             assertThat(result).isEqualTo(Result.success())
-            coVerify(exactly = 1) {
-                watchlistDao.delete(TEST_MOVIE_ID)
-            }
+            assertThat(database.watchlistDao().isInWatchlist(TEST_MOVIE_ID).first()).isFalse()
+            assertThat(database.syncOutboxDao().getAllPending()).isEmpty()
+
             val event = awaitItem()
             assertThat(event.movieId).isEqualTo(TEST_MOVIE_ID)
             assertThat(event.target).isEqualTo(SyncOutboxWorker.TARGET_WATCHLIST)
@@ -388,152 +435,156 @@ class SyncOutboxWorkerTest {
 
     @Test
     fun whenPermanentFailure_desiredFalse_requestsPullInsteadOfDeletingLocal() = runTest {
-        val outboxItem = SyncOutboxEntity(
-            movieId = TEST_MOVIE_ID,
-            target = SyncOutboxWorker.TARGET_FAVORITE,
-            desired = false,
-            attempts = 0,
-            version = TEST_VERSION
+        database.syncOutboxDao().upsert(
+            SyncOutboxEntity(
+                movieId = TEST_MOVIE_ID,
+                target = SyncOutboxWorker.TARGET_FAVORITE,
+                desired = false,
+                attempts = 0,
+                version = TEST_VERSION
+            )
         )
-        coEvery { syncOutboxDao.getAllPending() } returns listOf(outboxItem) andThen emptyList()
         val errorResponse = Response.error<TmdbActionResponseDto>(
             HTTP_BAD_REQUEST,
             "Bad Request".toResponseBody()
         )
-        coEvery {
-            api.markAsFavorite(any(), any(), any())
-        } returns ApiResponse.Failure.Error(errorResponse)
-        coEvery { syncOutboxDao.deleteVersion(TEST_MOVIE_ID, SyncOutboxWorker.TARGET_FAVORITE, TEST_VERSION) } returns 1
+        fakeApi.failureResponse = ApiResponse.Failure.Error(errorResponse)
 
         syncCoordinator.pullRequests.test {
             val result = worker.doWork()
 
             assertThat(result).isEqualTo(Result.success())
-            coVerify(exactly = 0) { favoriteDao.delete(any()) }
+            assertThat(database.syncOutboxDao().getAllPending()).isEmpty()
             assertThat(awaitItem()).isEqualTo(Unit)
         }
     }
 
     @Test
-    fun whenPermanentFailure_versionMismatch_doesNotRollbackOrEmitEvent() = runTest {
-        val outboxItem = SyncOutboxEntity(
-            movieId = TEST_MOVIE_ID,
-            target = SyncOutboxWorker.TARGET_FAVORITE,
-            desired = true,
-            attempts = 0,
-            version = TEST_VERSION
+    fun whenPermanentFailure_versionMismatch_doesNotRollbackNewerMutation() = runTest {
+        database.favoriteDao().upsert(
+            FavoriteMovieEntity(
+                movieId = TEST_MOVIE_ID,
+                title = "Iron Man",
+                posterPath = null,
+                voteAverage = 8.0,
+                releaseDate = "2008-05-02",
+                addedAt = 1000L
+            )
         )
-        coEvery { syncOutboxDao.getAllPending() } returns listOf(outboxItem) andThen emptyList()
-        val errorResponse = Response.error<TmdbActionResponseDto>(
-            HTTP_BAD_REQUEST,
-            "Bad Request".toResponseBody()
+        database.syncOutboxDao().upsert(
+            SyncOutboxEntity(
+                movieId = TEST_MOVIE_ID,
+                target = SyncOutboxWorker.TARGET_FAVORITE,
+                desired = true,
+                attempts = 0,
+                version = 1
+            )
         )
-        coEvery {
-            api.markAsFavorite(any(), any(), any())
-        } returns ApiResponse.Failure.Error(errorResponse)
-        // Optimistic lock mismatch: 0 rows deleted
-        coEvery { syncOutboxDao.deleteVersion(TEST_MOVIE_ID, SyncOutboxWorker.TARGET_FAVORITE, TEST_VERSION) } returns 0
+
+        var callCount = 0
+        fakeApi.markAsFavoriteHandler = { _, _, _ ->
+            callCount++
+            if (callCount == 1) {
+                // Concurrent user mutation bumps version to 2 while HTTP 400 is returning
+                database.syncOutboxDao().upsert(
+                    SyncOutboxEntity(
+                        movieId = TEST_MOVIE_ID,
+                        target = SyncOutboxWorker.TARGET_FAVORITE,
+                        desired = true,
+                        attempts = 0,
+                        version = 2
+                    )
+                )
+                val errorResponse = Response.error<TmdbActionResponseDto>(
+                    HTTP_BAD_REQUEST,
+                    "Bad Request".toResponseBody()
+                )
+                ApiResponse.Failure.Error(errorResponse)
+            } else {
+                ApiResponse.Success(TmdbActionResponseDto(status_code = 1, status_message = "Success"))
+            }
+        }
 
         syncEventBus.events.test {
             val result = worker.doWork()
 
             assertThat(result).isEqualTo(Result.success())
-            coVerify(exactly = 0) { favoriteDao.delete(any()) }
+            // Favorite was NOT rolled back because version 1 mismatch was detected, and version 2 succeeded!
+            assertThat(database.favoriteDao().isFavorite(TEST_MOVIE_ID).first()).isTrue()
             expectNoEvents()
         }
     }
 
     @Test
-    fun whenMultiplePendingBatchesArriveConcurrently_drainsAllBatchesBeforeTerminating() = runTest {
-        val firstItem = SyncOutboxEntity(
-            movieId = 101,
-            target = SyncOutboxWorker.TARGET_FAVORITE,
-            desired = true,
-            version = 1
-        )
-        val secondItem = SyncOutboxEntity(
-            movieId = 202,
-            target = SyncOutboxWorker.TARGET_WATCHLIST,
-            desired = true,
-            version = 1
-        )
-
-        // First loop returns firstItem, second loop returns secondItem (added in-flight), third loop empty
-        coEvery { syncOutboxDao.getAllPending() } returnsMany listOf(
-            listOf(firstItem),
-            listOf(secondItem),
-            emptyList()
-        )
-        coEvery { api.markAsFavorite(any(), any(), any()) } returns ApiResponse.Success(
-            TmdbActionResponseDto(status_code = 1, status_message = "Success")
-        )
-        coEvery { api.addToWatchlist(any(), any(), any()) } returns ApiResponse.Success(
-            TmdbActionResponseDto(status_code = 1, status_message = "Success")
-        )
-        coEvery { syncOutboxDao.deleteVersion(any(), any(), any()) } returns 1
-
-        val result = worker.doWork()
-
-        assertThat(result).isEqualTo(Result.success())
-        coVerify(exactly = 1) { syncOutboxDao.deleteVersion(101, SyncOutboxWorker.TARGET_FAVORITE, 1) }
-        coVerify(exactly = 1) { syncOutboxDao.deleteVersion(202, SyncOutboxWorker.TARGET_WATCHLIST, 1) }
-        coVerify(exactly = 3) { syncOutboxDao.getAllPending() }
-    }
-
-    @Test
     fun whenHttp401_clearsSessionCancelsWorkRetainsOutboxAndReturnsFailure() = runTest {
-        val outboxItem = SyncOutboxEntity(
-            movieId = TEST_MOVIE_ID,
-            target = SyncOutboxWorker.TARGET_FAVORITE,
-            desired = true,
-            attempts = 0,
-            version = TEST_VERSION
+        val workManager = WorkManager.getInstance(context)
+        val delayedRequest = OneTimeWorkRequestBuilder<SyncOutboxWorker>()
+            .setInitialDelay(1, java.util.concurrent.TimeUnit.HOURS)
+            .build()
+        workManager.enqueueUniqueWork(
+            SyncOutboxWorker.WORK_NAME,
+            ExistingWorkPolicy.REPLACE,
+            delayedRequest
+        ).result.get()
+
+        database.syncOutboxDao().upsert(
+            SyncOutboxEntity(
+                movieId = TEST_MOVIE_ID,
+                target = SyncOutboxWorker.TARGET_FAVORITE,
+                desired = true,
+                attempts = 0,
+                version = TEST_VERSION
+            )
         )
-        coEvery { syncOutboxDao.getAllPending() } returns listOf(outboxItem)
         val errorResponse = Response.error<TmdbActionResponseDto>(
             HTTP_UNAUTHORIZED,
             "Unauthorized".toResponseBody()
         )
-        coEvery {
-            api.markAsFavorite(any(), any(), any())
-        } returns ApiResponse.Failure.Error(errorResponse)
+        fakeApi.failureResponse = ApiResponse.Failure.Error(errorResponse)
 
         val result = worker.doWork()
 
         assertThat(result).isEqualTo(Result.failure())
-        coVerify(exactly = 1) { sessionManager.clearSession() }
-        verify(exactly = 1) { workManager.cancelUniqueWork(SyncOutboxWorker.WORK_NAME) }
-        coVerify(exactly = 0) { syncOutboxDao.deleteVersion(any(), any(), any()) }
-        coVerify(exactly = 0) { favoriteDao.delete(any()) }
+        assertThat(fakeSessionManager.sessionState.value).isEqualTo(SessionState.Guest)
+        assertThat(database.syncOutboxDao().getAllPending()).hasSize(1)
+
+        val workInfos = workManager.getWorkInfosForUniqueWork(SyncOutboxWorker.WORK_NAME).get()
+        assertThat(workInfos.map { it.state }).containsExactly(WorkInfo.State.CANCELLED)
     }
 
     @Test
     fun whenHttp404_deletesOutboxRowWithoutRollback() = runTest {
-        val outboxItem = SyncOutboxEntity(
-            movieId = TEST_MOVIE_ID,
-            target = SyncOutboxWorker.TARGET_FAVORITE,
-            desired = true,
-            attempts = 0,
-            version = TEST_VERSION
+        database.favoriteDao().upsert(
+            FavoriteMovieEntity(
+                movieId = TEST_MOVIE_ID,
+                title = "Iron Man",
+                posterPath = null,
+                voteAverage = 8.0,
+                releaseDate = "2008-05-02",
+                addedAt = 1000L
+            )
         )
-        coEvery { syncOutboxDao.getAllPending() } returns listOf(outboxItem) andThen emptyList()
+        database.syncOutboxDao().upsert(
+            SyncOutboxEntity(
+                movieId = TEST_MOVIE_ID,
+                target = SyncOutboxWorker.TARGET_FAVORITE,
+                desired = true,
+                attempts = 0,
+                version = TEST_VERSION
+            )
+        )
         val errorResponse = Response.error<TmdbActionResponseDto>(
             HTTP_NOT_FOUND,
             "Not Found".toResponseBody()
         )
-        coEvery {
-            api.markAsFavorite(any(), any(), any())
-        } returns ApiResponse.Failure.Error(errorResponse)
-        coEvery { syncOutboxDao.deleteVersion(TEST_MOVIE_ID, SyncOutboxWorker.TARGET_FAVORITE, TEST_VERSION) } returns 1
+        fakeApi.failureResponse = ApiResponse.Failure.Error(errorResponse)
 
         syncEventBus.events.test {
             val result = worker.doWork()
 
             assertThat(result).isEqualTo(Result.success())
-            coVerify(exactly = 1) {
-                syncOutboxDao.deleteVersion(TEST_MOVIE_ID, SyncOutboxWorker.TARGET_FAVORITE, TEST_VERSION)
-            }
-            coVerify(exactly = 0) { favoriteDao.delete(any()) }
+            assertThat(database.syncOutboxDao().getAllPending()).isEmpty()
+            assertThat(database.favoriteDao().isFavorite(TEST_MOVIE_ID).first()).isTrue()
             expectNoEvents()
         }
     }

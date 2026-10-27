@@ -3,9 +3,12 @@ package com.adauto.cinemahub.core.data.repository
 import android.content.Context
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
-import androidx.work.ExistingWorkPolicy
-import androidx.work.OneTimeWorkRequest
+import androidx.work.Configuration
+import androidx.work.WorkInfo
 import androidx.work.WorkManager
+import androidx.work.testing.SynchronousExecutor
+import androidx.work.testing.WorkManagerTestInitHelper
+import com.adauto.cinemahub.core.data.fake.FakeSessionManager
 import com.adauto.cinemahub.core.data.fake.FakeTmdbApi
 import com.adauto.cinemahub.core.data.sync.SyncCoordinator
 import com.adauto.cinemahub.core.data.worker.SyncOutboxWorker
@@ -18,14 +21,8 @@ import com.adauto.cinemahub.core.model.Outcome
 import com.adauto.cinemahub.core.model.SessionState
 import com.adauto.cinemahub.core.network.model.TmdbMovieDetailDto
 import com.adauto.cinemahub.core.network.model.TmdbMovieDto
-import com.adauto.cinemahub.core.network.security.session.SessionManager
 import com.google.common.truth.Truth.assertThat
 import com.skydoves.sandwich.ApiResponse
-import io.mockk.coEvery
-import io.mockk.every
-import io.mockk.mockk
-import io.mockk.verify
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.runTest
@@ -45,12 +42,11 @@ class MoviesRepositoryImplTest {
 
     private lateinit var db: CinemaHubDatabase
     private lateinit var fakeApi: FakeTmdbApi
-    private val sessionManager: SessionManager = mockk(relaxed = true)
-    private val workManager: WorkManager = mockk(relaxed = true)
+    private lateinit var sessionManager: FakeSessionManager
+    private lateinit var workManager: WorkManager
     private val syncCoordinator = SyncCoordinator()
     private val fixedClock = Clock.fixed(Instant.ofEpochMilli(1_700_000_000_000L), ZoneOffset.UTC)
 
-    private val sessionStateFlow = MutableStateFlow<SessionState>(SessionState.Guest)
     private lateinit var repository: MoviesRepositoryImpl
 
     private val sampleMovie = MovieSummary(
@@ -65,14 +61,18 @@ class MoviesRepositoryImplTest {
     @Before
     fun setUp() {
         val context = ApplicationProvider.getApplicationContext<Context>()
+        val config = Configuration.Builder()
+            .setExecutor(SynchronousExecutor())
+            .build()
+        WorkManagerTestInitHelper.initializeTestWorkManager(context, config)
+        workManager = WorkManager.getInstance(context)
+
         db = Room.inMemoryDatabaseBuilder(context, CinemaHubDatabase::class.java)
             .allowMainThreadQueries()
             .build()
 
         fakeApi = FakeTmdbApi()
-
-        every { sessionManager.sessionState } returns sessionStateFlow
-        coEvery { sessionManager.awaitInitialSession() } coAnswers { sessionStateFlow.value }
+        sessionManager = FakeSessionManager()
 
         repository = MoviesRepositoryImpl(
             api = fakeApi,
@@ -88,13 +88,14 @@ class MoviesRepositoryImplTest {
     @After
     fun tearDown() {
         db.close()
+        WorkManagerTestInitHelper.closeWorkDatabase()
     }
 
     // region Gated Atomic Toggles Tests
 
     @Test
     fun toggleFavorite_whenGuest_updatesOnlyLocalTable_andDoesNotWriteOutbox() = runTest {
-        sessionStateFlow.value = SessionState.Guest
+        sessionManager.sessionStateFlow.value = SessionState.Guest
 
         repository.toggleFavorite(sampleMovie)
 
@@ -107,7 +108,7 @@ class MoviesRepositoryImplTest {
 
     @Test
     fun toggleFavorite_whenAuthenticated_updatesLocalTable_andWritesOutbox() = runTest {
-        sessionStateFlow.value = SessionState.Authenticated(
+        sessionManager.sessionStateFlow.value = SessionState.Authenticated(
             accountId = 42,
             username = "adauto",
             sessionId = "sess_123"
@@ -123,18 +124,14 @@ class MoviesRepositoryImplTest {
         assertThat(outbox?.desired).isTrue()
         assertThat(outbox?.version).isEqualTo(1)
 
-        verify {
-            workManager.enqueueUniqueWork(
-                SyncOutboxWorker.WORK_NAME,
-                ExistingWorkPolicy.APPEND_OR_REPLACE,
-                any<OneTimeWorkRequest>()
-            )
-        }
+        val workInfos = workManager.getWorkInfosForUniqueWork(SyncOutboxWorker.WORK_NAME).get()
+        assertThat(workInfos).isNotEmpty()
+        assertThat(workInfos.first().state).isIn(listOf(WorkInfo.State.ENQUEUED, WorkInfo.State.RUNNING))
     }
 
     @Test
     fun toggleFavorite_twice_addsThenRemoves_fromLocalDatabase() = runTest {
-        sessionStateFlow.value = SessionState.Guest
+        sessionManager.sessionStateFlow.value = SessionState.Guest
 
         repository.toggleFavorite(sampleMovie)
         assertThat(db.favoriteDao().isFavorite(101).first()).isTrue()
@@ -146,7 +143,7 @@ class MoviesRepositoryImplTest {
 
     @Test
     fun toggleWatchlist_whenGuest_updatesOnlyLocalTable_andDoesNotWriteOutbox() = runTest {
-        sessionStateFlow.value = SessionState.Guest
+        sessionManager.sessionStateFlow.value = SessionState.Guest
 
         repository.toggleWatchlist(sampleMovie)
 
@@ -159,7 +156,7 @@ class MoviesRepositoryImplTest {
 
     @Test
     fun toggleWatchlist_whenAuthenticated_updatesLocalTable_andWritesOutbox() = runTest {
-        sessionStateFlow.value = SessionState.Authenticated(
+        sessionManager.sessionStateFlow.value = SessionState.Authenticated(
             accountId = 42,
             username = "adauto",
             sessionId = "sess_123"
@@ -178,7 +175,7 @@ class MoviesRepositoryImplTest {
 
     @Test
     fun toggleWatchlist_twice_addsThenRemoves_fromLocalDatabase() = runTest {
-        sessionStateFlow.value = SessionState.Guest
+        sessionManager.sessionStateFlow.value = SessionState.Guest
 
         repository.toggleWatchlist(sampleMovie)
         assertThat(db.watchlistDao().isInWatchlist(101).first()).isTrue()
@@ -194,7 +191,7 @@ class MoviesRepositoryImplTest {
 
     @Test
     fun syncCloudWithLocal_insertsRemoteMovies_intoLocalDatabase() = runTest {
-        sessionStateFlow.value = SessionState.Authenticated(
+        sessionManager.sessionStateFlow.value = SessionState.Authenticated(
             accountId = 42,
             username = "adauto",
             sessionId = "sess_123"
@@ -214,7 +211,7 @@ class MoviesRepositoryImplTest {
 
     @Test
     fun syncCloudWithLocal_removesObsoleteLocalMovies_notPresentInRemote() = runTest {
-        sessionStateFlow.value = SessionState.Authenticated(
+        sessionManager.sessionStateFlow.value = SessionState.Authenticated(
             accountId = 42,
             username = "adauto",
             sessionId = "sess_123"
@@ -253,7 +250,7 @@ class MoviesRepositoryImplTest {
 
     @Test
     fun pull_preservesLocalFavorite_withPendingOutboxMutation() = runTest {
-        sessionStateFlow.value = SessionState.Authenticated(
+        sessionManager.sessionStateFlow.value = SessionState.Authenticated(
             accountId = 42,
             username = "adauto",
             sessionId = "sess_123"
@@ -275,7 +272,7 @@ class MoviesRepositoryImplTest {
 
     @Test
     fun pull_preservesLocalWatchlist_withPendingOutboxMutation() = runTest {
-        sessionStateFlow.value = SessionState.Authenticated(
+        sessionManager.sessionStateFlow.value = SessionState.Authenticated(
             accountId = 42,
             username = "adauto",
             sessionId = "sess_123"
@@ -294,7 +291,7 @@ class MoviesRepositoryImplTest {
 
     @Test
     fun syncCloudWithLocal_whenApiFails_doesNotCorruptOrWipeLocalDatabase() = runTest {
-        sessionStateFlow.value = SessionState.Authenticated(
+        sessionManager.sessionStateFlow.value = SessionState.Authenticated(
             accountId = 42,
             username = "adauto",
             sessionId = "sess_123"
@@ -324,7 +321,7 @@ class MoviesRepositoryImplTest {
 
     @Test
     fun syncCloudWithLocal_whenGuest_returnsSuccessWithoutMakingNetworkCalls() = runTest {
-        sessionStateFlow.value = SessionState.Guest
+        sessionManager.sessionStateFlow.value = SessionState.Guest
 
         val result = repository.syncCloudWithLocal()
         assertThat(result).isEqualTo(Outcome.Success(Unit))
@@ -406,7 +403,7 @@ class MoviesRepositoryImplTest {
 
     @Test
     fun observeFavorites_and_observeWatchlist_emitUpdatedListsReactively() = runTest {
-        sessionStateFlow.value = SessionState.Guest
+        sessionManager.sessionStateFlow.value = SessionState.Guest
 
         assertThat(repository.observeFavorites().first()).isEmpty()
         assertThat(repository.observeWatchlist().first()).isEmpty()

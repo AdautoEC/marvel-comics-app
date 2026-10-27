@@ -21,6 +21,8 @@ class FakeAuthRepository(
         "https://www.themoviedb.org/authenticate/fake_request_token_123?redirect_to=cinemahub%3A%2F%2Fauth"
     )
     var completeAuthResult: Outcome<AccountProfile> = Outcome.Success(MovieTestData.createAccountProfile())
+    var logoutCallCount: Int = 0
+        private set
 
     fun setSessionState(state: SessionState) {
         _sessionState.value = state
@@ -44,6 +46,7 @@ class FakeAuthRepository(
     }
 
     override suspend fun logout() {
+        logoutCallCount++
         _sessionState.value = SessionState.Guest
     }
 }

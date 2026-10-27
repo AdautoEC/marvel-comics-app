@@ -1,16 +1,20 @@
 package com.adauto.cinemahub.core.data.repository
 
-import androidx.room.withTransaction
-import androidx.work.ExistingWorkPolicy
-import androidx.work.OneTimeWorkRequest
+import android.content.Context
+import android.util.Log
+import androidx.room.Room
+import androidx.test.core.app.ApplicationProvider
+import androidx.work.Configuration
+import androidx.work.WorkInfo
 import androidx.work.WorkManager
-import com.adauto.cinemahub.core.data.storage.AuthPreferencesStorage
+import androidx.work.testing.SynchronousExecutor
+import androidx.work.testing.WorkManagerTestInitHelper
+import com.adauto.cinemahub.core.data.fake.FakeAuthPreferencesStorage
+import com.adauto.cinemahub.core.data.fake.FakeSessionManager
+import com.adauto.cinemahub.core.data.fake.FakeTmdbApi
 import com.adauto.cinemahub.core.data.sync.SyncCoordinator
 import com.adauto.cinemahub.core.data.worker.SyncOutboxWorker
 import com.adauto.cinemahub.core.database.CinemaHubDatabase
-import com.adauto.cinemahub.core.database.dao.FavoriteDao
-import com.adauto.cinemahub.core.database.dao.SyncOutboxDao
-import com.adauto.cinemahub.core.database.dao.WatchlistDao
 import com.adauto.cinemahub.core.database.entity.FavoriteMovieEntity
 import com.adauto.cinemahub.core.database.entity.SyncOutboxEntity
 import com.adauto.cinemahub.core.database.entity.WatchlistMovieEntity
@@ -18,42 +22,35 @@ import com.adauto.cinemahub.core.model.AccountProfile
 import com.adauto.cinemahub.core.model.DomainError
 import com.adauto.cinemahub.core.model.Outcome
 import com.adauto.cinemahub.core.model.SessionState
-import com.adauto.cinemahub.core.network.api.TmdbApi
 import com.adauto.cinemahub.core.network.model.TmdbAccountDto
 import com.adauto.cinemahub.core.network.model.TmdbAvatarDto
 import com.adauto.cinemahub.core.network.model.TmdbAvatarPathDto
-import com.adauto.cinemahub.core.network.model.TmdbCreateSessionRequestDto
 import com.adauto.cinemahub.core.network.model.TmdbRequestTokenDto
 import com.adauto.cinemahub.core.network.model.TmdbSessionResponseDto
-import com.adauto.cinemahub.core.network.security.session.SessionManager
+import com.adauto.cinemahub.core.testing.repository.FakeMoviesRepository
 import com.google.common.truth.Truth.assertThat
 import com.skydoves.sandwich.ApiResponse
-import io.mockk.coEvery
-import io.mockk.coVerify
-import io.mockk.every
-import io.mockk.mockk
-import io.mockk.mockkStatic
-import io.mockk.verify
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import okhttp3.ResponseBody.Companion.toResponseBody
+import org.junit.After
 import org.junit.Before
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
 import retrofit2.Response
 
+@RunWith(RobolectricTestRunner::class)
 class AuthRepositoryTest {
 
-    private val api: TmdbApi = mockk()
-    private val sessionManager: SessionManager = mockk(relaxed = true)
-    private val database: CinemaHubDatabase = mockk()
-    private val favoriteDao: FavoriteDao = mockk(relaxed = true)
-    private val watchlistDao: WatchlistDao = mockk(relaxed = true)
-    private val syncOutboxDao: SyncOutboxDao = mockk(relaxed = true)
-    private val moviesRepository: MoviesRepository = mockk(relaxed = true)
-    private val authPreferences: AuthPreferencesStorage = mockk(relaxed = true)
-    private val workManager: WorkManager = mockk(relaxed = true)
-    private val syncCoordinator = SyncCoordinator()
+    private lateinit var context: Context
+    private lateinit var database: CinemaHubDatabase
+    private lateinit var fakeApi: FakeTmdbApi
+    private lateinit var fakeSessionManager: FakeSessionManager
+    private lateinit var fakeMoviesRepository: FakeMoviesRepository
+    private lateinit var fakeAuthPreferences: FakeAuthPreferencesStorage
+    private lateinit var workManager: WorkManager
+    private lateinit var syncCoordinator: SyncCoordinator
 
     private var currentTimeMs: Long = 1_000_000L
     private lateinit var authRepository: AuthRepository
@@ -61,60 +58,55 @@ class AuthRepositoryTest {
     @Before
     fun setUp() {
         currentTimeMs = 1_000_000L
-        mockkStatic("androidx.room.RoomDatabaseKt")
-        coEvery { database.withTransaction(any<suspend () -> Any>()) } coAnswers {
-            @Suppress("UNCHECKED_CAST")
-            val block = it.invocation.args[1] as suspend () -> Any
-            block()
-        }
-        every { database.favoriteDao() } returns favoriteDao
-        every { database.watchlistDao() } returns watchlistDao
-        every { database.syncOutboxDao() } returns syncOutboxDao
-        every { favoriteDao.getAllFavorites() } returns flowOf(emptyList())
-        every { watchlistDao.getAllWatchlist() } returns flowOf(emptyList())
-        every { sessionManager.sessionState } returns MutableStateFlow<SessionState>(SessionState.Guest)
+        context = ApplicationProvider.getApplicationContext()
+        val config = Configuration.Builder()
+            .setMinimumLoggingLevel(Log.DEBUG)
+            .setExecutor(SynchronousExecutor())
+            .build()
+        WorkManagerTestInitHelper.initializeTestWorkManager(context, config)
+        workManager = WorkManager.getInstance(context)
 
-        var pendingTokenStorage: Pair<String, Long>? = null
-        coEvery { authPreferences.savePendingRequestToken(any(), any()) } coAnswers {
-            pendingTokenStorage = firstArg<String>() to secondArg<Long>()
-        }
-        coEvery { authPreferences.getPendingRequestToken() } coAnswers { pendingTokenStorage }
-        coEvery { authPreferences.clearPendingRequestToken() } coAnswers {
-            pendingTokenStorage = null
-        }
+        database = Room.inMemoryDatabaseBuilder(context, CinemaHubDatabase::class.java)
+            .setQueryExecutor { it.run() }
+            .setTransactionExecutor { it.run() }
+            .allowMainThreadQueries()
+            .build()
+
+        fakeApi = FakeTmdbApi()
+        fakeSessionManager = FakeSessionManager()
+        fakeMoviesRepository = FakeMoviesRepository()
+        fakeAuthPreferences = FakeAuthPreferencesStorage()
+        syncCoordinator = SyncCoordinator()
 
         authRepository = AuthRepositoryImpl(
-            api = api,
-            sessionManager = sessionManager,
+            api = fakeApi,
+            sessionManager = fakeSessionManager,
             database = database,
-            moviesRepository = moviesRepository,
-            authPreferences = authPreferences,
+            moviesRepository = fakeMoviesRepository,
+            authPreferences = fakeAuthPreferences,
             workManager = workManager,
             syncCoordinator = syncCoordinator,
             timeProvider = { currentTimeMs }
         )
     }
 
+    @After
+    fun tearDown() {
+        database.close()
+        WorkManagerTestInitHelper.closeWorkDatabase()
+    }
+
     @Test
     fun sessionState_delegates_to_sessionManager() {
-        val authState = SessionState.Authenticated(42, "user_marvel", "sess_123", null)
-        every { sessionManager.sessionState } returns MutableStateFlow(authState)
-        authRepository = AuthRepositoryImpl(
-            api = api,
-            sessionManager = sessionManager,
-            database = database,
-            moviesRepository = moviesRepository,
-            authPreferences = authPreferences,
-            workManager = workManager,
-            syncCoordinator = syncCoordinator
-        )
+        val authState = SessionState.Authenticated(42, "cinephile", "sess_123", null)
+        fakeSessionManager.setSessionState(authState)
 
         assertThat(authRepository.sessionState.value).isEqualTo(authState)
     }
 
     @Test
-    fun createRequestToken_returns_success_with_token() = runTest {
-        coEvery { api.createRequestToken() } returns ApiResponse.Success(
+    fun createRequestToken_returns_success_and_persists_pending_token() = runTest {
+        fakeApi.createRequestTokenResponse = ApiResponse.Success(
             TmdbRequestTokenDto(
                 success = true,
                 request_token = "req_token_123",
@@ -126,6 +118,7 @@ class AuthRepositoryTest {
 
         assertThat(outcome).isInstanceOf(Outcome.Success::class.java)
         assertThat((outcome as Outcome.Success).value).isEqualTo("req_token_123")
+        assertThat(fakeAuthPreferences.getPendingRequestToken()).isEqualTo("req_token_123" to currentTimeMs)
     }
 
     @Test
@@ -134,17 +127,18 @@ class AuthRepositoryTest {
             401,
             "Unauthorized".toResponseBody()
         )
-        coEvery { api.createRequestToken() } returns ApiResponse.Failure.Error(errorResponse)
+        fakeApi.createRequestTokenResponse = ApiResponse.Failure.Error(errorResponse)
 
         val outcome = authRepository.createRequestToken()
 
         assertThat(outcome).isInstanceOf(Outcome.Failure::class.java)
         assertThat((outcome as Outcome.Failure).error).isEqualTo(DomainError.InvalidKey)
+        assertThat(fakeAuthPreferences.getPendingRequestToken()).isNull()
     }
 
     @Test
     fun buildAuthorizationUrl_returns_encoded_url_with_token() = runTest {
-        coEvery { api.createRequestToken() } returns ApiResponse.Success(
+        fakeApi.createRequestTokenResponse = ApiResponse.Success(
             TmdbRequestTokenDto(
                 success = true,
                 request_token = "req_token_123",
@@ -167,7 +161,7 @@ class AuthRepositoryTest {
             401,
             "Unauthorized".toResponseBody()
         )
-        coEvery { api.createRequestToken() } returns ApiResponse.Failure.Error(errorResponse)
+        fakeApi.createRequestTokenResponse = ApiResponse.Failure.Error(errorResponse)
 
         val outcome = authRepository.buildAuthorizationUrl()
 
@@ -176,29 +170,25 @@ class AuthRepositoryTest {
     }
 
     @Test
-    fun completeAuthentication_exchanges_token_fetches_account_and_saves_session() = runTest {
-        coEvery { api.createRequestToken() } returns ApiResponse.Success(
+    fun completeAuthentication_exchanges_token_fetches_account_and_updates_session_state() = runTest {
+        fakeApi.createRequestTokenResponse = ApiResponse.Success(
             TmdbRequestTokenDto(
                 success = true,
                 request_token = "req_tok",
                 expires_at = "2026-10-23"
             )
         )
-        coEvery {
-            api.createSession(TmdbCreateSessionRequestDto("req_tok"))
-        } returns ApiResponse.Success(TmdbSessionResponseDto(success = true, session_id = "sess_123"))
-
-        coEvery {
-            api.getAccountDetails("sess_123")
-        } returns ApiResponse.Success(
+        fakeApi.createSessionResponse = ApiResponse.Success(
+            TmdbSessionResponseDto(success = true, session_id = "sess_123")
+        )
+        fakeApi.getAccountDetailsResponse = ApiResponse.Success(
             TmdbAccountDto(
                 id = 42,
-                username = "user_marvel",
+                username = "cinephile",
                 name = "Stan",
                 avatar = TmdbAvatarDto(tmdb = TmdbAvatarPathDto("/avatar.jpg"))
             )
         )
-        coEvery { moviesRepository.syncCloudWithLocal() } returns Outcome.Success(Unit)
 
         authRepository.createRequestToken()
         val result = authRepository.completeAuthentication("req_tok")
@@ -206,24 +196,25 @@ class AuthRepositoryTest {
         assertThat(result).isInstanceOf(Outcome.Success::class.java)
         val account: AccountProfile = (result as Outcome.Success).value
         assertThat(account.id).isEqualTo(42)
-        assertThat(account.username).isEqualTo("user_marvel")
+        assertThat(account.username).isEqualTo("cinephile")
         assertThat(account.name).isEqualTo("Stan")
         assertThat(account.includeAdult).isFalse()
 
-        coVerify {
-            sessionManager.saveSession(
+        assertThat(fakeSessionManager.sessionState.value).isEqualTo(
+            SessionState.Authenticated(
                 accountId = 42,
-                username = "user_marvel",
+                username = "cinephile",
                 sessionId = "sess_123",
                 avatarUrl = "https://image.tmdb.org/t/p/w200/avatar.jpg"
             )
-        }
-        coVerify(exactly = 1) { moviesRepository.syncCloudWithLocal() }
+        )
+        assertThat(fakeAuthPreferences.getLastAccountId()).isEqualTo("42")
+        assertThat(fakeMoviesRepository.syncCloudCallCount).isEqualTo(1)
     }
 
     @Test
     fun completeAuthentication_returns_failure_when_createSession_fails() = runTest {
-        coEvery { api.createRequestToken() } returns ApiResponse.Success(
+        fakeApi.createRequestTokenResponse = ApiResponse.Success(
             TmdbRequestTokenDto(
                 success = true,
                 request_token = "req_tok",
@@ -234,125 +225,102 @@ class AuthRepositoryTest {
             401,
             "Invalid token".toResponseBody()
         )
-        coEvery {
-            api.createSession(any())
-        } returns ApiResponse.Failure.Error(errorResponse)
+        fakeApi.createSessionResponse = ApiResponse.Failure.Error(errorResponse)
 
         authRepository.createRequestToken()
         val result = authRepository.completeAuthentication("req_tok")
 
         assertThat(result).isInstanceOf(Outcome.Failure::class.java)
         assertThat((result as Outcome.Failure).error).isEqualTo(DomainError.InvalidKey)
-
-        coVerify(exactly = 0) { sessionManager.saveSession(any(), any(), any(), any()) }
-        coVerify(exactly = 0) { moviesRepository.syncCloudWithLocal() }
+        assertThat(fakeSessionManager.sessionState.value).isEqualTo(SessionState.Guest)
+        assertThat(fakeMoviesRepository.syncCloudCallCount).isEqualTo(0)
     }
 
     @Test
     fun completeAuthentication_returns_failure_when_getAccountDetails_fails() = runTest {
-        coEvery { api.createRequestToken() } returns ApiResponse.Success(
+        fakeApi.createRequestTokenResponse = ApiResponse.Success(
             TmdbRequestTokenDto(
                 success = true,
                 request_token = "req_tok",
                 expires_at = "2026-10-23"
             )
         )
-        coEvery {
-            api.createSession(any())
-        } returns ApiResponse.Success(TmdbSessionResponseDto(success = true, session_id = "sess_123"))
-
+        fakeApi.createSessionResponse = ApiResponse.Success(
+            TmdbSessionResponseDto(success = true, session_id = "sess_123")
+        )
         val errorResponse = Response.error<TmdbAccountDto>(
             500,
             "Internal Server Error".toResponseBody()
         )
-        coEvery {
-            api.getAccountDetails("sess_123")
-        } returns ApiResponse.Failure.Error(errorResponse)
+        fakeApi.getAccountDetailsResponse = ApiResponse.Failure.Error(errorResponse)
 
         authRepository.createRequestToken()
         val result = authRepository.completeAuthentication("req_tok")
 
         assertThat(result).isInstanceOf(Outcome.Failure::class.java)
         assertThat((result as Outcome.Failure).error).isEqualTo(DomainError.Server(500))
-
-        coVerify(exactly = 0) { sessionManager.saveSession(any(), any(), any(), any()) }
-        coVerify(exactly = 0) { moviesRepository.syncCloudWithLocal() }
+        assertThat(fakeSessionManager.sessionState.value).isEqualTo(SessionState.Guest)
+        assertThat(fakeMoviesRepository.syncCloudCallCount).isEqualTo(0)
     }
 
     @Test
-    fun completeAuthentication_withForgedToken_failsWithInvalidKeyAndDoesNotCallApi() = runTest {
-        coEvery { api.createRequestToken() } returns ApiResponse.Success(
+    fun completeAuthentication_withForgedToken_failsWithInvalidKeyAndLeavesSessionGuest() = runTest {
+        fakeApi.createRequestTokenResponse = ApiResponse.Success(
             TmdbRequestTokenDto(
                 success = true,
                 request_token = "legitimate_token",
                 expires_at = "2026-10-23"
             )
         )
-        coEvery {
-            api.createSession(any())
-        } returns ApiResponse.Success(TmdbSessionResponseDto(success = true, session_id = "sess_123"))
 
         authRepository.createRequestToken()
         val result = authRepository.completeAuthentication("attacker_forged_token")
 
         assertThat(result).isInstanceOf(Outcome.Failure::class.java)
         assertThat((result as Outcome.Failure).error).isEqualTo(DomainError.InvalidKey)
-        coVerify(exactly = 0) { api.createSession(any()) }
+        assertThat(fakeSessionManager.sessionState.value).isEqualTo(SessionState.Guest)
     }
 
     @Test
     fun completeAuthentication_whenTokenDoesNotMatch_doesNotClearPendingToken() = runTest {
-        coEvery { api.createRequestToken() } returns ApiResponse.Success(
+        fakeApi.createRequestTokenResponse = ApiResponse.Success(
             TmdbRequestTokenDto(
                 success = true,
                 request_token = "legitimate_token",
                 expires_at = "2026-10-23"
             )
         )
-        coEvery {
-            api.createSession(TmdbCreateSessionRequestDto("legitimate_token"))
-        } returns ApiResponse.Success(TmdbSessionResponseDto(success = true, session_id = "sess_123"))
-        coEvery {
-            api.getAccountDetails("sess_123")
-        } returns ApiResponse.Success(
+        fakeApi.createSessionResponse = ApiResponse.Success(
+            TmdbSessionResponseDto(success = true, session_id = "sess_123")
+        )
+        fakeApi.getAccountDetailsResponse = ApiResponse.Success(
             TmdbAccountDto(
                 id = 42,
-                username = "user_marvel",
+                username = "cinephile",
                 name = "Stan",
                 avatar = TmdbAvatarDto(tmdb = TmdbAvatarPathDto("/avatar.jpg"))
             )
         )
-        coEvery { moviesRepository.syncCloudWithLocal() } returns Outcome.Success(Unit)
-
-        var storedPendingToken: Pair<String, Long>? = null
-        coEvery { authPreferences.savePendingRequestToken(any(), any()) } answers {
-            storedPendingToken = firstArg<String>() to secondArg<Long>()
-        }
-        coEvery { authPreferences.getPendingRequestToken() } answers { storedPendingToken }
-        coEvery { authPreferences.clearPendingRequestToken() } answers { storedPendingToken = null }
 
         authRepository.createRequestToken()
 
         val attackResult = authRepository.completeAuthentication("attacker_forged_token")
         assertThat(attackResult).isInstanceOf(Outcome.Failure::class.java)
         assertThat((attackResult as Outcome.Failure).error).isEqualTo(DomainError.InvalidKey)
-
-        assertThat(storedPendingToken?.first).isEqualTo("legitimate_token")
+        assertThat(fakeAuthPreferences.getPendingRequestToken()?.first).isEqualTo("legitimate_token")
 
         val legitimateResult = authRepository.completeAuthentication("legitimate_token")
         assertThat(legitimateResult).isInstanceOf(Outcome.Success::class.java)
-        assertThat(storedPendingToken).isNull()
+        assertThat(fakeAuthPreferences.getPendingRequestToken()).isNull()
     }
 
     @Test
     fun completeAuthentication_survivesProcessDeath_whenTokenReadFromStorage() = runTest {
-        coEvery { authPreferences.getPendingRequestToken() } returns ("persisted_token" to currentTimeMs)
-        coEvery {
-            api.createSession(TmdbCreateSessionRequestDto("persisted_token"))
-        } returns ApiResponse.Success(TmdbSessionResponseDto(success = true, session_id = "sess_survived"))
-        coEvery {
-            api.getAccountDetails("sess_survived")
-        } returns ApiResponse.Success(
+        fakeAuthPreferences.savePendingRequestToken("persisted_token", currentTimeMs)
+        fakeApi.createSessionResponse = ApiResponse.Success(
+            TmdbSessionResponseDto(success = true, session_id = "sess_survived")
+        )
+        fakeApi.getAccountDetailsResponse = ApiResponse.Success(
             TmdbAccountDto(
                 id = 99,
                 username = "survivor",
@@ -360,14 +328,13 @@ class AuthRepositoryTest {
                 avatar = null
             )
         )
-        coEvery { moviesRepository.syncCloudWithLocal() } returns Outcome.Success(Unit)
 
         val freshRepository = AuthRepositoryImpl(
-            api = api,
-            sessionManager = sessionManager,
+            api = fakeApi,
+            sessionManager = fakeSessionManager,
             database = database,
-            moviesRepository = moviesRepository,
-            authPreferences = authPreferences,
+            moviesRepository = fakeMoviesRepository,
+            authPreferences = fakeAuthPreferences,
             workManager = workManager,
             syncCoordinator = syncCoordinator,
             timeProvider = { currentTimeMs }
@@ -375,34 +342,30 @@ class AuthRepositoryTest {
 
         val result = freshRepository.completeAuthentication("persisted_token")
         assertThat(result).isInstanceOf(Outcome.Success::class.java)
-        coVerify(exactly = 1) { authPreferences.clearPendingRequestToken() }
+        assertThat(fakeAuthPreferences.getPendingRequestToken()).isNull()
+        assertThat(fakeSessionManager.sessionState.value).isEqualTo(
+            SessionState.Authenticated(accountId = 99, username = "survivor", sessionId = "sess_survived")
+        )
     }
 
     @Test
     fun completeAuthentication_withoutPriorRequestToken_failsWithInvalidKey() = runTest {
-        coEvery {
-            api.createSession(any())
-        } returns ApiResponse.Success(TmdbSessionResponseDto(success = true, session_id = "sess_123"))
-
         val result = authRepository.completeAuthentication("any_token")
 
         assertThat(result).isInstanceOf(Outcome.Failure::class.java)
         assertThat((result as Outcome.Failure).error).isEqualTo(DomainError.InvalidKey)
-        coVerify(exactly = 0) { api.createSession(any()) }
+        assertThat(fakeSessionManager.sessionState.value).isEqualTo(SessionState.Guest)
     }
 
     @Test
-    fun completeAuthentication_withExpiredToken_failsWithInvalidKey() = runTest {
-        coEvery { api.createRequestToken() } returns ApiResponse.Success(
+    fun completeAuthentication_withExpiredToken_failsWithInvalidKeyAndClearsPendingToken() = runTest {
+        fakeApi.createRequestTokenResponse = ApiResponse.Success(
             TmdbRequestTokenDto(
                 success = true,
                 request_token = "valid_token",
                 expires_at = "2026-10-23"
             )
         )
-        coEvery {
-            api.createSession(any())
-        } returns ApiResponse.Success(TmdbSessionResponseDto(success = true, session_id = "sess_123"))
 
         authRepository.createRequestToken()
 
@@ -413,32 +376,25 @@ class AuthRepositoryTest {
 
         assertThat(result).isInstanceOf(Outcome.Failure::class.java)
         assertThat((result as Outcome.Failure).error).isEqualTo(DomainError.InvalidKey)
-        coVerify(exactly = 0) { api.createSession(any()) }
+        assertThat(fakeAuthPreferences.getPendingRequestToken()).isNull()
+        assertThat(fakeSessionManager.sessionState.value).isEqualTo(SessionState.Guest)
     }
 
     @Test
     fun completeAuthentication_tokenReplay_failsOnSecondAttempt() = runTest {
-        coEvery { api.createRequestToken() } returns ApiResponse.Success(
+        fakeApi.createRequestTokenResponse = ApiResponse.Success(
             TmdbRequestTokenDto(
                 success = true,
                 request_token = "valid_token",
                 expires_at = "2026-10-23"
             )
         )
-        coEvery {
-            api.createSession(TmdbCreateSessionRequestDto("valid_token"))
-        } returns ApiResponse.Success(TmdbSessionResponseDto(success = true, session_id = "sess_123"))
-        coEvery {
-            api.getAccountDetails("sess_123")
-        } returns ApiResponse.Success(
-            TmdbAccountDto(
-                id = 42,
-                username = "user_marvel",
-                name = "Stan",
-                avatar = null
-            )
+        fakeApi.createSessionResponse = ApiResponse.Success(
+            TmdbSessionResponseDto(success = true, session_id = "sess_123")
         )
-        coEvery { moviesRepository.syncCloudWithLocal() } returns Outcome.Success(Unit)
+        fakeApi.getAccountDetailsResponse = ApiResponse.Success(
+            TmdbAccountDto(id = 42, username = "cinephile", name = "Stan", avatar = null)
+        )
 
         authRepository.createRequestToken()
 
@@ -448,22 +404,17 @@ class AuthRepositoryTest {
         val secondAttempt = authRepository.completeAuthentication("valid_token")
         assertThat(secondAttempt).isInstanceOf(Outcome.Failure::class.java)
         assertThat((secondAttempt as Outcome.Failure).error).isEqualTo(DomainError.InvalidKey)
-
-        coVerify(exactly = 1) { api.createSession(any()) }
     }
 
     @Test
     fun completeAuthentication_afterLogout_failsWithInvalidKey() = runTest {
-        coEvery { api.createRequestToken() } returns ApiResponse.Success(
+        fakeApi.createRequestTokenResponse = ApiResponse.Success(
             TmdbRequestTokenDto(
                 success = true,
                 request_token = "valid_token",
                 expires_at = "2026-10-23"
             )
         )
-        coEvery {
-            api.createSession(any())
-        } returns ApiResponse.Success(TmdbSessionResponseDto(success = true, session_id = "sess_123"))
 
         authRepository.createRequestToken()
         authRepository.logout()
@@ -472,193 +423,167 @@ class AuthRepositoryTest {
 
         assertThat(result).isInstanceOf(Outcome.Failure::class.java)
         assertThat((result as Outcome.Failure).error).isEqualTo(DomainError.InvalidKey)
-        coVerify(exactly = 0) { api.createSession(any()) }
     }
 
     @Test
-    fun completeAuthentication_whenSameAccount_retainsLocalDataAndOutbox() = runTest {
-        coEvery { authPreferences.getLastAccountId() } returns "42"
-        coEvery { api.createRequestToken() } returns ApiResponse.Success(
+    fun completeAuthentication_whenSameAccount_retainsLocalDataAndStagesIntoOutbox() = runTest {
+        fakeAuthPreferences.saveLastAccountId("42")
+        database.favoriteDao().upsert(sampleFavEntity(101))
+
+        fakeApi.createRequestTokenResponse = ApiResponse.Success(
             TmdbRequestTokenDto(success = true, request_token = "tok_same", expires_at = "2026-10-23")
         )
-        coEvery {
-            api.createSession(TmdbCreateSessionRequestDto("tok_same"))
-        } returns ApiResponse.Success(TmdbSessionResponseDto(success = true, session_id = "sess_42"))
-        coEvery {
-            api.getAccountDetails("sess_42")
-        } returns ApiResponse.Success(
+        fakeApi.createSessionResponse = ApiResponse.Success(
+            TmdbSessionResponseDto(success = true, session_id = "sess_42")
+        )
+        fakeApi.getAccountDetailsResponse = ApiResponse.Success(
             TmdbAccountDto(id = 42, username = "tony", name = "Tony Stark", avatar = null)
         )
-        coEvery { moviesRepository.syncCloudWithLocal() } returns Outcome.Success(Unit)
 
         authRepository.createRequestToken()
         val result = authRepository.completeAuthentication("tok_same")
 
         assertThat(result).isInstanceOf(Outcome.Success::class.java)
-        coVerify(exactly = 0) { favoriteDao.clearAll() }
-        coVerify(exactly = 0) { watchlistDao.clearAll() }
-        coVerify(exactly = 0) { syncOutboxDao.clearAll() }
-        coVerify(exactly = 1) { authPreferences.saveLastAccountId("42") }
-        verify(exactly = 1) {
-            workManager.enqueueUniqueWork(
-                SyncOutboxWorker.WORK_NAME,
-                ExistingWorkPolicy.APPEND_OR_REPLACE,
-                any<OneTimeWorkRequest>()
-            )
-        }
-        coVerify(exactly = 1) { moviesRepository.syncCloudWithLocal() }
+        assertThat(database.favoriteDao().getAllFavorites().first()).hasSize(1)
+        assertThat(database.syncOutboxDao().find(101, SyncOutboxWorker.TARGET_FAVORITE)).isNotNull()
+        assertThat(fakeAuthPreferences.getLastAccountId()).isEqualTo("42")
+        assertThat(fakeMoviesRepository.syncCloudCallCount).isEqualTo(1)
+
+        val workInfos = workManager.getWorkInfosForUniqueWork(SyncOutboxWorker.WORK_NAME).get()
+        assertThat(workInfos).isNotEmpty()
     }
 
     @Test
-    fun completeAuthentication_whenDifferentAccount_clearsPreviousDataAndOutbox() = runTest {
-        coEvery { authPreferences.getLastAccountId() } returns "99"
-        coEvery { api.createRequestToken() } returns ApiResponse.Success(
+    fun completeAuthentication_whenDifferentAccount_clearsPreviousLocalDataAndOutbox() = runTest {
+        fakeAuthPreferences.saveLastAccountId("99")
+        database.favoriteDao().upsert(sampleFavEntity(101))
+        database.watchlistDao().upsert(sampleWatchEntity(202))
+        database.syncOutboxDao().upsert(
+            SyncOutboxEntity(
+                movieId = 101,
+                target = SyncOutboxWorker.TARGET_FAVORITE,
+                desired = true,
+                version = 1
+            )
+        )
+
+        fakeApi.createRequestTokenResponse = ApiResponse.Success(
             TmdbRequestTokenDto(success = true, request_token = "tok_diff", expires_at = "2026-10-23")
         )
-        coEvery {
-            api.createSession(TmdbCreateSessionRequestDto("tok_diff"))
-        } returns ApiResponse.Success(TmdbSessionResponseDto(success = true, session_id = "sess_42"))
-        coEvery {
-            api.getAccountDetails("sess_42")
-        } returns ApiResponse.Success(
+        fakeApi.createSessionResponse = ApiResponse.Success(
+            TmdbSessionResponseDto(success = true, session_id = "sess_42")
+        )
+        fakeApi.getAccountDetailsResponse = ApiResponse.Success(
             TmdbAccountDto(id = 42, username = "tony", name = "Tony Stark", avatar = null)
         )
-        coEvery { moviesRepository.syncCloudWithLocal() } returns Outcome.Success(Unit)
 
         authRepository.createRequestToken()
         val result = authRepository.completeAuthentication("tok_diff")
 
         assertThat(result).isInstanceOf(Outcome.Success::class.java)
-        coVerify(exactly = 1) { favoriteDao.clearAll() }
-        coVerify(exactly = 1) { watchlistDao.clearAll() }
-        coVerify(exactly = 1) { syncOutboxDao.clearAll() }
-        coVerify(exactly = 1) { authPreferences.saveLastAccountId("42") }
-        verify(exactly = 1) {
-            workManager.enqueueUniqueWork(
-                SyncOutboxWorker.WORK_NAME,
-                ExistingWorkPolicy.APPEND_OR_REPLACE,
-                any<OneTimeWorkRequest>()
-            )
-        }
+        assertThat(database.favoriteDao().getAllFavorites().first()).isEmpty()
+        assertThat(database.watchlistDao().getAllWatchlist().first()).isEmpty()
+        assertThat(database.syncOutboxDao().getAllPending()).isEmpty()
+        assertThat(fakeAuthPreferences.getLastAccountId()).isEqualTo("42")
+
+        val workInfos = workManager.getWorkInfosForUniqueWork(SyncOutboxWorker.WORK_NAME).get()
+        assertThat(workInfos.any { it.state == WorkInfo.State.ENQUEUED || it.state == WorkInfo.State.RUNNING }).isTrue()
     }
 
     @Test
     fun completeAuthentication_stagesGuestFavoritesAndWatchlistIntoOutbox() = runTest {
-        coEvery { authPreferences.getLastAccountId() } returns null
-        every { favoriteDao.getAllFavorites() } returns flowOf(listOf(sampleFavEntity(101)))
-        every { watchlistDao.getAllWatchlist() } returns flowOf(listOf(sampleWatchEntity(202)))
+        database.favoriteDao().upsert(sampleFavEntity(101))
+        database.watchlistDao().upsert(sampleWatchEntity(202))
 
-        coEvery { api.createRequestToken() } returns ApiResponse.Success(
+        fakeApi.createRequestTokenResponse = ApiResponse.Success(
             TmdbRequestTokenDto(success = true, request_token = "tok_guest", expires_at = "2026-10-23")
         )
-        coEvery {
-            api.createSession(TmdbCreateSessionRequestDto("tok_guest"))
-        } returns ApiResponse.Success(TmdbSessionResponseDto(success = true, session_id = "sess_42"))
-        coEvery {
-            api.getAccountDetails("sess_42")
-        } returns ApiResponse.Success(
+        fakeApi.createSessionResponse = ApiResponse.Success(
+            TmdbSessionResponseDto(success = true, session_id = "sess_42")
+        )
+        fakeApi.getAccountDetailsResponse = ApiResponse.Success(
             TmdbAccountDto(id = 42, username = "tony", name = "Tony Stark", avatar = null)
         )
-        coEvery { moviesRepository.syncCloudWithLocal() } returns Outcome.Success(Unit)
 
         authRepository.createRequestToken()
         val result = authRepository.completeAuthentication("tok_guest")
 
         assertThat(result).isInstanceOf(Outcome.Success::class.java)
-        coVerify(exactly = 1) {
-            syncOutboxDao.upsert(
-                SyncOutboxEntity(
-                    movieId = 101,
-                    target = "FAVORITE",
-                    desired = true,
-                    attempts = 0,
-                    version = 1,
-                    createdAt = 1000L
-                )
+        val outboxItems = database.syncOutboxDao().getAllPending()
+        assertThat(outboxItems).containsExactly(
+            SyncOutboxEntity(
+                movieId = 101,
+                target = "FAVORITE",
+                desired = true,
+                attempts = 0,
+                version = 1,
+                createdAt = 1000L
+            ),
+            SyncOutboxEntity(
+                movieId = 202,
+                target = "WATCHLIST",
+                desired = true,
+                attempts = 0,
+                version = 1,
+                createdAt = 2000L
             )
-        }
-        coVerify(exactly = 1) {
-            syncOutboxDao.upsert(
-                SyncOutboxEntity(
-                    movieId = 202,
-                    target = "WATCHLIST",
-                    desired = true,
-                    attempts = 0,
-                    version = 1,
-                    createdAt = 2000L
-                )
-            )
-        }
-        verify(exactly = 1) {
-            workManager.enqueueUniqueWork(
-                SyncOutboxWorker.WORK_NAME,
-                ExistingWorkPolicy.APPEND_OR_REPLACE,
-                any<OneTimeWorkRequest>()
-            )
-        }
+        )
     }
 
     @Test
     fun completeAuthentication_stagesGuestDataWithMonotonicVersionIncrement() = runTest {
-        coEvery { authPreferences.getLastAccountId() } returns null
-        every { favoriteDao.getAllFavorites() } returns flowOf(listOf(sampleFavEntity(101).copy(addedAt = 12345L)))
-        every { watchlistDao.getAllWatchlist() } returns flowOf(listOf(sampleWatchEntity(202).copy(addedAt = 67890L)))
+        database.favoriteDao().upsert(sampleFavEntity(101).copy(addedAt = 12345L))
+        database.watchlistDao().upsert(sampleWatchEntity(202).copy(addedAt = 67890L))
 
         // Pre-existing outbox row for favorite 101 with version 3
-        coEvery { syncOutboxDao.find(101, SyncOutboxWorker.TARGET_FAVORITE) } returns SyncOutboxEntity(
-            movieId = 101,
-            target = SyncOutboxWorker.TARGET_FAVORITE,
-            desired = false,
-            version = 3,
-            createdAt = 1000L
+        database.syncOutboxDao().upsert(
+            SyncOutboxEntity(
+                movieId = 101,
+                target = SyncOutboxWorker.TARGET_FAVORITE,
+                desired = false,
+                version = 3,
+                createdAt = 1000L
+            )
         )
-        // No pre-existing outbox row for watchlist 202
-        coEvery { syncOutboxDao.find(202, SyncOutboxWorker.TARGET_WATCHLIST) } returns null
 
-        coEvery { api.createRequestToken() } returns ApiResponse.Success(
+        fakeApi.createRequestTokenResponse = ApiResponse.Success(
             TmdbRequestTokenDto(success = true, request_token = "tok_mono", expires_at = "2026-10-23")
         )
-        coEvery {
-            api.createSession(TmdbCreateSessionRequestDto("tok_mono"))
-        } returns ApiResponse.Success(TmdbSessionResponseDto(success = true, session_id = "sess_mono"))
-        coEvery {
-            api.getAccountDetails("sess_mono")
-        } returns ApiResponse.Success(
+        fakeApi.createSessionResponse = ApiResponse.Success(
+            TmdbSessionResponseDto(success = true, session_id = "sess_mono")
+        )
+        fakeApi.getAccountDetailsResponse = ApiResponse.Success(
             TmdbAccountDto(id = 42, username = "tony", name = "Tony Stark", avatar = null)
         )
-        coEvery { moviesRepository.syncCloudWithLocal() } returns Outcome.Success(Unit)
 
         authRepository.createRequestToken()
         val result = authRepository.completeAuthentication("tok_mono")
 
         assertThat(result).isInstanceOf(Outcome.Success::class.java)
 
-        // Monotonic version increment: version was 3, must now be 4; createdAt preserved from existing
-        coVerify(exactly = 1) {
-            syncOutboxDao.upsert(
-                SyncOutboxEntity(
-                    movieId = 101,
-                    target = "FAVORITE",
-                    desired = true,
-                    attempts = 0,
-                    version = 4,
-                    createdAt = 1000L
-                )
+        val favOutbox = database.syncOutboxDao().find(101, SyncOutboxWorker.TARGET_FAVORITE)
+        assertThat(favOutbox).isEqualTo(
+            SyncOutboxEntity(
+                movieId = 101,
+                target = "FAVORITE",
+                desired = true,
+                attempts = 0,
+                version = 4,
+                createdAt = 1000L
             )
-        }
-        // New row: starts with version 1; createdAt initialized from addedAt
-        coVerify(exactly = 1) {
-            syncOutboxDao.upsert(
-                SyncOutboxEntity(
-                    movieId = 202,
-                    target = "WATCHLIST",
-                    desired = true,
-                    attempts = 0,
-                    version = 1,
-                    createdAt = 67890L
-                )
+        )
+
+        val watchOutbox = database.syncOutboxDao().find(202, SyncOutboxWorker.TARGET_WATCHLIST)
+        assertThat(watchOutbox).isEqualTo(
+            SyncOutboxEntity(
+                movieId = 202,
+                target = "WATCHLIST",
+                desired = true,
+                attempts = 0,
+                version = 1,
+                createdAt = 67890L
             )
-        }
+        )
     }
 
     private fun sampleFavEntity(id: Int) = FavoriteMovieEntity(

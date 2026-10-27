@@ -15,7 +15,7 @@ import com.adauto.cinemahub.core.network.model.TmdbSessionResponseDto
 import com.adauto.cinemahub.core.network.model.TmdbWatchlistRequestDto
 import com.skydoves.sandwich.ApiResponse
 
-@Suppress("TooManyFunctions")
+@Suppress("TooManyFunctions", "ReturnCount")
 class FakeTmdbApi : TmdbApi {
 
     val favorites = mutableListOf<TmdbMovieDto>()
@@ -25,6 +25,19 @@ class FakeTmdbApi : TmdbApi {
     val movieDetails = mutableMapOf<Int, TmdbMovieDetailDto>()
 
     var failureResponse: ApiResponse.Failure<*>? = null
+    var createRequestTokenResponse: ApiResponse<TmdbRequestTokenDto>? = null
+    var createSessionResponse: ApiResponse<TmdbSessionResponseDto>? = null
+    var getAccountDetailsResponse: ApiResponse<TmdbAccountDto>? = null
+    var deleteSessionHandler: (
+        suspend (TmdbDeleteSessionRequestDto) -> ApiResponse<TmdbDeleteSessionResponseDto>
+    )? = null
+    var markAsFavoriteHandler: (
+        suspend (Int, String, TmdbFavoriteRequestDto) -> ApiResponse<TmdbActionResponseDto>
+    )? = null
+    var addToWatchlistHandler: (
+        suspend (Int, String, TmdbWatchlistRequestDto) -> ApiResponse<TmdbActionResponseDto>
+    )? = null
+    val deletedSessions = mutableListOf<String>()
 
     override suspend fun getPopularMovies(
         page: Int,
@@ -104,6 +117,11 @@ class FakeTmdbApi : TmdbApi {
     }
 
     override suspend fun createRequestToken(): ApiResponse<TmdbRequestTokenDto> {
+        createRequestTokenResponse?.let { return it }
+        failureResponse?.let {
+            @Suppress("UNCHECKED_CAST")
+            return it as ApiResponse<TmdbRequestTokenDto>
+        }
         return ApiResponse.Success(
             TmdbRequestTokenDto(
                 success = true,
@@ -116,6 +134,11 @@ class FakeTmdbApi : TmdbApi {
     override suspend fun createSession(
         body: TmdbCreateSessionRequestDto
     ): ApiResponse<TmdbSessionResponseDto> {
+        createSessionResponse?.let { return it }
+        failureResponse?.let {
+            @Suppress("UNCHECKED_CAST")
+            return it as ApiResponse<TmdbSessionResponseDto>
+        }
         return ApiResponse.Success(
             TmdbSessionResponseDto(
                 success = true,
@@ -127,6 +150,8 @@ class FakeTmdbApi : TmdbApi {
     override suspend fun deleteSession(
         body: TmdbDeleteSessionRequestDto
     ): ApiResponse<TmdbDeleteSessionResponseDto> {
+        deleteSessionHandler?.let { return it(body) }
+        deletedSessions.add(body.sessionId)
         return ApiResponse.Success(
             TmdbDeleteSessionResponseDto(success = true)
         )
@@ -135,6 +160,11 @@ class FakeTmdbApi : TmdbApi {
     override suspend fun getAccountDetails(
         sessionId: String
     ): ApiResponse<TmdbAccountDto> {
+        getAccountDetailsResponse?.let { return it }
+        failureResponse?.let {
+            @Suppress("UNCHECKED_CAST")
+            return it as ApiResponse<TmdbAccountDto>
+        }
         return ApiResponse.Success(
             TmdbAccountDto(
                 id = 42,
@@ -150,6 +180,11 @@ class FakeTmdbApi : TmdbApi {
         sessionId: String,
         body: TmdbFavoriteRequestDto
     ): ApiResponse<TmdbActionResponseDto> {
+        markAsFavoriteHandler?.let { return it(accountId, sessionId, body) }
+        failureResponse?.let {
+            @Suppress("UNCHECKED_CAST")
+            return it as ApiResponse<TmdbActionResponseDto>
+        }
         if (body.favorite) {
             if (favorites.none { it.id == body.media_id }) {
                 favorites.add(TmdbMovieDto(id = body.media_id, title = "Movie ${body.media_id}"))
@@ -165,6 +200,11 @@ class FakeTmdbApi : TmdbApi {
         sessionId: String,
         body: TmdbWatchlistRequestDto
     ): ApiResponse<TmdbActionResponseDto> {
+        addToWatchlistHandler?.let { return it(accountId, sessionId, body) }
+        failureResponse?.let {
+            @Suppress("UNCHECKED_CAST")
+            return it as ApiResponse<TmdbActionResponseDto>
+        }
         if (body.watchlist) {
             if (watchlist.none { it.id == body.media_id }) {
                 watchlist.add(TmdbMovieDto(id = body.media_id, title = "Movie ${body.media_id}"))
