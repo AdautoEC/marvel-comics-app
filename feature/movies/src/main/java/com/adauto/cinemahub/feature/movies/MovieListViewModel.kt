@@ -4,7 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.paging.PagingData
 import androidx.paging.cachedIn
-import androidx.paging.filter
+import androidx.paging.map
 import com.adauto.cinemahub.core.data.repository.AuthRepository
 import com.adauto.cinemahub.core.data.repository.MoviesRepository
 import com.adauto.cinemahub.core.data.sync.SyncEventBus
@@ -91,7 +91,31 @@ class MovieListViewModel @Inject constructor(
         }
     }
 
-    val movies: Flow<PagingData<MovieSummary>> = moviesFlow.cachedIn(viewModelScope)
+    private val cachedMoviesFlow: Flow<PagingData<MovieSummary>> = moviesFlow.cachedIn(viewModelScope)
+
+    private val favoriteIdsFlow: Flow<Set<Int>> = moviesRepository.observeFavorites()
+        .map { list -> list.asSequence().map { it.id }.toSet() }
+        .distinctUntilChanged()
+
+    private val watchlistIdsFlow: Flow<Set<Int>> = moviesRepository.observeWatchlist()
+        .map { list -> list.asSequence().map { it.id }.toSet() }
+        .distinctUntilChanged()
+
+    val movies: Flow<PagingData<MovieSummary>> = combine(
+        cachedMoviesFlow,
+        favoriteIdsFlow,
+        watchlistIdsFlow
+    ) { pagingData, favIds, watchIds ->
+        pagingData.map { movie ->
+            val isFav = movie.id in favIds
+            val isWatch = movie.id in watchIds
+            if (movie.isFavorite == isFav && movie.isInWatchlist == isWatch) {
+                movie
+            } else {
+                movie.copy(isFavorite = isFav, isInWatchlist = isWatch)
+            }
+        }
+    }
 
     private val _effects = Channel<MovieListEffect>(Channel.BUFFERED)
     val effects: Flow<MovieListEffect> = _effects.receiveAsFlow()

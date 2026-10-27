@@ -71,7 +71,9 @@ fun TmdbMovieDetailDto.toMovieDetail(
     )
 }
 
-fun FavoriteMovieEntity.toMovieSummary(): MovieSummary {
+fun FavoriteMovieEntity.toMovieSummary(
+    isInWatchlist: Boolean = false
+): MovieSummary {
     return MovieSummary(
         id = movieId,
         title = title,
@@ -80,11 +82,13 @@ fun FavoriteMovieEntity.toMovieSummary(): MovieSummary {
         voteAverage = voteAverage,
         releaseDate = releaseDate,
         isFavorite = true,
-        isInWatchlist = false
+        isInWatchlist = isInWatchlist
     )
 }
 
-fun WatchlistMovieEntity.toMovieSummary(): MovieSummary {
+fun WatchlistMovieEntity.toMovieSummary(
+    isFavorite: Boolean = false
+): MovieSummary {
     return MovieSummary(
         id = movieId,
         title = title,
@@ -92,7 +96,7 @@ fun WatchlistMovieEntity.toMovieSummary(): MovieSummary {
         backdropUrl = null,
         voteAverage = voteAverage,
         releaseDate = releaseDate,
-        isFavorite = false,
+        isFavorite = isFavorite,
         isInWatchlist = true
     )
 }

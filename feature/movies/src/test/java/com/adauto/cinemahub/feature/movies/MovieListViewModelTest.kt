@@ -107,6 +107,34 @@ class MovieListViewModelTest {
     }
 
     @Test
+    fun movies_whenFavoriteOrWatchlistChanges_reactivelyUpdatesCachedPagingItems() = runTest {
+        val sampleMovie = MovieSummary(id = 42, title = "Interstellar", posterUrl = null, voteAverage = 8.7)
+        moviesRepository.moviesList = listOf(sampleMovie)
+        val viewModel = createViewModel()
+
+        val initialSnapshot = viewModel.movies.take(1).asSnapshot()
+        assertThat(initialSnapshot).hasSize(1)
+        assertThat(initialSnapshot.first().isFavorite).isFalse()
+        assertThat(initialSnapshot.first().isInWatchlist).isFalse()
+
+        // Toggle favorite on list screen
+        viewModel.onAction(MovieListAction.FavoriteToggled(sampleMovie))
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        val afterFavSnapshot = viewModel.movies.take(1).asSnapshot()
+        assertThat(afterFavSnapshot.first().isFavorite).isTrue()
+        assertThat(afterFavSnapshot.first().isInWatchlist).isFalse()
+
+        // Simulate toggling watchlist from MovieDetailScreen (via repository)
+        moviesRepository.toggleWatchlist(sampleMovie)
+        testDispatcher.scheduler.advanceUntilIdle()
+
+        val afterWatchSnapshot = viewModel.movies.take(1).asSnapshot()
+        assertThat(afterWatchSnapshot.first().isFavorite).isTrue()
+        assertThat(afterWatchSnapshot.first().isInWatchlist).isTrue()
+    }
+
+    @Test
     fun refreshRequested_togglesIsRefreshingState() = runTest {
         val viewModel = createViewModel()
         viewModel.uiState.test {
