@@ -1,6 +1,7 @@
 package com.adauto.cinemahub
 
 import android.app.Application
+import android.os.StrictMode
 import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
 import coil3.ImageLoader
@@ -49,6 +50,9 @@ class CinemaHubApp : Application(), SingletonImageLoader.Factory, Configuration.
 
     override fun onCreate() {
         super.onCreate()
+        if (BuildConfig.DEBUG) {
+            configureStrictMode()
+        }
         runCatching {
             clientIntegrityManager.initializeAppCheck(this, isDebug = BuildConfig.DEBUG)
             firebaseTelemetryInitializer.initialize()
@@ -58,6 +62,25 @@ class CinemaHubApp : Application(), SingletonImageLoader.Factory, Configuration.
                 keyProvider.getCredentials()
             }
         }
+    }
+
+    private fun configureStrictMode() {
+        StrictMode.setThreadPolicy(
+            StrictMode.ThreadPolicy.Builder()
+                .detectDiskReads()
+                .detectDiskWrites()
+                .detectNetwork()
+                .penaltyLog()
+                .build()
+        )
+        StrictMode.setVmPolicy(
+            StrictMode.VmPolicy.Builder()
+                .detectLeakedSqlLiteObjects()
+                .detectLeakedClosableObjects()
+                .detectActivityLeaks()
+                .penaltyLog()
+                .build()
+        )
     }
 
     override fun newImageLoader(context: PlatformContext): ImageLoader {

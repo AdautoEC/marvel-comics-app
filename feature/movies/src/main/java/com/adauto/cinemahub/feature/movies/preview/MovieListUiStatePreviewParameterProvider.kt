@@ -1,14 +1,18 @@
 package com.adauto.cinemahub.feature.movies.preview
 
+import androidx.compose.runtime.Immutable
 import androidx.compose.ui.tooling.preview.PreviewParameterProvider
 import com.adauto.cinemahub.core.model.MovieCategory
 import com.adauto.cinemahub.core.model.MovieSummary
 import com.adauto.cinemahub.core.model.SessionState
 import com.adauto.cinemahub.feature.movies.MovieListUiState
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
 
+@Immutable
 data class MovieListPreviewState(
     val uiState: MovieListUiState,
-    val movies: List<MovieSummary> = emptyList(),
+    val movies: ImmutableList<MovieSummary> = persistentListOf(),
     val isLoading: Boolean = false,
     val errorMessage: String? = null
 )
@@ -29,7 +33,7 @@ class MovieListUiStatePreviewParameterProvider : PreviewParameterProvider<MovieL
                     sessionId = "sess_42"
                 )
             ),
-            movies = listOf(
+            movies = persistentListOf(
                 MovieSummary(
                     id = 1,
                     title = "Clube da Luta",
@@ -62,7 +66,7 @@ class MovieListUiStatePreviewParameterProvider : PreviewParameterProvider<MovieL
         // 3. Offline State with Movies
         MovieListPreviewState(
             uiState = MovieListUiState(isOffline = true),
-            movies = listOf(
+            movies = persistentListOf(
                 MovieSummary(
                     id = 1,
                     title = "Clube da Luta",
@@ -77,7 +81,7 @@ class MovieListUiStatePreviewParameterProvider : PreviewParameterProvider<MovieL
         // 4. Empty State
         MovieListPreviewState(
             uiState = MovieListUiState(),
-            movies = emptyList()
+            movies = persistentListOf()
         ),
         // 5. Error State
         MovieListPreviewState(
@@ -97,7 +101,7 @@ class MovieListUiStatePreviewParameterProvider : PreviewParameterProvider<MovieL
                 isSearchActive = true,
                 searchQuery = "Clube"
             ),
-            movies = listOf(
+            movies = persistentListOf(
                 MovieSummary(
                     id = 1,
                     title = "Clube da Luta",

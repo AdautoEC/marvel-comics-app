@@ -150,6 +150,7 @@ dependencies {
 
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
+    debugImplementation(libs.leakcanary.android)
 
     testImplementation(project(":core:testing"))
     testImplementation(libs.junit)

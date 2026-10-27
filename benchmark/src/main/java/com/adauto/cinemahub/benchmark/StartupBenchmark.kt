@@ -26,13 +26,22 @@ class StartupBenchmark {
     @Test
     fun startupBaselineProfile() = measureStartup(CompilationMode.Partial())
 
-    private fun measureStartup(compilationMode: CompilationMode) {
+    @Test
+    fun startupWarmBaselineProfile() = measureStartup(
+        compilationMode = CompilationMode.Partial(),
+        startupMode = StartupMode.WARM
+    )
+
+    private fun measureStartup(
+        compilationMode: CompilationMode,
+        startupMode: StartupMode = StartupMode.COLD
+    ) {
         benchmarkRule.measureRepeated(
             packageName = PACKAGE_NAME,
             metrics = listOf(StartupTimingMetric()),
             compilationMode = compilationMode,
             iterations = ITERATIONS,
-            startupMode = StartupMode.COLD
+            startupMode = startupMode
         ) {
             pressHome()
             startActivityAndWait()
