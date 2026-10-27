@@ -18,8 +18,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.adauto.cinemahub.core.designsystem.preview.ThemePreviews
+import com.adauto.cinemahub.core.designsystem.theme.CinemaHubTheme
 import com.adauto.cinemahub.core.ui.R
 import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -58,5 +61,19 @@ fun MovieDetailGenres(
                 }
             }
         }
+    }
+}
+
+@ThemePreviews
+@Composable
+private fun MovieDetailGenresPreview() {
+    CinemaHubTheme {
+        MovieDetailGenres(
+            genres = persistentListOf(
+                "Drama",
+                "Suspense",
+                "Ficção Científica"
+            )
+        )
     }
 }

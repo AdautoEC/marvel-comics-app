@@ -27,6 +27,8 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.adauto.cinemahub.core.designsystem.preview.ThemePreviews
+import com.adauto.cinemahub.core.designsystem.theme.CinemaHubTheme
 import com.adauto.cinemahub.core.ui.R
 
 private val WatchlistGreen = Color(0xFF1B5E20)
@@ -190,4 +192,30 @@ internal val BookmarkBorderIcon: ImageVector by lazy {
             close()
         }
     }.build()
+}
+
+@ThemePreviews
+@Composable
+private fun MovieDetailActionsInactivePreview() {
+    CinemaHubTheme {
+        MovieDetailActions(
+            isFavorite = false,
+            isInWatchlist = false,
+            onFavoriteToggle = {},
+            onWatchlistToggle = {}
+        )
+    }
+}
+
+@ThemePreviews
+@Composable
+private fun MovieDetailActionsActivePreview() {
+    CinemaHubTheme {
+        MovieDetailActions(
+            isFavorite = true,
+            isInWatchlist = true,
+            onFavoriteToggle = {},
+            onWatchlistToggle = {}
+        )
+    }
 }

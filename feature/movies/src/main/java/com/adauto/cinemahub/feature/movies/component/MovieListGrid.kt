@@ -24,6 +24,7 @@ import androidx.paging.LoadState
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.itemContentType
 import androidx.paging.compose.itemKey
+import com.adauto.cinemahub.core.designsystem.preview.ThemePreviews
 import com.adauto.cinemahub.core.designsystem.theme.CinemaHubTheme
 import com.adauto.cinemahub.core.model.MovieCategory
 import com.adauto.cinemahub.core.model.MovieSummary
@@ -197,5 +198,34 @@ internal fun formatPagingError(throwable: Throwable, fallback: UiText): UiText {
             }
         }
         else -> throwable.localizedMessage?.takeIf { it.isNotBlank() }?.let { UiText.Dynamic(it) } ?: fallback
+    }
+}
+
+@ThemePreviews
+@Composable
+private fun MovieListShimmerGridPreview() {
+    CinemaHubTheme {
+        MovieListShimmerGrid()
+    }
+}
+
+@ThemePreviews
+@Composable
+private fun MovieListEmptyStatePreview() {
+    CinemaHubTheme {
+        MovieListEmptyState(
+            uiState = MovieListUiState(selectedCategory = MovieCategory.FAVORITES)
+        )
+    }
+}
+
+@ThemePreviews
+@Composable
+private fun MovieListErrorStatePreview() {
+    CinemaHubTheme {
+        MovieListErrorState(
+            error = TmdbApiException(code = HTTP_TOO_MANY_REQUESTS, message = null),
+            onRetry = {}
+        )
     }
 }

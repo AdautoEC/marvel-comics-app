@@ -12,7 +12,13 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.adauto.cinemahub.core.designsystem.preview.ThemePreviews
+import com.adauto.cinemahub.core.designsystem.theme.CinemaHubTheme
 import com.adauto.cinemahub.core.ui.R
+
+private const val PREVIEW_OVERVIEW =
+    "Um homem deprimido que sofre de insônia conhece um vendedor estranho de sabonetes " +
+        "e funda um clube de luta clandestino que se transforma em algo muito mais grandioso."
 
 @Composable
 fun MovieDetailOverview(
@@ -37,5 +43,13 @@ fun MovieDetailOverview(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
+    }
+}
+
+@ThemePreviews
+@Composable
+private fun MovieDetailOverviewPreview() {
+    CinemaHubTheme {
+        MovieDetailOverview(overview = PREVIEW_OVERVIEW)
     }
 }

@@ -28,6 +28,9 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import com.adauto.cinemahub.core.designsystem.preview.ThemePreviews
+import com.adauto.cinemahub.core.designsystem.theme.CinemaHubTheme
+import com.adauto.cinemahub.core.model.SessionState
 import com.adauto.cinemahub.core.ui.R
 import com.adauto.cinemahub.core.ui.util.titleRes
 import com.adauto.cinemahub.feature.movies.MovieListAction
@@ -191,4 +194,35 @@ private fun StandardTopBar(
             containerColor = MaterialTheme.colorScheme.background
         )
     )
+}
+
+@ThemePreviews
+@Composable
+private fun MovieListTopBarStandardPreview() {
+    CinemaHubTheme {
+        MovieListTopBar(
+            uiState = MovieListUiState(
+                sessionState = SessionState.Authenticated(
+                    accountId = 42,
+                    username = "adautocine",
+                    sessionId = "sess_42"
+                )
+            ),
+            onAction = {}
+        )
+    }
+}
+
+@ThemePreviews
+@Composable
+private fun MovieListTopBarSearchActivePreview() {
+    CinemaHubTheme {
+        MovieListTopBar(
+            uiState = MovieListUiState(
+                isSearchActive = true,
+                searchQuery = "Clube"
+            ),
+            onAction = {}
+        )
+    }
 }
