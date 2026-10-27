@@ -324,12 +324,6 @@ jobs:
           name: app-release-bundle
           path: release-bundle
 
-      - name: Download R8 Mapping
-        uses: actions/download-artifact@cc203385981b70ca67e1cc392babf9cc229d5806 # v4.1.9
-        with:
-          name: mapping-release
-          path: release-mapping
-
       - name: Validate Firebase App Distribution Credentials
         if: env.FIREBASE_APP_ID == '' || env.FIREBASE_SERVICE_ACCOUNT == ''
         run: |

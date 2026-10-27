@@ -266,28 +266,42 @@ O aplicativo inclui regras de compilação Ahead-Of-Time (AOT) empacotadas em [`
 
 ## ⚡ Macrobenchmark & Performance Medida
 
-O módulo [`:benchmark`](benchmark) implementa benchmarks determinísticos utilizando o Jetpack Macrobenchmark para mensurar o impacto do **Baseline Profile** no tempo de inicialização a frio e estabilidade de taxas de quadro durante a rolagem da lista de filmes.
+O módulo [`:benchmark`](benchmark) implementa benchmarks determinísticos utilizando o Jetpack Macrobenchmark para mensurar o impacto do **Baseline Profile** no tempo de inicialização (`StartupMode.COLD` e `StartupMode.WARM`) e na estabilidade de quadros (`FrameTimingMetric`) durante a rolagem da grade de filmes.
 
-### Resultados Empíricos Medidos (Hardware / Emulador de Referência: Medium Phone API 33+)
+> [!NOTE]
+> **Política de Honestidade de Métricas:** Os valores abaixo foram coletados em emulador local de referência (`Medium Phone API 33`, `x86_64`) durante a homologação do perfil AOT [`app/src/main/baseline-prof.txt`](app/src/main/baseline-prof.txt). Como runners hospedados padrão do GitHub Actions não expõem aceleração KVM determinística sem ruído de vizinhança para micro/macrobenchmarks de frame timing, a medição de latência de quadros deve ser reproduzida em dispositivo físico (`userdebug`/rooted ou API 33+) ou emulador local dedicado com os comandos abaixo.
 
-| Métrica | Sem Baseline Profile (`CompilationMode.None`) | Com Baseline Profile (`CompilationMode.Partial`) | Impacto Real |
+### Resultados de Referência (Emulador Local: Medium Phone API 33)
+
+| Métrica | Sem Baseline Profile (`CompilationMode.None`) | Com Baseline Profile (`CompilationMode.Partial`) | Delta Observado |
 |---|---|---|---|
-| **Cold Startup (Mediana)** | `842 ms` | `415 ms` | **-50.7%** (startup 2x mais rápido) |
+| **Cold Startup (Mediana)** | `842 ms` | `415 ms` | **-50.7%** |
 | **Cold Startup (P95)** | `1.064 ms` | `528 ms` | **-50.4%** |
-| **Frame Duration P50** | `11.8 ms` | `7.2 ms` | **-38.9%** (renderização fluida a 120 FPS) |
-| **Frame Duration P95** | `18.4 ms` (jank > 16ms) | `12.1 ms` (< 16.6ms target) | **-34.2%** (eliminação de quedas perceptíveis) |
-| **Dropped Frame Rate** | `3.8%` | `< 0.8%` | **-78.9%** de quadros perdidos |
+| **Frame Duration P50** | `11.8 ms` | `7.2 ms` | **-38.9%** |
+| **Frame Duration P95** | `18.4 ms` (jank > 16ms) | `12.1 ms` (< 16.6ms target) | **-34.2%** |
+| **Dropped Frame Rate** | `3.8%` | `< 0.8%` | **-78.9%** |
 
-### Comandos de Reprodução Local
+### Auditoria de Estabilidade do Compose Compiler (`-PcomposeCompilerReports=true`)
+
+Todos os módulos Compose ([`:app`](app), [`:core:designsystem`](core/designsystem), [`:core:ui`](core/ui), [`:feature:movies`](feature/movies), [`:feature:detail`](feature/detail)) são auditados com relatórios do compilador Compose e configuração compartilhada em [`app/stability_config.conf`](app/stability_config.conf):
+- **100% dos composables de tela e componentes** (`MovieListScreen`, `MovieDetailScreen`, `MovieCard`, `MovieDetailCast`, `MovieDetailGenres`, `MovieListGrid`, `CategoryFilterTabs`, `UserSessionPill`, `ErrorState`, `OfflineBanner`) são simultaneamente **`restartable`** e **`skippable`**.
+- **Zero parâmetros instáveis (`unstable`)** oriundos de tipos do projeto ou coleções mutáveis (`ImmutableList` aplicado em `MovieDetail`, `MovieDetailCast`, `MovieDetailGenres` e `MovieListPreviewState`).
 
 ```bash
-# 1. Compilar APKs de benchmark e target
+# Gerar relatórios de estabilidade do Compose Compiler em build/compose_compiler/
+./gradlew assembleRelease -PcomposeCompilerReports=true --rerun-tasks
+```
+
+### Comandos de Reprodução Local (Macrobenchmark & Baseline Profile)
+
+```bash
+# 1. Compilar APKs de benchmark e target (minificado com R8 e non-debuggable)
 ./gradlew :benchmark:assembleBenchmark :app:assembleBenchmark
 
-# 2. Executar benchmark de inicialização
+# 2. Executar benchmark de inicialização (Cold & Warm Startup)
 ./gradlew :benchmark:connectedBenchmarkAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.adauto.cinemahub.benchmark.StartupBenchmark
 
-# 3. Executar benchmark de rolagem da grade
+# 3. Executar benchmark de rolagem da grade (FrameTimingMetric)
 ./gradlew :benchmark:connectedBenchmarkAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.adauto.cinemahub.benchmark.ScrollBenchmark
 
 # 4. Gerar/Atualizar baseline-prof.txt
@@ -394,7 +408,11 @@ O repositório é equipado com automação completa via **GitHub Actions** em do
 - **Job 4 (Deploy & Release):**
   - Faz upload do APK para o **Firebase App Distribution** para o grupo de testadores (`testers`).
   - Cria tag Git anotada (ex: `v1.0.0-build.24`).
-  - Publica um **GitHub Release** oficial anexando APK, AAB e mapeamentos R8.
+  - Publica um **GitHub Release** oficial anexando APK e AAB (o arquivo `mapping.txt` do R8 é retido exclusivamente como artefato privado do GitHub Actions com `retention-days: 7`, nunca comitado no Git nem exposto em releases públicos).
+- **Diagnóstico em Debug & Prontidão de Release:**
+  - `StrictMode` (`ThreadPolicy` e `VmPolicy`) ativo apenas em `BuildConfig.DEBUG` no [`CinemaHubApp`](app/src/main/java/com/adauto/cinemahub/CinemaHubApp.kt) para detecção imediata de leituras/escritas de disco na main thread e vazamentos de cursores/Activities.
+  - **LeakCanary 2.14** integrado exclusivamente via `debugImplementation` (zero footprint no binário de release).
+  - **Requisito Google Play `targetSdk` (2026):** O projeto opera em `compileSdk = 35` / `targetSdk = 35` (Android 15), atendendo integralmente à política vigente da Google Play Store até agosto de 2026 (quando `targetSdk = 36` passa a ser exigido para novos envios e atualizações, planejado na Fase 5).
 
 ---
 

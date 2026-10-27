@@ -32,6 +32,7 @@ androidx-uiautomator = "2.4.0"
 androidx-profileinstaller = "1.4.1"
 work = "2.9.1"
 hiltWork = "1.3.0"
+leakcanary = "2.14"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -108,6 +109,7 @@ room-testing = { group = "androidx.room", name = "room-testing", version.ref = "
 androidx-benchmark-macro = { group = "androidx.benchmark", name = "benchmark-macro-junit4", version.ref = "androidx-benchmark" }
 androidx-uiautomator = { group = "androidx.test.uiautomator", name = "uiautomator", version.ref = "androidx-uiautomator" }
 androidx-profileinstaller = { group = "androidx.profileinstaller", name = "profileinstaller", version.ref = "androidx-profileinstaller" }
+leakcanary-android = { group = "com.squareup.leakcanary", name = "leakcanary-android", version.ref = "leakcanary" }
 
 [plugins]
 android-test = { id = "com.android.test", version.ref = "agp" }

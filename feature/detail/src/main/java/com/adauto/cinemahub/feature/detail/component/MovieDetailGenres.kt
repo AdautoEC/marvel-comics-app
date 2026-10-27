@@ -19,11 +19,12 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.adauto.cinemahub.core.ui.R
+import kotlinx.collections.immutable.ImmutableList
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun MovieDetailGenres(
-    genres: List<String>,
+    genres: ImmutableList<String>,
     modifier: Modifier = Modifier
 ) {
     if (genres.isNotEmpty()) {
