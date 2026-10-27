@@ -41,6 +41,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.adauto.cinemahub.core.designsystem.preview.ThemePreviews
 import com.adauto.cinemahub.core.designsystem.theme.CinemaHubTheme
 import com.adauto.cinemahub.core.model.MovieSummary
 import com.adauto.cinemahub.core.ui.R
@@ -228,5 +229,47 @@ fun MovieCard(
                 )
             }
         }
+    }
+}
+
+@ThemePreviews
+@Composable
+private fun MovieCardDefaultPreview() {
+    CinemaHubTheme {
+        MovieCard(
+            movie = MovieSummary(
+                id = 550,
+                title = "Clube da Luta",
+                posterUrl = null,
+                voteAverage = 8.4,
+                releaseDate = "1999-10-15",
+                isFavorite = false,
+                isInWatchlist = false
+            ),
+            onClick = {},
+            onFavoriteToggle = {},
+            modifier = Modifier.width(180.dp)
+        )
+    }
+}
+
+@ThemePreviews
+@Composable
+private fun MovieCardActivePreview() {
+    CinemaHubTheme {
+        MovieCard(
+            movie = MovieSummary(
+                id = 27205,
+                title = "A Origem",
+                posterUrl = null,
+                voteAverage = 8.8,
+                releaseDate = "2010-07-16",
+                isFavorite = true,
+                isInWatchlist = true
+            ),
+            onClick = {},
+            onFavoriteToggle = {},
+            modifier = Modifier.width(180.dp)
+        )
     }
 }

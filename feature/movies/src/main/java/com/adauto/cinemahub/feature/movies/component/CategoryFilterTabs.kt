@@ -8,6 +8,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import com.adauto.cinemahub.core.designsystem.preview.ThemePreviews
 import com.adauto.cinemahub.core.designsystem.theme.CinemaHubTheme
 import com.adauto.cinemahub.core.model.MovieCategory
 import com.adauto.cinemahub.core.ui.util.titleRes
@@ -48,5 +49,27 @@ fun CategoryFilterTabs(
                 }
             )
         }
+    }
+}
+
+@ThemePreviews
+@Composable
+private fun CategoryFilterTabsPreview() {
+    CinemaHubTheme {
+        CategoryFilterTabs(
+            uiState = MovieListUiState(selectedCategory = MovieCategory.POPULAR),
+            onAction = {}
+        )
+    }
+}
+
+@ThemePreviews
+@Composable
+private fun CategoryFilterTabsFavoritesPreview() {
+    CinemaHubTheme {
+        CategoryFilterTabs(
+            uiState = MovieListUiState(selectedCategory = MovieCategory.FAVORITES),
+            onAction = {}
+        )
     }
 }

@@ -13,7 +13,7 @@ naming:
 style:
   UnusedPrivateMember:
     active: true
-    ignoreAnnotated: ['Preview']
+    ignoreAnnotated: ['Preview', 'ThemePreviews', 'DevicePreviews']
   UnusedImports:
     active: true
   UnusedParameter:

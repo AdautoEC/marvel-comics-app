@@ -33,9 +33,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.adauto.cinemahub.core.designsystem.preview.ThemePreviews
 import com.adauto.cinemahub.core.designsystem.theme.CinemaHubTheme
 import com.adauto.cinemahub.core.model.MovieDetail
 import com.adauto.cinemahub.core.ui.component.MovieCover
+import kotlinx.collections.immutable.persistentListOf
 
 private val StarYellowColor = Color(0xFFFFD700)
 
@@ -162,5 +164,49 @@ private fun HeaderMetadataRow(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
+    }
+}
+
+@ThemePreviews
+@Composable
+private fun MovieDetailHeaderPreview() {
+    CinemaHubTheme {
+        MovieDetailHeader(
+            movie = MovieDetail(
+                id = 550,
+                title = "Clube da Luta",
+                overview = "",
+                posterUrl = null,
+                backdropUrl = null,
+                voteAverage = 8.4,
+                runtime = 139,
+                releaseDate = "1999-10-15",
+                genres = persistentListOf(),
+                cast = persistentListOf()
+            )
+        )
+    }
+}
+
+@ThemePreviews
+@Composable
+private fun MovieDetailBackdropPreview() {
+    CinemaHubTheme {
+        MovieDetailBackdrop(
+            movie = MovieDetail(
+                id = 550,
+                title = "Clube da Luta",
+                overview = "",
+                posterUrl = null,
+                backdropUrl = null,
+                voteAverage = 8.4,
+                runtime = 139,
+                releaseDate = "1999-10-15",
+                genres = persistentListOf(),
+                cast = persistentListOf()
+            ),
+            scrollOffset = 0,
+            height = 240.dp
+        )
     }
 }
