@@ -4,11 +4,11 @@
 [![Kotlin](https://img.shields.io/badge/Kotlin-2.0.21-7F52FF.svg?style=flat&logo=kotlin)](https://kotlinlang.org)
 [![Target SDK](https://img.shields.io/badge/Target%20SDK-35-blue.svg?style=flat)](https://developer.android.com)
 [![Min SDK](https://img.shields.io/badge/Min%20SDK-26-orange.svg?style=flat)](https://developer.android.com)
-[![Compose](https://img.shields.io/badge/Jetpack%20Compose-BOM%202024.10.00-4285F4.svg?style=flat&logo=jetpackcompose)](https://developer.android.com/jetpack/compose)
+[![Compose](https://img.shields.io/badge/Jetpack%20Compose-BOM%202024.12.01-4285F4.svg?style=flat&logo=jetpackcompose)](https://developer.android.com/jetpack/compose)
 [![Clean Architecture](https://img.shields.io/badge/Architecture-Clean%20%2B%20MVI%2FUDF-brightgreen.svg?style=flat)](https://developer.android.com/topic/architecture)
 [![CI/CD](https://img.shields.io/badge/CI%2FCD-GitHub%20Actions%20%2B%20Test%20Lab-2088FF.svg?style=flat&logo=githubactions)](https://github.com/AdautoEC/marvel-comics-app/actions)
 [![Coverage](https://img.shields.io/badge/Coverage-80.96%25%20(excl.%20Compose%2FDI)-brightgreen.svg?style=flat)](#-cobertura-de-testes--métricas-kover)
-[![Detekt](https://img.shields.io/badge/Detekt-0%20active%20(98%20baselined)-brightgreen.svg?style=flat)](#-estratégia-abrangente-de-testes)
+[![Detekt](https://img.shields.io/badge/Detekt-0%20issues%20(zero%20baseline)-brightgreen.svg?style=flat)](#-estratégia-abrangente-de-testes)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
 O **Cinema Hub** é um aplicativo Android nativo moderno desenvolvido para servir como **referência arquitetural de alto nível**, demonstrando padrões de engenharia de software de nível de produção (Tier-1), segurança em profundidade, performance rigorosa em Jetpack Compose, persistência reativa com Room, sincronização em nuvem e automação completa de CI/CD com Firebase Test Lab e App Distribution.
@@ -95,14 +95,15 @@ graph TD
 |---|---|---|
 | [`:app`](app) | Android App | Ponto de entrada (`CinemaHubApp`), Grafo de Injeção de Dependência Hilt raiz, roteamento (`CinemaHubNavHost`), interceptação de Deep Links (`cinemahub://tmdb-callback`), políticas de assinatura e minificação R8. |
 | [`:core:model`](core/model) | Pure Kotlin/Android | Modelos puros de domínio (`MovieSummary`, `MovieDetail`, `AccountProfile`, `SessionState`, `Outcome<T>`, `DomainError`). Zero dependências de UI ou bancos de dados para máxima portabilidade. |
-| [`:core:database`](core/database) | Android Library | Camada de persistência local com Room SQLite. Entidades (`MovieEntity`, `FavoriteMovieEntity`, `WatchlistMovieEntity`), DAOs com projeções `MovieWithUserData`, migrações determinísticas (`MIGRATION_2_3`) com exportação de schema. |
-| [`:core:network`](core/network) | Android Library | Camada de comunicação remota. Retrofit 2, Sandwich `ApiResponse`, interceptadores (`TmdbAuthInterceptor`, `RedactingHttpLoggingInterceptor`), Android Keystore com AES-256-GCM para tokens de sessão, e isolamento de clientes HTTP para imagens. |
-| [`:core:data`](core/data) | Android Library | Repositórios (`MoviesRepositoryImpl`, `AuthRepositoryImpl`), Paging 3 `RemoteMediator`, monitoramento de conectividade em tempo real (`ConnectivityManagerNetworkMonitor`), sincronização bidirecional aditiva ($Local \cup Remote$). |
-| [`:core:ui`](core/ui) | Android Library | Componentes Compose reutilizáveis (`MovieCard`, `OfflineBanner`, `ErrorState`, `MovieCover`, `Shimmer`), otimizações de recomposição, utilitários de Custom Tabs e extensões de internacionalização (`MovieCategoryExtensions`). |
-| [`:core:designsystem`](core/designsystem) | Android Library | Fundações visuais: Material 3 Theme, paleta de cores temática escura, tipografia, espaçamentos, formas e anotações customizadas de preview Compose (`@ThemePreviews`, `@DevicePreviews`). |
-| [`:feature:movies`](feature/movies) | Android Library | Tela de listagem em grade, tabs de categorias, busca in-tab reativa com debounce (`flatMapLatest`), PullToRefresh orientado a `LoadState`, User Session Pill (Guest vs Authenticated) e banners de sincronização. |
-| [`:feature:detail`](feature/detail) | Android Library | Tela de detalhes do filme com sinopse, poster em alta resolução, avaliação, data de lançamento e toggles otimistas imediatos de favoritos e watchlist. |
-| [`:benchmark`](benchmark) | Test / Benchmark | Macrobenchmark do Jetpack para geração de Baseline Profiles visando startup a frio em menos de 1 segundo e renderização a 60/120 FPS. |
+| [`:core:database`](core/database) | Android Library | Camada de persistência local com Room SQLite (v4). Entidades (`MovieEntity`, `FavoriteMovieEntity`, `WatchlistMovieEntity`, `SyncOutboxEntity`, `MovieRemoteKeysEntity`), DAOs com projeções `MovieWithUserData`, migrações determinísticas (`MIGRATION_2_3`, `MIGRATION_3_4`) com exportação de schema. |
+| [`:core:network`](core/network) | Android Library | Camada de comunicação remota. Retrofit 3.0.0, Sandwich `ApiResponse`, interceptadores (`TmdbAuthInterceptor`, `RedactingHttpLoggingInterceptor`), rotação de chaves (`TmdbAuthenticator` + Firebase Remote Config), integridade (`ClientIntegrityManager` com Play Integrity), Android Keystore com AES-256-GCM e isolamento de clientes HTTP para imagens (`@ImageOkHttpClient`). |
+| [`:core:data`](core/data) | Android Library | Repositórios (`MoviesRepositoryImpl`, `AuthRepositoryImpl`), casos de uso de domínio (`ToggleFavoriteUseCase`, `ToggleWatchlistUseCase`), Paging 3 `RemoteMediator`, worker de sincronização (`SyncOutboxWorker`), monitoramento de conectividade em tempo real (`ConnectivityManagerNetworkMonitor`) e sincronização bidirecional aditiva ($Local \cup Remote$). |
+| [`:core:ui`](core/ui) | Android Library | Componentes Compose reutilizáveis (`MovieCard`, `OfflineBanner`, `ErrorState`, `MovieCover` com Coil 3, `Shimmer`, `AttributionFooter`), otimizações de recomposição, utilitários de Custom Tabs e extensões de internacionalização (`MovieCategoryExtensions`). |
+| [`:core:designsystem`](core/designsystem) | Android Library | Fundações visuais: Material 3 Theme (`CinemaHubTheme`), paleta de cores temática escura, tipografia, tokens de espaçamento (`CinemaHubSpacing`), formas e anotações multipreview Compose (`@ThemePreviews`, `@DevicePreviews`). |
+| [`:feature:movies`](feature/movies) | Android Library | Tela de listagem em grade de 2 colunas (`MovieListScreen`), barra superior com busca integrada (`MovieListTopBar`), tabs de categorias (`CategoryFilterTabs`), busca in-tab reativa com debounce (`flatMapLatest`), combinação reativa de estados locais (`combine` sobre `cachedIn`), PullToRefresh orientado a `LoadState`, `UserSessionPill` (Guest vs Authenticated) e `GuestSyncBanner`. |
+| [`:feature:detail`](feature/detail) | Android Library | Tela de detalhes do filme (`MovieDetailScreen`) com hero poster em parallax (`MovieDetailBackdrop`), metadados (`MovieDetailHeader`), botões de ação otimistas imediatos (`MovieDetailActions`), sinopse (`MovieDetailOverview`), chips de gêneros (`MovieDetailGenres`) e elenco (`MovieDetailCast`) usando `ImmutableList`. |
+| [`:core:testing`](core/testing) | Android Library | Fakes reutilizáveis (`FakeMoviesRepository`, `FakeAuthRepository`, `FakeNetworkMonitor`), `MainDispatcherRule` e builders de dados de teste para isolamento determinístico em testes JVM. |
+| [`:benchmark`](benchmark) | Test / Benchmark | Macrobenchmark do Jetpack para geração de Baseline Profiles e medição de Cold/Warm Startup e FrameTimingMetric visando startup a frio em menos de 1 segundo e renderização a 60/120 FPS. |
 
 ---
 
@@ -191,9 +192,14 @@ Todos os ViewModels seguem o padrão formal UDF com contratos explícitos:
 - O repositório armazena [`last_account_id`](core/data/src/main/java/com/adauto/cinemahub/core/data/storage/AuthPreferencesStorage.kt) em DataStore Preferences isolado dos tokens de sessão.
 - Ao efetuar login com uma conta TMDB diferente da anterior, todo o banco de dados do usuário anterior e a fila de outbox são expurgados antes da importação, impedindo vazamento de dados entre perfis distintos. Reautenticação na mesma conta mantém o cache intacto.
 
-### 8. Paging 3 com Chaves Remotas e Recuperação a Frio
+### 8. Paging 3 com Chaves Remotas, Recuperação a Frio e Projeção Reativa pós-`cachedIn`
 - Substituição da paginação baseada em posição por tabela de chaves remotas [`MovieRemoteKeysEntity`](core/database/src/main/java/com/adauto/cinemahub/core/database/entity/MovieRemoteKeysEntity.kt).
 - O [`MoviesRemoteMediator`](core/data/src/main/java/com/adauto/cinemahub/core/data/mediator/MoviesRemoteMediator.kt) valida a presença da chave em `initialize()`. Categorias em cache migradas a frio sem chave forçam `LAUNCH_INITIAL_REFRESH`, invalidando categoria e chaves em uma transação atômica.
+- **Reatividade Instantânea sobre `PagingData` Cacheado:** No [`MovieListViewModel`](feature/movies/src/main/java/com/adauto/cinemahub/feature/movies/MovieListViewModel.kt), o fluxo paginado (`cachedIn(viewModelScope)`) é combinado via `combine` com `observeFavoriteIds()` e `observeWatchlistIds()` do Room. Isso garante que alterações feitas na tela de detalhes ou em modo de busca reflitam em 0ms nos cartões da grade sem reiniciar o scroll nem exigir invalidação completa do `PagingSource` de busca remota.
+
+### 9. Resiliência Híbrida de Autenticação TMDB (Session v3 + Bearer Token v4)
+- Endpoints de conta do TMDB (`/3/account/{account_id}/favorite` e `/watchlist`) aceitam tanto `session_id` v3 quanto autenticação direta via Read Access Token v4 (`Authorization: Bearer`).
+- Caso um `session_id` legado ou revogado retorne HTTP `401`/`403`, tanto o [`MoviesRepositoryImpl`](core/data/src/main/java/com/adauto/cinemahub/core/data/repository/MoviesRepositoryImpl.kt) quanto o [`SyncOutboxWorker`](core/data/src/main/java/com/adauto/cinemahub/core/data/worker/SyncOutboxWorker.kt) executam **fallback transparente** reenviando a operação sem `session_id` (autenticada pelo token Bearer v4), além de validar sessões legadas no startup em [`AuthRepositoryImpl`](core/data/src/main/java/com/adauto/cinemahub/core/data/repository/AuthRepositoryImpl.kt) e preservar todas as mutações locais caso a nuvem esteja indisponível.
 
 ---
 
@@ -215,16 +221,23 @@ O projeto implementa padrões defensivos alinhados aos requisitos do **OWASP Mob
   - Os bytes cifrados e o vetor de inicialização (IV) são armazenados no `DataStoreSessionStorage`.
   - Em caso de adulteração ou perda da chave, a recuperação é segura (fail-safe), invalidando a sessão sem causar crash no app.
 
-### 3. Isolamento do Cliente HTTP de Imagens (Coil)
-- O cliente de rede principal do TMDB anexa automaticamente `api_key` e cabeçalhos de autenticação.
-- Para evitar que esses segredos vazem ao carregar posters de CDNs públicas ou servidores externos, o módulo [`ImageClientModule`](core/network/src/main/java/com/adauto/cinemahub/core/network/di/ImageClientModule.kt) fornece uma instância isolada de `OkHttpClient` para o Coil:
-  - Cache em disco dedicado de 100 MB.
-  - **Zero interceptadores de autenticação** anexados à requisição de imagens.
+### 3. Isolamento do Cliente HTTP de Imagens (Coil 3 + `SingletonImageLoader.Factory`)
+- O cliente de rede principal do TMDB (`@TmdbOkHttpClient`) anexa automaticamente `api_key` e cabeçalhos `Authorization: Bearer`.
+- Para evitar que esses segredos vazem ao carregar posters de CDNs públicas (`image.tmdb.org`), o módulo [`ImageClientModule`](core/network/src/main/java/com/adauto/cinemahub/core/network/di/ImageClientModule.kt) fornece uma instância dedicada `@ImageOkHttpClient` consumida pelo [`CinemaHubApp`](app/src/main/java/com/adauto/cinemahub/CinemaHubApp.kt) via `SingletonImageLoader.Factory` (Coil 3):
+  - Inicialização **100% lazy** fora do caminho crítico de `Application.onCreate()`, preservando o tempo de Cold Start.
+  - **Zero interceptadores de autenticação** anexados à requisição de imagens (garantido por [`ImageClientIsolationTest`](core/network/src/test/java/com/adauto/cinemahub/core/network/di/ImageClientIsolationTest.kt)).
+  - Regra customizada `ForbiddenImport` no Detekt impedindo o uso direto de `AsyncImage` fora do componente centralizado [`MovieCover`](core/ui/src/main/java/com/adauto/cinemahub/core/ui/component/MovieCover.kt).
 
-### 4. Mascaramento em Logs de Telemetria (`RedactingHttpLoggingInterceptor`)
+### 4. Proteção de Integridade do Binário (`Firebase App Check` + `Play Integrity`)
+- O [`ClientIntegrityManager`](core/network/src/main/java/com/adauto/cinemahub/core/network/integrity/ClientIntegrityManager.kt) inicializa o **Firebase App Check** utilizando o provedor **Play Integrity** em builds de produção e `DebugAppCheckProviderFactory` em builds de desenvolvimento, protegendo o acesso ao Firebase Remote Config contra extração automatizada de chaves em clientes modificados.
+
+### 5. Mascaramento em Logs de Telemetria (`RedactingHttpLoggingInterceptor`)
 - Em builds de desenvolvimento ou testes, os logs de requisições HTTP utilizam o [`RedactingHttpLoggingInterceptor`](core/network/src/main/java/com/adauto/cinemahub/core/network/telemetry/RedactingHttpLoggingInterceptor.kt), que substitui automaticamente query parameters e headers sensíveis (`api_key`, `session_id`, `apikey`, `hash`, `Authorization`) por `[REDACTED]`.
 
-### 5. Fail-Closed Release Signing no Gradle & CI
+### 6. Proteção de Deep Links contra Redirecionamento Aberto (`DeepLinkHandler`)
+- O [`DeepLinkHandler`](app/src/main/java/com/adauto/cinemahub/navigation/DeepLinkHandler.kt) valida estritamente esquema (`cinemahub`), host (`tmdb-callback`) e formato do `request_token` (expressão regular alfanumérica de 20 a 64 caracteres) antes de encaminhar callbacks OAuth ao `MovieListViewModel`, descartando intents malformadas ou maliciosas.
+
+### 7. Fail-Closed Release Signing no Gradle & CI
 - O script [`app/build.gradle.kts`](app/build.gradle.kts) e o workflow de CD adotam a política **fail-closed**:
   - Em pipelines de CD (`CI_RELEASE_BUILD=true` ou tarefas com `bundleRelease`), a ausência do arquivo de keystore ou de senhas lança imediatamente uma `GradleException`, impedindo que artefatos de release sejam publicados acidentalmente assinados com chaves de debug.
 
@@ -351,9 +364,9 @@ flowchart TD
 > **Declaração de Escopo de Cobertura:** O relatório Kover mede a integridade de regras de negócio, persistência, autenticação, rede e ViewModels. O escopo **exclui deliberadamente** funções declarativas de UI (`@Composable`, `@Preview`), módulos de injeção de dependência (`*.di`, `*Module`) e classes geradas (`*_Factory`, `*_Impl`), mantendo foco estrito na lógica determinística testável.
 
 > [!NOTE]
-> **Governança Detekt & Baseline:** O gate de qualidade impõe estritamente `maxIssues = 0` (zero code smells novos permitidos na CI). O projeto documenta transparentemente 98 regras legadas em `detekt-baseline.xml` em processo contínuo de refatoração gradual.
+> **Governança Detekt Zero-Debt & Zero Hardcoded Strings:** O gate de qualidade impõe estritamente `maxIssues = 0` no Detekt **sem arquivos de baseline** (todas as 98 issues históricas foram 100% eliminadas do código). Além disso, a task customizada `./gradlew checkNoHardcodedStrings` bloqueia no CI qualquer string literal hardcoded em componentes `@Composable` de `src/main`.
 
-O projeto utiliza o **KotlinX Kover (v0.8.3)** para agregação unificada de métricas de cobertura de código através de todos os submódulos Gradle:
+O projeto utiliza o **KotlinX Kover (v0.9.11)** para agregação unificada de métricas de cobertura de código através de todos os submódulos Gradle:
 
 ### Métricas Consolidadas (Relatório Oficial da CI):
 
@@ -420,17 +433,18 @@ O repositório é equipado com automação completa via **GitHub Actions** em do
 
 | Categoria | Tecnologias Utilizadas |
 |---|---|
-| **Linguagem & Runtime** | Kotlin 2.0.21, Java 17, Coroutines & Flow 1.9.0 |
-| **Interface (UI)** | Jetpack Compose BOM 2024.12.01, Material 3, Compose Navigation 2.8.5, Coil 2.7.0 |
-| **Persistência Local** | AndroidX Room 2.6.1 (SQLite, InvalidationTracker, KSP), DataStore Preferences |
-| **Comunicação Remota** | Retrofit 2.11.0, OkHttp 4.12.0, Sandwich 2.0.10, KotlinX Serialization 1.7.3 |
-| **Paginação & Listas** | AndroidX Paging 3 (Paging 3.3.5, Paging Compose, RemoteMediator) |
-| **Injeção de Dependências** | Dagger Hilt 2.52 |
-| **Segurança & Criptografia** | Android Keystore Provider, AES-256-GCM, Custom Tabs 1.8.0 |
-| **Qualidade & Análise** | Detekt 1.23.7, Android Lint, KotlinX Kover 0.8.3 |
-| **Testes & Benchmark** | JUnit 4, Robolectric 4.14.1, MockK 1.13.13, Google Truth 1.4.4, Turbine 1.2.0, AndroidX Benchmark Macro 1.3.3, UiAutomator 2.3.0 |
-| **Processamento em Segundo Plano** | AndroidX WorkManager 2.9.1, Hilt Work 1.2.0 |
-| **Cloud & DevOps** | Firebase App Distribution, Firebase Test Lab, Google Cloud SDK, GitHub Actions |
+| **Build & Toolchain** | Gradle 8.11.1, Android Gradle Plugin (AGP) 8.7.3, KSP 2.0.21-1.0.28, Compile/Target SDK 35, Min SDK 26 |
+| **Linguagem & Runtime** | Kotlin 2.0.21, Java 17, Coroutines & Flow 1.9.0, KotlinX Collections Immutable 0.3.8 |
+| **Interface (UI)** | Jetpack Compose BOM 2024.12.01, Material 3, Compose Navigation 2.8.5, Activity Compose 1.9.3, Lifecycle 2.8.7, Core KTX 1.16.0, Coil 3.0.4 (`coil-compose`, `coil-network-okhttp`) |
+| **Persistência Local** | AndroidX Room 2.6.1 (SQLite v4, InvalidationTracker, KSP), DataStore Preferences 1.1.1 |
+| **Comunicação Remota** | Retrofit 3.0.0, OkHttp 4.12.0, Sandwich 2.0.10, KotlinX Serialization JSON 1.7.3 |
+| **Paginação & Listas** | AndroidX Paging 3.3.5 (`paging-runtime`, `paging-compose`, `RemoteMediator`, `paging-testing`) |
+| **Injeção de Dependências** | Dagger Hilt 2.52, Hilt Navigation Compose 1.2.0, Hilt Work 1.3.0 |
+| **Segurança & Integridade** | Android Keystore Provider (AES-256-GCM), Firebase App Check + Google Play Integrity 1.6.0, Firebase Remote Config (Firebase BOM 35.1.0), AndroidX Browser Custom Tabs 1.8.0 |
+| **Qualidade & Análise** | Detekt 1.23.8 (`maxIssues = 0`), Android Lint, KotlinX Kover 0.9.11, `checkNoHardcodedStrings` |
+| **Testes & Benchmark** | JUnit 4.13.2, Robolectric 4.17, MockK 1.13.17, Google Truth 1.4.5, Turbine 1.2.1, AndroidX Benchmark Macro 1.3.3, UiAutomator 2.4.0, ProfileInstaller 1.4.1 |
+| **Processamento & Diagnóstico** | AndroidX WorkManager 2.9.1, LeakCanary 2.14 (`debugImplementation`), StrictMode |
+| **Cloud, Telemetria & DevOps** | Firebase Crashlytics 3.0.8, Firebase Performance 2.0.2, Google Services 4.5.0, Firebase App Distribution, Firebase Test Lab, GitHub Actions |
 
 ---
 
@@ -457,6 +471,9 @@ tmdb.read.access.token=SEU_TMDB_READ_ACCESS_TOKEN_AQUI
 ### 3. Comandos Úteis do Gradle
 
 ```bash
+# Verificar ausência de strings hardcoded em produção Compose (src/main)
+./gradlew checkNoHardcodedStrings
+
 # Executar análise estática com Detekt (todas as camadas, zero code smells)
 ./gradlew detekt
 
