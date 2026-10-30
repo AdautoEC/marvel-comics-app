@@ -38,7 +38,7 @@ import javax.inject.Inject
 private const val SEARCH_DEBOUNCE_MILLIS = 300L
 
 @HiltViewModel
-@Suppress("LongParameterList","MaxLineLength")
+@Suppress("LongParameterList")
 class MovieListViewModel @Inject constructor(
     private val moviesRepository: MoviesRepository,
     private val authRepository: AuthRepository,

@@ -59,7 +59,8 @@ class MoviesRepositoryImpl @Inject constructor(
     private val workManager: WorkManager,
     private val syncCoordinator: SyncCoordinator,
     private val syncEventBus: SyncEventBus? = null,
-    @param:ApplicationScope private val externalScope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
+    @param:ApplicationScope private val externalScope: CoroutineScope =
+        CoroutineScope(SupervisorJob() + Dispatchers.Default),
     private val clock: Clock = Clock.systemUTC()
 ) : MoviesRepository {
 
