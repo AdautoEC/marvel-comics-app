@@ -87,11 +87,11 @@ class NavigationTest {
             },
             movieDetailContent = { backStackEntry, onBackClick ->
                 val route = backStackEntry.toRoute<MovieDetailRoute>()
-                val savedStateMovieId = backStackEntry.savedStateHandle.get<Int>("movieId")
-                onExtractedMovieId(savedStateMovieId)
+                val argumentMovieId = backStackEntry.arguments?.getInt("movieId")
+                onExtractedMovieId(route.movieId)
                 MovieDetailScreen(
                     uiState = MovieDetailUiState(
-                        movie = if (route.movieId == 550 && savedStateMovieId == 550) sampleMovieDetail else null,
+                        movie = if (route.movieId == 550 && argumentMovieId == 550) sampleMovieDetail else null,
                         isLoading = false
                     ),
                     onAction = { action ->
@@ -117,8 +117,9 @@ class NavigationTest {
 
         // 2. Click movie card to navigate to detail via CinemaHubNavHost
         composeTestRule.onNodeWithText("Clube da Luta").performClick()
+        composeTestRule.waitForIdle()
 
-        // 3. Verify MovieDetailRoute argument movieId=550 was serialized into SavedStateHandle
+        // 3. Verify MovieDetailRoute argument movieId=550 was deserialized via toRoute
         assertEquals(550, extractedMovieId)
 
         // 4. MovieDetailScreen should be visible with overview and back button
