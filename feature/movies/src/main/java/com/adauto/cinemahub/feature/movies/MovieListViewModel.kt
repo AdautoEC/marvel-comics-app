@@ -4,10 +4,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.paging.PagingData
 import androidx.paging.cachedIn
-import androidx.paging.map
 import com.adauto.cinemahub.core.data.repository.AuthRepository
 import com.adauto.cinemahub.core.data.repository.MoviesRepository
 import com.adauto.cinemahub.core.data.sync.SyncEventBus
+import com.adauto.cinemahub.core.data.usecase.GetMoviesUseCase
 import com.adauto.cinemahub.core.data.usecase.ToggleFavoriteUseCase
 import com.adauto.cinemahub.core.data.usecase.ToggleWatchlistUseCase
 import com.adauto.cinemahub.core.data.util.NetworkMonitor
@@ -45,6 +45,7 @@ class MovieListViewModel @Inject constructor(
     private val networkMonitor: NetworkMonitor,
     private val toggleFavoriteUseCase: ToggleFavoriteUseCase,
     private val toggleWatchlistUseCase: ToggleWatchlistUseCase,
+    private val getMoviesUseCase: GetMoviesUseCase,
     private val syncEventBus: SyncEventBus? = null
 ) : ViewModel() {
 
@@ -64,58 +65,10 @@ class MovieListViewModel @Inject constructor(
     ) { category, query ->
         category to query
     }.flatMapLatest { (category, query) ->
-        val trimmed = query.trim()
-        when {
-            trimmed.isBlank() -> {
-                when (category) {
-                    MovieCategory.FAVORITES -> moviesRepository.observeFavorites().map { PagingData.from(it) }
-                    MovieCategory.WATCHLIST -> moviesRepository.observeWatchlist().map { PagingData.from(it) }
-                    else -> moviesRepository.movies(category)
-                }
-            }
-            category == MovieCategory.FAVORITES -> {
-                moviesRepository.observeFavorites().map { list ->
-                    val filtered = list.filter { it.title.contains(trimmed, ignoreCase = true) }
-                    PagingData.from(filtered)
-                }
-            }
-            category == MovieCategory.WATCHLIST -> {
-                moviesRepository.observeWatchlist().map { list ->
-                    val filtered = list.filter { it.title.contains(trimmed, ignoreCase = true) }
-                    PagingData.from(filtered)
-                }
-            }
-            else -> {
-                moviesRepository.movies(category, trimmed)
-            }
-        }
+        getMoviesUseCase(category, query)
     }
 
-    private val cachedMoviesFlow: Flow<PagingData<MovieSummary>> = moviesFlow.cachedIn(viewModelScope)
-
-    private val favoriteIdsFlow: Flow<Set<Int>> = moviesRepository.observeFavorites()
-        .map { list -> list.asSequence().map { it.id }.toSet() }
-        .distinctUntilChanged()
-
-    private val watchlistIdsFlow: Flow<Set<Int>> = moviesRepository.observeWatchlist()
-        .map { list -> list.asSequence().map { it.id }.toSet() }
-        .distinctUntilChanged()
-
-    val movies: Flow<PagingData<MovieSummary>> = combine(
-        cachedMoviesFlow,
-        favoriteIdsFlow,
-        watchlistIdsFlow
-    ) { pagingData, favIds, watchIds ->
-        pagingData.map { movie ->
-            val isFav = movie.id in favIds
-            val isWatch = movie.id in watchIds
-            if (movie.isFavorite == isFav && movie.isInWatchlist == isWatch) {
-                movie
-            } else {
-                movie.copy(isFavorite = isFav, isInWatchlist = isWatch)
-            }
-        }
-    }
+    val movies: Flow<PagingData<MovieSummary>> = moviesFlow.cachedIn(viewModelScope)
 
     private val _effects = Channel<MovieListEffect>(Channel.BUFFERED)
     val effects: Flow<MovieListEffect> = _effects.receiveAsFlow()

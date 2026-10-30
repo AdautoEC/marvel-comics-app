@@ -30,6 +30,7 @@ import androidx.paging.PagingData
 import androidx.paging.compose.collectAsLazyPagingItems
 import com.adauto.cinemahub.core.data.sync.SyncEventBus
 import com.adauto.cinemahub.core.data.sync.SyncFailureEvent
+import com.adauto.cinemahub.core.data.usecase.GetMoviesUseCase
 import com.adauto.cinemahub.core.data.usecase.ToggleFavoriteUseCase
 import com.adauto.cinemahub.core.data.usecase.ToggleWatchlistUseCase
 import com.adauto.cinemahub.core.model.MovieCategory
@@ -359,6 +360,7 @@ class MovieListScreenRobolectricTest {
             networkMonitor = fakeNetworkMonitor,
             toggleFavoriteUseCase = ToggleFavoriteUseCase(fakeMoviesRepo),
             toggleWatchlistUseCase = ToggleWatchlistUseCase(fakeMoviesRepo),
+            getMoviesUseCase = GetMoviesUseCase(fakeMoviesRepo),
             syncEventBus = syncEventBus
         )
 

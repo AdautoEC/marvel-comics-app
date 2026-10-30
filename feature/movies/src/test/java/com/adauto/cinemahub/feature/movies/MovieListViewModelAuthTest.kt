@@ -1,6 +1,7 @@
 package com.adauto.cinemahub.feature.movies
 
 import app.cash.turbine.test
+import com.adauto.cinemahub.core.data.usecase.GetMoviesUseCase
 import com.adauto.cinemahub.core.data.usecase.ToggleFavoriteUseCase
 import com.adauto.cinemahub.core.data.usecase.ToggleWatchlistUseCase
 import com.adauto.cinemahub.core.model.MovieSummary
@@ -35,7 +36,8 @@ class MovieListViewModelAuthTest {
         authRepository,
         networkMonitor,
         toggleFavoriteUseCase,
-        toggleWatchlistUseCase
+        toggleWatchlistUseCase,
+        GetMoviesUseCase(moviesRepository)
     )
 
     @Before

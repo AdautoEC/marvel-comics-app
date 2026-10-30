@@ -11,9 +11,4 @@ object CinemaHubColors {
     val TextPrimary = Color(0xFFFFFFFF)
     val TextSecondary = Color(0xFFB7B7C8)
     val TextTertiary = Color(0xFF727288)
-
-    val HeroGradientStart = Color(0xFF005BEA)
-    val HeroGradientEnd = Color(0xFF00C6FB)
-    val VillainGradientStart = Color(0xFFED1D24)
-    val VillainGradientEnd = Color(0xFF380036)
 }

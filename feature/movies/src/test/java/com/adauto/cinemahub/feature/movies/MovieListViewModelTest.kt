@@ -6,6 +6,7 @@ import androidx.paging.PagingSource
 import androidx.paging.PagingState
 import androidx.paging.testing.asSnapshot
 import app.cash.turbine.test
+import com.adauto.cinemahub.core.data.usecase.GetMoviesUseCase
 import com.adauto.cinemahub.core.data.usecase.ToggleFavoriteUseCase
 import com.adauto.cinemahub.core.data.usecase.ToggleWatchlistUseCase
 import com.adauto.cinemahub.core.model.DomainError
@@ -44,7 +45,8 @@ class MovieListViewModelTest {
         authRepository,
         networkMonitor,
         toggleFavoriteUseCase,
-        toggleWatchlistUseCase
+        toggleWatchlistUseCase,
+        GetMoviesUseCase(moviesRepository)
     )
 
     @Before

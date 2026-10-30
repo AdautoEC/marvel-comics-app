@@ -1,5 +1,6 @@
 package com.adauto.cinemahub.core.data.usecase
 
+import com.adauto.cinemahub.core.data.mapper.toMovieSummary
 import com.adauto.cinemahub.core.data.repository.MoviesRepository
 import com.adauto.cinemahub.core.model.MovieDetail
 import com.adauto.cinemahub.core.model.MovieSummary
@@ -13,15 +14,6 @@ class ToggleWatchlistUseCase @Inject constructor(
     }
 
     suspend operator fun invoke(detail: MovieDetail) {
-        val summary = MovieSummary(
-            id = detail.id,
-            title = detail.title,
-            posterUrl = detail.posterUrl,
-            voteAverage = detail.voteAverage,
-            releaseDate = detail.releaseDate,
-            isFavorite = detail.isFavorite,
-            isInWatchlist = detail.isInWatchlist
-        )
-        moviesRepository.toggleWatchlist(summary)
+        moviesRepository.toggleWatchlist(detail.toMovieSummary())
     }
 }

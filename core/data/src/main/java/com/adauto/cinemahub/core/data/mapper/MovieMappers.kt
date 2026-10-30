@@ -71,6 +71,16 @@ fun TmdbMovieDetailDto.toMovieDetail(
     )
 }
 
+fun MovieDetail.toMovieSummary(): MovieSummary = MovieSummary(
+    id = id,
+    title = title,
+    posterUrl = posterUrl,
+    voteAverage = voteAverage,
+    releaseDate = releaseDate,
+    isFavorite = isFavorite,
+    isInWatchlist = isInWatchlist
+)
+
 fun FavoriteMovieEntity.toMovieSummary(
     isInWatchlist: Boolean = false
 ): MovieSummary {

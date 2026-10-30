@@ -24,6 +24,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
+import kotlin.time.Duration.Companion.milliseconds
 
 @Singleton
 class TmdbApiKeyProviderImpl(
@@ -153,7 +154,7 @@ class TmdbApiKeyProviderImpl(
         lastForcedFetchMs.set(now)
 
         try {
-            withTimeout(REMOTE_CONFIG_TIMEOUT_MS) {
+            withTimeout(REMOTE_CONFIG_TIMEOUT_MS.milliseconds) {
                 remoteConfig.fetch(0).awaitTask()
                 remoteConfig.activate().awaitTask()
                 val creds = extractRemoteCredentials()
@@ -180,7 +181,7 @@ class TmdbApiKeyProviderImpl(
 
     private suspend fun fetchAndStoreCredentials(): TmdbCredentials? {
         return try {
-            withTimeout(REMOTE_CONFIG_TIMEOUT_MS) {
+            withTimeout(REMOTE_CONFIG_TIMEOUT_MS.milliseconds) {
                 remoteConfig.fetchAndActivate().awaitTask()
                 val creds = extractRemoteCredentials()
                 if (creds.isNotEmpty) {
